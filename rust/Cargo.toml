@@ -3,8 +3,11 @@ name = "isomdl-uniffi"
 version = "0.1.0"
 edition = "2024"
 
+[build-dependencies]
+uniffi = { version = "0.28.3", features = [ "build" ] }
+
 [dependencies]
-uniffi = "0.28.3"
+uniffi = { version = "0.28.3", features = [ "cli" ] }
 isomdl = { git = "https://github.com/spruceid/isomdl", rev = "6084a83"}
 serde = "1.0.219"
 thiserror = "2.0.12"
@@ -19,6 +22,11 @@ rand = "0.9.1"
 sha1 = "0.10.6"
 signature = "2.2.0"
 crunchy = "=0.2.2"
+
+[[bin]]
+# This can be whatever name makes sense for your project, but the rest of this tutorial assumes uniffi-bindgen.
+name = "uniffi-bindgen"
+path = "uniffi-bindgen.rs"
 
 [lib]
 crate-type = ["cdylib", "staticlib"]

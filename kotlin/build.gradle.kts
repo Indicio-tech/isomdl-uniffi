@@ -4,8 +4,10 @@ import gobley.gradle.cargo.dsl.jvm
 import gobley.gradle.GobleyHost
 import gobley.gradle.Variant
 import gobley.gradle.cargo.dsl.linux
+import gobley.gradle.rust.targets.RustPosixTarget
 import gobley.gradle.rust.targets.RustWindowsTarget
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSetTree
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -14,6 +16,30 @@ plugins {
     id("dev.gobley.uniffi") version "0.2.0"
     kotlin("plugin.atomicfu") version libs.versions.kotlin
     kotlin("plugin.serialization") version "2.1.20"
+    id("maven-publish")
+}
+
+group = "tech.indicio"
+version = "0.0.1"
+
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) {
+        load(file.inputStream())
+    }
+}
+
+publishing {
+    repositories{
+        maven {
+            name = "github"
+            setUrl("https://maven.pkg.github.com/indicio-tech/isomdl-uniffi")
+            credentials{
+                username = localProperties.getProperty("githubUsername")
+                password = localProperties.getProperty("githubToken")
+            }
+        }
+    }
 }
 
 cargo {
@@ -41,6 +67,11 @@ cargo {
                 RustWindowsTarget.X64 -> false
                 RustWindowsTarget.Arm64 -> false
                 else -> true
+            }
+            if (rustTarget == RustPosixTarget.MinGWX64) {
+                variants {
+                    dynamicLibraries.set(listOf("isomdl_uniffi.dll"))
+                }
             }
         }
     }

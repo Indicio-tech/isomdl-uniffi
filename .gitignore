@@ -1,3 +1,4 @@
 rust/target
 .kotlin
 .DS_Store
+rust/out

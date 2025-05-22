@@ -1,6 +1,11 @@
-use std::{sync::Arc, time::Duration};
+use std::{
+    collections::{BTreeMap, HashMap},
+    sync::Arc,
+    time::Duration,
+};
 
 use super::mdoc::{KeyAlias, Mdoc};
+use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use isomdl::{
     definitions::{
         CoseKey, DeviceKeyInfo, DigestAlgorithm, EC2Curve, EC2Y, ValidityInfo,
@@ -8,7 +13,7 @@ use isomdl::{
         namespaces::{
             org_iso_18013_5_1::OrgIso1801351, org_iso_18013_5_1_aamva::OrgIso1801351Aamva,
         },
-        traits::{FromJson, ToNamespaceMap},
+        traits::{FromJson, ToCbor, ToNamespaceMap},
         x509::X5Chain,
     },
     presentation::device::Document,
@@ -21,6 +26,7 @@ use p256::{
     pkcs8::{DecodePrivateKey, EncodePublicKey, ObjectIdentifier},
 };
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use sha1::{Digest, Sha1};
 use signature::Keypair;
 use time::OffsetDateTime;
@@ -89,6 +95,22 @@ impl P256KeyPair {
         }
     }
 
+    pub fn public_jwk(&self) -> String {
+        let key = self.ver_key().expect("Error getting ver_key");
+        let point = key.to_encoded_point(false); // uncompressed (x and y)
+
+        let x = point.x().expect("x coordinate missing");
+        let y = point.y().expect("y coordinate missing");
+
+        serde_json::to_string(&json!({
+            "kty": "EC",
+            "crv": "P-256",
+            "x": URL_SAFE_NO_PAD.encode(x),
+            "y": URL_SAFE_NO_PAD.encode(y),
+        }))
+        .expect("Failed to serialize JWK to JSON")
+    }
+
     pub fn sign(&self, msg: &[u8]) -> Vec<u8> {
         let key: SigningKey = self.secret_key().expect("ERROR");
         let signature: p256::ecdsa::Signature = key.sign(msg);
@@ -99,8 +121,11 @@ impl P256KeyPair {
 #[uniffi::export]
 /// Generate a new test mDL with hardcoded values, using the supplied key as the DeviceKey.
 pub fn generate_test_mdl(key_pair: Arc<P256KeyPair>) -> Result<Mdoc, MdlUtilError> {
-    let (certificate, signer) =
-        setup_certificate_chain().context("failed to setup certificate chain")?;
+    let (certificate, signer) = setup_certificate_chain(
+        include_str!("../../tests/res/mdl/utrecht-certificate.pem").to_string(),
+        include_str!("../../tests/res/mdl/utrecht-key.pem").to_string(),
+    )
+    .context("failed to setup certificate chain")?;
     // RustCrypto does not accept JWKs with additional fields, including the `alg` field, so we
     // need to manually extract the minimal JWK.
     // let jwk: MinimalEcJwk = serde_json::from_str(&key.jwk().context("failed to get jwk")?)
@@ -296,12 +321,13 @@ fn prepare_mdoc(pub_key: PublicKey) -> Result<isomdl::issuance::mdoc::Builder> {
         .device_key_info(device_key_info))
 }
 
-fn setup_certificate_chain() -> Result<(Certificate, p256::ecdsa::SigningKey)> {
-    let iaca_cert_pem = include_str!("../../tests/res/mdl/utrecht-certificate.pem");
-    let iaca_cert = Certificate::from_pem(iaca_cert_pem)?;
+pub fn setup_certificate_chain(
+    iaca_cert_pem: String,
+    iaca_key_pem: String,
+) -> Result<(Certificate, p256::ecdsa::SigningKey)> {
+    let iaca_cert = Certificate::from_pem(&iaca_cert_pem)?;
     let iaca_name: Name = iaca_cert.tbs_certificate.subject;
-    let key_pem = include_str!("../../tests/res/mdl/utrecht-key.pem");
-    let iaca_key = p256::ecdsa::SigningKey::from_pkcs8_pem(key_pem)?;
+    let iaca_key = p256::ecdsa::SigningKey::from_pkcs8_pem(&iaca_key_pem)?;
 
     let ds_key = p256::ecdsa::SigningKey::random(&mut signature::rand_core::OsRng);
     let mut prepared_ds_certificate =
@@ -372,4 +398,40 @@ where
     )?]))?;
 
     Ok(builder)
+}
+
+#[uniffi::export]
+pub fn iso1801351_from_json(json: String) -> Result<HashMap<String, Vec<u8>>, MdlUtilError> {
+    let json_value: serde_json::Value = serde_json::from_str(&json)
+        .map_err(|_e| MdlUtilError::General("Error decoding json".to_owned()))?;
+    let btree = OrgIso1801351::from_json(&json_value)
+        .map_err(|_e| MdlUtilError::General("Error deserializing ISO1801351".to_owned()))?
+        .to_ns_map();
+
+    convert_btree(btree)
+}
+
+#[uniffi::export]
+pub fn iso1801351_aamva_from_json(json: String) -> Result<HashMap<String, Vec<u8>>, MdlUtilError> {
+    let json_value: serde_json::Value = serde_json::from_str(&json)
+        .map_err(|_e| MdlUtilError::General("Error decoding json".to_owned()))?;
+    let btree = OrgIso1801351Aamva::from_json(&json_value)
+        .map_err(|_e| MdlUtilError::General("Error deserializing ISO1801351".to_owned()))?
+        .to_ns_map();
+
+    convert_btree(btree)
+}
+
+fn convert_btree(
+    input: BTreeMap<String, ciborium::Value>,
+) -> Result<HashMap<String, Vec<u8>>, MdlUtilError> {
+    let mut outer = HashMap::new();
+
+    for (namespace, val) in input {
+        let bytes = val.to_cbor_bytes().map_err(|_e| {
+            MdlUtilError::General("Error converting cbor value to bytes".to_owned())
+        })?;
+        outer.insert(namespace, bytes);
+    }
+    Ok(outer)
 }

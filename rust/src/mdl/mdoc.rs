@@ -1,18 +1,29 @@
 // https://github.com/spruceid/sprucekit-mobile/blob/0.11.0/rust/src/credential/mdoc.rs
 
 use std::{
-    collections::{BTreeMap, HashMap},
-    sync::Arc,
+    collections::{BTreeMap, HashMap}, io::Cursor, sync::Arc, time::Duration
 };
 
+use anyhow::{Context, Result};
 use base64::prelude::*;
+use ciborium::{from_reader, Value};
 use isomdl::{
-    definitions::{IssuerSigned, Mso, helpers::Tag24},
-    presentation::{Stringify, device::Document},
+    definitions::{
+        helpers::{NonEmptyMap, Tag24}, x509::X5Chain, CoseKey, DeviceKeyInfo, DigestAlgorithm, EC2Curve, IssuerSigned, Mso, ValidityInfo, EC2Y
+    },
+    issuance::mdoc::Builder,
+    presentation::{device::Document, Stringify},
+};
+use p256::{
+    PublicKey,
+    elliptic_curve::sec1::ToEncodedPoint,
 };
 use serde::Deserialize;
 use serde::Serialize;
+use time::OffsetDateTime;
 use uuid::Uuid;
+
+use super::util::setup_certificate_chain;
 
 uniffi::custom_newtype!(Namespace, String);
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -79,6 +90,70 @@ impl Mdoc {
         Ok(Arc::new(Self { inner, key_alias }))
     }
 
+    #[uniffi::constructor]
+    pub fn create_and_sign(
+        doc_type: String,
+        namespaces: HashMap<String, HashMap<String, Vec<u8>>>,
+        holder_jwk: String,
+        iaca_cert_perm: String,
+        iaca_key_perm: String,
+    ) -> Result<Arc<Self>, MdocInitError> {
+        let pub_key: PublicKey =
+            PublicKey::from_jwk_str(&holder_jwk).map_err(|_e| MdocInitError::InvalidJwk)?;
+
+        let namespaces = convert_namespaces(namespaces)?;
+        let builder = prepare_builder(pub_key, namespaces, doc_type)
+            .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+
+        let (certificate, signer) = setup_certificate_chain(iaca_cert_perm, iaca_key_perm)
+            .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+
+        let x5chain = X5Chain::builder()
+            .with_certificate(certificate)
+            .map_err(|_e| MdocInitError::GeneralConstructionError)?
+            .build()
+            .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+
+        let mdoc = builder
+            .issue::<p256::ecdsa::SigningKey, p256::ecdsa::Signature>(x5chain, signer)
+            .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+
+        let namespaces = NonEmptyMap::maybe_new(
+            mdoc.namespaces
+                .into_inner()
+                .into_iter()
+                .map(|(namespace, elements)| {
+                    (
+                        namespace,
+                        NonEmptyMap::maybe_new(
+                            elements
+                                .into_inner()
+                                .into_iter()
+                                .map(|element| {
+                                    (element.as_ref().element_identifier.clone(), element)
+                                })
+                                .collect(),
+                        )
+                        .unwrap(),
+                    )
+                })
+                .collect(),
+        )
+        .unwrap();
+
+        let doc = Document {
+            id: Default::default(),
+            issuer_auth: mdoc.issuer_auth,
+            mso: mdoc.mso,
+            namespaces,
+        };
+
+        Ok(Arc::new(super::mdoc::Mdoc::new_from_parts(
+            doc,
+            KeyAlias(Uuid::new_v4().to_string()),
+        )))
+    }
+
     /// The local ID of this credential.
     pub fn id(&self) -> Uuid {
         self.inner.id
@@ -119,10 +194,21 @@ impl Mdoc {
         self.key_alias.clone()
     }
 
-    pub fn stringify(&self) -> Result<String, crate::mdl::mdoc::MdocEncodingError> {
+    
+    /// Serialize as JSON
+    pub fn json(&self) -> Result<String, crate::mdl::mdoc::MdocEncodingError> {
         match serde_json::to_string(&self.inner) {
             Ok(it) => Ok(it),
             Err(_e) => Err(MdocEncodingError::SerializationError),
+        }
+    }
+
+    
+    /// Serialize to CBOR
+    pub fn stringify(&self) -> Result<String, crate::mdl::mdoc::MdocEncodingError> {
+        match self.inner.stringify() {
+            Ok(it) => Ok(it),
+            Err(_e) => Err(MdocEncodingError::SerializationError)
         }
     }
 }
@@ -201,6 +287,10 @@ pub enum MdocInitError {
     NamespacesMissing,
     #[error("failed to decode Document from UTF-8 string")]
     DocumentUtf8Decoding,
+    #[error("failed to parse JWK")]
+    InvalidJwk,
+    #[error("failed to construct mdoc")]
+    GeneralConstructionError,
 }
 
 #[derive(Debug, uniffi::Error, thiserror::Error)]
@@ -209,4 +299,60 @@ pub enum MdocEncodingError {
     DocumentCborEncoding,
     #[error("failed to serialize mdoc")]
     SerializationError,
+}
+
+fn prepare_builder(
+    holder_key: PublicKey,
+    namespaces: BTreeMap<String, BTreeMap<String, ciborium::Value>>,
+    doc_type: String,
+) -> Result<Builder> {
+    let validity_info = ValidityInfo {
+        signed: OffsetDateTime::now_utc(),
+        valid_from: OffsetDateTime::now_utc(),
+        // mDL valid for thirty days.
+        valid_until: OffsetDateTime::now_utc() + Duration::from_secs(60 * 60 * 24 * 30),
+        expected_update: None,
+    };
+
+    let digest_alg = DigestAlgorithm::SHA256;
+
+    let ec = holder_key.to_encoded_point(false);
+    let x = ec.x().context("EC missing X coordinate")?.to_vec();
+    let y = EC2Y::Value(ec.y().context("EC missing X coordinate")?.to_vec());
+    let device_key = CoseKey::EC2 {
+        crv: EC2Curve::P256,
+        x,
+        y,
+    };
+    let device_key_info = DeviceKeyInfo {
+        device_key,
+        key_authorizations: None,
+        key_info: None,
+    };
+
+    Ok(isomdl::issuance::Mdoc::builder()
+        .doc_type(doc_type)
+        .namespaces(namespaces)
+        .validity_info(validity_info)
+        .digest_algorithm(digest_alg)
+        .device_key_info(device_key_info))
+}
+
+
+fn convert_namespaces(
+    input: HashMap<String, HashMap<String, Vec<u8>>>
+) -> Result<BTreeMap<String, BTreeMap<String, Value>>, MdocInitError>{
+    let mut outer = BTreeMap::new();
+
+    for (namespace, inner_map) in input {
+        let mut inner_btree = BTreeMap::new();
+        for (key, vec_bytes) in inner_map {
+            let mut cursor = Cursor::new(vec_bytes);
+            let value: Value = from_reader(&mut cursor).map_err(|_e|MdocInitError::DocumentCborDecoding("Error decoding CBOR value".to_owned()))?;
+            inner_btree.insert(key, value);
+        }
+        outer.insert(namespace, inner_btree);
+    }
+
+    Ok(outer)
 }

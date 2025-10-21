@@ -1,4 +1,23 @@
-rust/target
+# Rust build artifacts
+rust/target/
+
+# UniFFI generated bindings and build artifacts
+rust/out/
+
+# Kotlin build artifacts
 .kotlin
+
+# Python artifacts
+*.egg-info/
+build/
+dist/
+__pycache__/
+*.pyc
+*.pyo
+venv/
+env/
+.env
+
+# System files
 .DS_Store
-rust/out
+Thumbs.db

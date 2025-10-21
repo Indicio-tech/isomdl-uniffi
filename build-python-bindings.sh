@@ -6,6 +6,10 @@ echo "Building isomdl-uniffi Python bindings..."
 # Navigate to rust directory
 cd "$(dirname "$0")/rust"
 
+# Note: This script builds for the current platform only.
+# For cross-platform builds (macOS universal, Linux, Windows), see:
+# https://github.com/cross-rs/cross for cross-compilation setup
+
 # Build the Rust library
 echo "Building Rust library..."
 cargo build --release --lib

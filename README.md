@@ -183,7 +183,7 @@ isomdl-uniffi/
 │   │       └── util.rs     # Utility functions
 │   ├── Cargo.toml         # Rust dependencies
 │   ├── uniffi-bindgen.rs  # UniFFI binding generator
-│   └── build-python.sh    # Build script for Python bindings
+│   └── out/               # Generated bindings (gitignored)
 ├── kotlin/                 # Kotlin bindings (separate)
 └── out/                   # Generated bindings output
     └── python/            # Python package output
@@ -219,13 +219,37 @@ python -c "import isomdl_uniffi; print('Import successful!')"
 
 ### Cross-Platform Building
 
-The `build-python.sh` script builds binaries for multiple platforms:
+The `build-python-bindings.sh` script builds binaries for the current platform only. For production deployments requiring multiple platforms, you can:
 
-- **macOS**: Universal binary (x86_64 + ARM64)
-- **Linux**: x86_64
-- **Windows**: x86_64
+1. **Use GitHub Actions or CI/CD** to build on different runners
+2. **Use cross-compilation tools** like [cross-rs](https://github.com/cross-rs/cross):
 
-Note: Cross-compilation requires additional setup for each target platform.
+```bash
+# Install cross-compilation tool
+cargo install cross --git https://github.com/cross-rs/cross
+
+# Add target platforms
+rustup target add x86_64-apple-darwin aarch64-apple-darwin x86_64-unknown-linux-gnu x86_64-pc-windows-gnu
+
+# Build for specific targets
+cross build --release --target x86_64-unknown-linux-gnu --lib
+cargo build --release --target x86_64-apple-darwin --lib
+# ... etc for other platforms
+```
+
+3. **Create universal macOS binaries** using lipo:
+
+```bash
+# Build both architectures
+cargo build --release --target x86_64-apple-darwin --lib
+cargo build --release --target aarch64-apple-darwin --lib
+
+# Merge into universal binary
+lipo -create \
+    target/x86_64-apple-darwin/release/libisomdl_uniffi.dylib \
+    target/aarch64-apple-darwin/release/libisomdl_uniffi.dylib \
+    -output out/python/libisomdl_uniffi.dylib
+```
 
 ## Integration with ACA-Py Plugins
 

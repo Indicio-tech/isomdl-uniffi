@@ -64,7 +64,8 @@ def run_all_tests():
         "test_basic_functionality",
         "test_mdoc_operations", 
         "test_presentation_session",
-        "test_reader_functionality"
+        "test_reader_functionality",
+        "test_integration"
     ]
     
     failed_tests = []

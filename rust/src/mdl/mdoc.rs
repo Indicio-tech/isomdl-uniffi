@@ -79,6 +79,16 @@ impl Mdoc {
     }
 
     #[uniffi::constructor]
+    /// Parse an MDoc from a stringified document with a default key alias.
+    /// This is a convenience method for parsing mdocs where the key alias is not critical.
+    pub fn from_string(stringified_document: String) -> Result<Arc<Self>, MdocInitError> {
+        let inner = Document::parse(stringified_document)
+            .map_err(|_| MdocInitError::DocumentUtf8Decoding)?;
+        let key_alias = KeyAlias("parsed".to_string());
+        Ok(Arc::new(Self { inner, key_alias }))
+    }
+
+    #[uniffi::constructor]
     /// Construct a SpruceKit MDoc from a cbor-encoded
     /// [spruceid/isomdl `Document`](https://github.com/spruceid/isomdl/blob/main/src/presentation/device.rs#L145-L152)
     pub fn from_cbor_encoded_document(

@@ -10,6 +10,60 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  dco-check:
+    name: DCO Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check DCO
+        run: |
+          # Get the base branch for comparison
+          git fetch origin ${{ github.base_ref }}
+          
+          # Check all commits in this PR for DCO signature
+          echo "🔍 Checking DCO signatures for all commits in this PR..."
+          
+          COMMITS=$(git rev-list origin/${{ github.base_ref }}..HEAD)
+          MISSING_DCO=()
+          
+          for commit in $COMMITS; do
+            echo "Checking commit: $commit"
+            if ! git show --format="%B" --no-patch "$commit" | grep -q "Signed-off-by:"; then
+              MISSING_DCO+=("$commit")
+              echo "❌ Missing DCO signature in commit: $commit"
+              git show --format="%h %s" --no-patch "$commit"
+            else
+              echo "✅ DCO signature found in commit: $commit"
+            fi
+          done
+          
+          if [ ${#MISSING_DCO[@]} -ne 0 ]; then
+            echo ""
+            echo "❌ DCO Check Failed!"
+            echo "The following commits are missing 'Signed-off-by' lines:"
+            for commit in "${MISSING_DCO[@]}"; do
+              git show --format="  - %h %s" --no-patch "$commit"
+            done
+            echo ""
+            echo "To fix this, you can:"
+            echo "1. Amend your commits with: git commit --amend --signoff"
+            echo "2. Or rebase and sign all commits: git rebase --signoff HEAD~N"
+            echo "3. Then force push: git push --force-with-lease"
+            echo ""
+            echo "The DCO signature certifies that you have the right to submit"
+            echo "the code under the project's license."
+            exit 1
+          else
+            echo ""
+            echo "✅ All commits have valid DCO signatures!"
+          fi
+
   rust-checks:
     name: Rust Checks
     runs-on: ubuntu-latest

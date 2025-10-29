@@ -106,6 +106,7 @@ All workflows ensure that:
 - ✅ Complete test suite passes (including selective disclosure tests)
 - ✅ Code meets formatting and quality standards
 - ✅ Security vulnerabilities are detected early
+- ✅ All commits are properly signed with DCO (Developer Certificate of Origin)
 
 ### 4. Build Python Bindings
 
@@ -353,7 +354,25 @@ Generated Python package has minimal dependencies, as most functionality is prov
 4. Run tests: `cargo test`
 5. Build Python bindings: `./build-python.sh`
 6. Test Python integration
-7. Submit a pull request
+7. **Sign your commits** with DCO (Developer Certificate of Origin):
+   ```bash
+   git commit -s -m "Your commit message"
+   ```
+   All commits must include a `Signed-off-by` line to comply with DCO requirements.
+   See [.github/DCO.md](.github/DCO.md) for more details.
+8. Submit a pull request
+
+### DCO (Developer Certificate of Origin)
+
+This project requires all contributions to be signed with the Developer Certificate of Origin (DCO). 
+This certifies that you have the right to contribute the code and agree to the project's license terms.
+
+- **Required**: All commits must include a `Signed-off-by` line
+- **How to sign**: Use `git commit -s` for new commits
+- **Retroactive signing**: Use `git rebase --signoff` for existing commits
+- **Verification**: Our CI pipeline automatically checks DCO compliance
+
+For complete DCO requirements and procedures, see [.github/DCO.md](.github/DCO.md).
 
 ## License
 

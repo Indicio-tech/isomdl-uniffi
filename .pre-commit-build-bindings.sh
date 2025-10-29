@@ -21,9 +21,24 @@ else
 fi
 
 # Generate Python bindings
+echo "🔧 Generating bindings with: target/release/libisomdl_uniffi.$LIB_EXT"
+ls -la target/release/libisomdl_uniffi.$LIB_EXT || {
+    echo "❌ Library file not found!"
+    ls -la target/release/
+    exit 1
+}
+
 cargo run --bin uniffi-bindgen generate \
     --library target/release/libisomdl_uniffi.$LIB_EXT \
     --language python \
     --out-dir out/python
 
+# Copy the shared library to the Python output directory
+echo "📦 Copying shared library to Python bindings directory..."
+cp target/release/libisomdl_uniffi.$LIB_EXT out/python/
+
 echo "✅ Python bindings built successfully!"
+
+# Debug: List what was created
+echo "📁 Contents of rust/out/python/:"
+ls -la out/python/ || echo "   Directory not found!"

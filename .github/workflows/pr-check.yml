@@ -59,12 +59,21 @@ jobs:
           echo "🦀 Running Rust tests..."
           cargo test
 
-      - name: Build and test Python bindings
+      - name: Build Python bindings
         run: |
           echo "🐍 Building Python bindings..."
           chmod +x .pre-commit-build-bindings.sh
           ./.pre-commit-build-bindings.sh
           
+          # Verify bindings were created
+          echo "🔍 Verifying bindings were created..."
+          ls -la rust/out/python/ || {
+            echo "❌ Python bindings directory not found!"
+            exit 1
+          }
+
+      - name: Run Python tests
+        run: |
           echo "🐍 Running Python tests..."
           chmod +x .pre-commit-run-tests.sh
           ./.pre-commit-run-tests.sh

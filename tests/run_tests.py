@@ -14,31 +14,48 @@ import traceback
 
 def import_bindings():
     """
-    Import the isomdl_uniffi module from the generated bindings.
+    Import the generated Python bindings from the expected location.
     
     Returns:
         The imported isomdl_uniffi module, or None if import fails.
     """
+    # Get the absolute path to the test directory
+    test_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(test_dir)
+    
     # Try to import from the generated bindings directory
-    bindings_path = os.path.join(
-        os.path.dirname(__file__), "..", "rust", "out", "python"
-    )
+    bindings_path = os.path.join(project_root, "rust", "out", "python")
+    
+    print(f"🔍 Looking for Python bindings at: {bindings_path}")
     
     if not os.path.exists(bindings_path):
         print("❌ Python bindings not found!")
-        print(f"   Expected path: {os.path.abspath(bindings_path)}")
+        print(f"   Expected path: {bindings_path}")
+        print(f"   Test directory: {test_dir}")
+        print(f"   Project root: {project_root}")
+        
+        # List what's actually there for debugging
+        rust_dir = os.path.join(project_root, "rust")
+        if os.path.exists(rust_dir):
+            print(f"   Contents of rust/: {os.listdir(rust_dir)}")
+            out_dir = os.path.join(rust_dir, "out")
+            if os.path.exists(out_dir):
+                print(f"   Contents of rust/out/: {os.listdir(out_dir)}")
+        
         print("   Please run './build-python-bindings.sh' first")
         return None
     
     # Add the bindings directory to Python path
-    sys.path.insert(0, os.path.abspath(bindings_path))
+    sys.path.insert(0, bindings_path)
+    
+    # List the files in the bindings directory for debugging
+    print(f"📁 Contents of bindings directory: {os.listdir(bindings_path)}")
     
     try:
         import isomdl_uniffi
         return isomdl_uniffi
     except ImportError as e:
         print(f"❌ Failed to import isomdl_uniffi: {e}")
-        return None
 
 
 def run_all_tests():

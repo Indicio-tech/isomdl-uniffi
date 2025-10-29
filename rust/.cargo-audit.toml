@@ -1,0 +1,21 @@
+# Cargo audit configuration
+# This file allows temporary ignoring of certain vulnerabilities during remediation
+
+[advisories]
+# Temporarily ignore vulnerabilities while we work on alternatives
+ignore = [
+    # paste is unmaintained but still functional - used by uniffi
+    "RUSTSEC-2024-0436",
+    # proc-macro-error is unmaintained but comes from deep dependency chain  
+    "RUSTSEC-2024-0370",
+    # RSA timing attack - waiting for stable 0.10 release (RC available but not stable)
+    "RUSTSEC-2023-0071",
+]
+
+# RESOLVED ISSUES:
+# - RUSTSEC-2021-0127: serde_cbor removed in favor of ciborium
+# - Updated isomdl dependency to latest version (0.2.0) which may resolve owning_ref
+# - Fixed deprecated API usage with allow annotation
+
+# NOTE: Test changes by running `cargo audit --config .cargo-audit.toml` in CI
+# Some vulnerabilities are in deep dependency chains and require upstream fixes

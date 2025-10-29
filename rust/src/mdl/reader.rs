@@ -86,6 +86,7 @@ pub fn establish_session(
             },
         )?;
     let manager2 = manager.clone();
+    #[allow(deprecated)]
     let uuid =
         manager2
             .first_central_client_uuid()

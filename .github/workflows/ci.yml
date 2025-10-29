@@ -290,7 +290,7 @@ jobs:
       - name: Run security audit
         run: |
           cd rust
-          cargo audit --config .cargo-audit.toml
+          cargo audit
 
   coverage:
     name: Code Coverage

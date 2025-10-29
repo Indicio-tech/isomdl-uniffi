@@ -17,5 +17,5 @@ ignore = [
 # - Updated isomdl dependency to latest version (0.2.0) which may resolve owning_ref
 # - Fixed deprecated API usage with allow annotation
 
-# NOTE: Test changes by running `cargo audit --config .cargo-audit.toml` in CI
+# NOTE: cargo-audit automatically uses .cargo-audit.toml in the current directory
 # Some vulnerabilities are in deep dependency chains and require upstream fixes

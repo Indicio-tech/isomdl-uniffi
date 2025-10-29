@@ -33,6 +33,13 @@ jobs:
           MISSING_DCO=()
           
           for commit in $COMMITS; do
+            # Skip merge commits as they don't typically require DCO signatures
+            if git show --format="%P" --no-patch "$commit" | grep -q " "; then
+              echo "⏭️  Skipping merge commit: $commit"
+              git show --format="%h %s" --no-patch "$commit"
+              continue
+            fi
+            
             echo "Checking commit: $commit"
             if ! git show --format="%B" --no-patch "$commit" | grep -q "Signed-off-by:"; then
               MISSING_DCO+=("$commit")

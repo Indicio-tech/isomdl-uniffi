@@ -74,6 +74,8 @@ The DCO helps ensure that:
 
 Our CI/CD pipeline automatically checks all commits in pull requests for DCO signatures. PRs with unsigned commits will fail the DCO check and cannot be merged until all commits are properly signed.
 
+**Note**: Merge commits created by GitHub are automatically skipped during DCO validation, as they don't typically introduce new code and don't require DCO signatures.
+
 ## Need Help?
 
 If you're having trouble with DCO signatures or need assistance, please:

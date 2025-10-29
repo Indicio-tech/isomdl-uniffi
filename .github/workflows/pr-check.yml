@@ -73,6 +73,8 @@ jobs:
     name: Quick PR Validation
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
+    # This job runs quick validation with a single Python version
+    # Full multi-version testing happens in the main CI workflow
     
     steps:
       - name: Checkout code
@@ -86,7 +88,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: '3.11'  # Single Python version for quick PR checks
 
       - name: Install uv
         uses: astral-sh/setup-uv@v3
@@ -255,4 +257,4 @@ jobs:
           echo "- ✅ Selective disclosure functionality" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ Python code quality checks" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "The full CI pipeline will run comprehensive tests across multiple platforms and Python versions." >> $GITHUB_STEP_SUMMARY
+          echo "The full CI pipeline will build bindings once per platform and test against multiple Python versions (3.9-3.12)." >> $GITHUB_STEP_SUMMARY

@@ -114,14 +114,14 @@ jobs:
           cd rust
           cargo test
 
-  python-bindings:
-    name: Python Bindings & Tests
+  build-bindings:
+    name: Build Python Bindings
     runs-on: ${{ matrix.os }}
     needs: rust-checks
+    # Build bindings once per platform, then test against multiple Python versions
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
-        python-version: ['3.9', '3.10', '3.11', '3.12']
     
     steps:
       - name: Checkout code
@@ -130,10 +130,10 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: '3.11'  # Use one Python version for building
 
       - name: Install uv
         uses: astral-sh/setup-uv@v3
@@ -152,32 +152,72 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      - name: Install Python dependencies
-        run: |
-          uv pip install --system black flake8
-
       - name: Build Python bindings
         run: |
           chmod +x python/precommit/build-bindings.sh
           ./python/precommit/build-bindings.sh
+
+      - name: Upload bindings artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-bindings-${{ matrix.os }}
+          path: rust/out/python/
+          retention-days: 1
+
+  test-python:
+    name: Test Python ${{ matrix.python-version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    needs: build-bindings
+    # Test the pre-built bindings against multiple Python versions
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ['3.9', '3.10', '3.11', '3.12']
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Download bindings artifact  
+        uses: actions/download-artifact@v4
+        with:
+          name: python-bindings-${{ matrix.os }}
+          path: rust/out/python/
+
+      - name: Install Python dependencies
+        run: |
+          uv pip install --system black flake8
 
       - name: Run Python tests
         run: |
           chmod +x python/precommit/run-tests.sh
           ./python/precommit/run-tests.sh
 
-      - name: Check Python code formatting
+      - name: Check Python code formatting (once per OS)
+        if: matrix.python-version == '3.11'
         run: |
           black --check python/tests/
 
-      - name: Run Python linting
+      - name: Run Python linting (once per OS)  
+        if: matrix.python-version == '3.11'
         run: |
           flake8 python/tests/ --max-line-length=100 --ignore=E203,W503
 
   integration-tests:
     name: Integration Tests
     runs-on: ubuntu-latest
-    needs: [rust-checks, python-bindings]
+    needs: [rust-checks, test-python]
     
     steps:
       - name: Checkout code

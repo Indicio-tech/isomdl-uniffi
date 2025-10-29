@@ -10,12 +10,19 @@ ignore = [
     "RUSTSEC-2024-0370",
     # RSA timing attack - waiting for stable 0.10 release (RC available but not stable)
     "RUSTSEC-2023-0071",
+    # owning_ref has soundness issues - comes from json-ld dependencies in isomdl crate
+    # Deep dependency chain: owning_ref -> json-ld-* -> ssi-* -> isomdl -> isomdl-uniffi
+    # Waiting for upstream fixes in json-ld ecosystem
+    "RUSTSEC-2022-0040",
 ]
 
 # RESOLVED ISSUES:
 # - RUSTSEC-2021-0127: serde_cbor removed in favor of ciborium
-# - Updated isomdl dependency to latest version (0.2.0) which may resolve owning_ref
 # - Fixed deprecated API usage with allow annotation
+
+# CURRENT IGNORED ISSUES:
+# All ignored vulnerabilities are in deep dependency chains from the isomdl crate
+# and require upstream ecosystem fixes. These are low-risk for this library's use case.
 
 # NOTE: cargo-audit automatically uses .cargo-audit.toml in the current directory
 # Some vulnerabilities are in deep dependency chains and require upstream fixes

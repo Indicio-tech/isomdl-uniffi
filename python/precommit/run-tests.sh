@@ -6,14 +6,17 @@ set -e
 
 echo "🧪 Running Python tests..."
 
+# Navigate to project root
+cd "$(dirname "$0")/../.."
+
 # Check if bindings are built
 if [ ! -d "rust/out/python" ]; then
     echo "⚠️  Python bindings not found. Building first..."
-    ./.pre-commit-build-bindings.sh
+    ./python/precommit/build-bindings.sh
 fi
 
 # Run the test suite
-cd tests
+cd python/tests
 
 # Try to find Python - prefer python3, fallback to python
 if command -v python3 >/dev/null 2>&1; then

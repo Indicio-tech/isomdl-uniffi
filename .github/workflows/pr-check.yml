@@ -127,8 +127,8 @@ jobs:
       - name: Build Python bindings
         run: |
           echo "🐍 Building Python bindings..."
-          chmod +x .pre-commit-build-bindings.sh
-          ./.pre-commit-build-bindings.sh
+          chmod +x python/precommit/build-bindings.sh
+          ./python/precommit/build-bindings.sh
           
           # Verify bindings were created
           echo "🔍 Verifying bindings were created..."
@@ -178,8 +178,8 @@ jobs:
           " || exit 1
           
           # Run the actual tests
-          chmod +x .pre-commit-run-tests.sh
-          ./.pre-commit-run-tests.sh
+          chmod +x python/precommit/run-tests.sh
+          ./python/precommit/run-tests.sh
 
       - name: Validate selective disclosure
         run: |
@@ -187,7 +187,7 @@ jobs:
           
           # Set up environment
           export PYTHONPATH="${PYTHONPATH}:$(pwd)/rust/out/python"
-          cd tests
+          cd python/tests
           
           python3 -c "
           import sys, os
@@ -228,14 +228,14 @@ jobs:
       - name: Check Python code quality
         run: |
           echo "🐍 Checking Python formatting..."
-          black --check tests/ || {
+          black --check python/tests/ || {
             echo "❌ Python code is not properly formatted"
-            echo "Run 'black tests/' to fix formatting issues"
+            echo "Run 'black python/tests/' to fix formatting issues"
             exit 1
           }
           
           echo "🐍 Running Python linting..."
-          flake8 tests/ --max-line-length=100 --ignore=E203,W503 || {
+          flake8 python/tests/ --max-line-length=100 --ignore=E203,W503 || {
             echo "❌ Python linting failed"
             echo "Fix the linting issues before merging"
             exit 1

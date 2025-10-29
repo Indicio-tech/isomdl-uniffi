@@ -29,10 +29,10 @@ From the repository root:
 
 ```bash
 # Using the simple test runner
-./test-bindings.py
+../test-bindings.py
 
 # Or using the test runner directly
-python3 tests/run_tests.py
+python3 run_tests.py
 ```
 
 ### Run Individual Test Modules
@@ -41,10 +41,10 @@ You can also run individual test files directly for debugging:
 
 ```bash
 # Run a specific test module
-python3 tests/test_basic_functionality.py
-python3 tests/test_mdoc_operations.py
-python3 tests/test_presentation_session.py
-python3 tests/test_reader_functionality.py
+python3 test_basic_functionality.py
+python3 test_mdoc_operations.py
+python3 test_presentation_session.py
+python3 test_reader_functionality.py
 ```
 
 ## Test Coverage

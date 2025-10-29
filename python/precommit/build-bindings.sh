@@ -5,6 +5,8 @@
 set -e
 
 echo "🔧 Building Rust crate..."
+# Navigate to project root then to rust directory
+cd "$(dirname "$0")/../.."
 cd rust
 
 # Build the Rust library in release mode

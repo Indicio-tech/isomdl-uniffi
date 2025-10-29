@@ -68,7 +68,7 @@ pre-commit install
 pre-commit run --all-files
 ```
 
-See [.pre-commit-setup.md](.pre-commit-setup.md) for more details.
+See [python/precommit/README.md](python/precommit/README.md) for more details.
 
 ### 3. CI/CD Pipeline
 
@@ -124,7 +124,7 @@ This script will:
 
 ```bash
 # Run the comprehensive test suite
-./test-bindings.py
+./python/test-bindings.py
 ```
 
 ### 4. Install and Use (Optional)

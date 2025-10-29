@@ -158,21 +158,21 @@ jobs:
 
       - name: Build Python bindings
         run: |
-          chmod +x .pre-commit-build-bindings.sh
-          ./.pre-commit-build-bindings.sh
+          chmod +x python/precommit/build-bindings.sh
+          ./python/precommit/build-bindings.sh
 
       - name: Run Python tests
         run: |
-          chmod +x .pre-commit-run-tests.sh
-          ./.pre-commit-run-tests.sh
+          chmod +x python/precommit/run-tests.sh
+          ./python/precommit/run-tests.sh
 
       - name: Check Python code formatting
         run: |
-          black --check tests/
+          black --check python/tests/
 
       - name: Run Python linting
         run: |
-          flake8 tests/ --max-line-length=100 --ignore=E203,W503
+          flake8 python/tests/ --max-line-length=100 --ignore=E203,W503
 
   integration-tests:
     name: Integration Tests
@@ -211,16 +211,16 @@ jobs:
           cd ..
           
           # Build Python bindings
-          chmod +x .pre-commit-build-bindings.sh
-          ./.pre-commit-build-bindings.sh
+          chmod +x python/precommit/build-bindings.sh
+          ./python/precommit/build-bindings.sh
           
           # Run comprehensive Python test suite
-          chmod +x .pre-commit-run-tests.sh
-          ./.pre-commit-run-tests.sh
+          chmod +x python/precommit/run-tests.sh
+          ./python/precommit/run-tests.sh
 
       - name: Verify selective disclosure tests
         run: |
-          cd tests
+          cd python/tests
           python3 -c "
           import sys, os
           sys.path.insert(0, '../rust/out/python')

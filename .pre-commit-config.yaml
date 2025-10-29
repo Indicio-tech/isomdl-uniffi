@@ -34,7 +34,7 @@ repos:
     hooks:
       - id: python-bindings-build
         name: Build Python Bindings
-        entry: ./.pre-commit-build-bindings.sh
+        entry: ./python/precommit/build-bindings.sh
         language: system
         files: \.rs$|Cargo\.(toml|lock)$|uniffi-bindgen\.rs$
         pass_filenames: false
@@ -45,9 +45,9 @@ repos:
     hooks:
       - id: python-tests
         name: Run Python Tests
-        entry: ./.pre-commit-run-tests.sh
+        entry: ./python/precommit/run-tests.sh
         language: system
-        files: \.rs$|Cargo\.(toml|lock)$|^tests/.*\.py$
+        files: \.rs$|Cargo\.(toml|lock)$|^python/tests/.*\.py$
         pass_filenames: false
         stages: [commit]
 
@@ -68,12 +68,12 @@ repos:
     rev: 24.1.1
     hooks:
       - id: black
-        files: ^tests/.*\.py$
+        files: ^python/tests/.*\.py$
         language_version: python3
 
   - repo: https://github.com/pycqa/flake8
     rev: 7.0.0
     hooks:
       - id: flake8
-        files: ^tests/.*\.py$
+        files: ^python/tests/.*\.py$
         args: ['--max-line-length=100', '--ignore=E203,W503']

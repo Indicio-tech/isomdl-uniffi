@@ -69,6 +69,12 @@ pub struct P256KeyPair {
     ver_key: Box<[u8]>,
 }
 
+impl Default for P256KeyPair {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl P256KeyPair {
     pub fn secret_key(&self) -> Result<p256::ecdsa::SigningKey, p256::pkcs8::Error> {
         SigningKey::from_pkcs8_der(&self.secret_key)
@@ -179,6 +185,7 @@ pub fn generate_test_mdl(key_pair: Arc<P256KeyPair>) -> Result<Mdoc, MdlUtilErro
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[allow(dead_code)]
 struct MinimalEcJwk {
     kty: String,
     crv: String,

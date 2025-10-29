@@ -88,6 +88,12 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
       - name: Cache Rust dependencies
         uses: actions/cache@v3
         with:
@@ -101,8 +107,7 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install black flake8
+          uv pip install black flake8
 
       - name: Quick Rust checks
         run: |
@@ -131,32 +136,92 @@ jobs:
             echo "❌ Python bindings directory not found!"
             exit 1
           }
+          
+          # Debug: Check what files were created
+          echo "📁 Files in rust/out/python/:"
+          find rust/out/python/ -type f -name "*.py" -o -name "*.so" -o -name "*.dylib" -o -name "*.dll" || echo "No binding files found"
+          
+          # Install the bindings as a package
+          echo "📦 Installing Python bindings..."
+          cd rust/out/python
+          uv pip install -e . || {
+            echo "⚠️  Direct install failed, trying alternative method..."
+            cd ../../../
+            export PYTHONPATH="${PYTHONPATH}:$(pwd)/rust/out/python"
+            echo "Set PYTHONPATH to: $PYTHONPATH"
+          }
 
       - name: Run Python tests
         run: |
           echo "🐍 Running Python tests..."
+          
+          # Set up Python path to find the bindings
+          export PYTHONPATH="${PYTHONPATH}:$(pwd)/rust/out/python"
+          echo "Using PYTHONPATH: $PYTHONPATH"
+          
+          # Test the import first
+          echo "🔍 Testing import..."
+          python3 -c "
+          import sys
+          sys.path.insert(0, 'rust/out/python')
+          try:
+              import isomdl_uniffi
+              print('✅ Successfully imported isomdl_uniffi')
+              print(f'Module location: {isomdl_uniffi.__file__}')
+          except ImportError as e:
+              print(f'❌ Failed to import isomdl_uniffi: {e}')
+              print('Available files in rust/out/python/:')
+              import os
+              for f in os.listdir('rust/out/python'):
+                  print(f'  {f}')
+              sys.exit(1)
+          " || exit 1
+          
+          # Run the actual tests
           chmod +x .pre-commit-run-tests.sh
           ./.pre-commit-run-tests.sh
 
       - name: Validate selective disclosure
         run: |
           echo "🔒 Validating selective disclosure functionality..."
+          
+          # Set up environment
+          export PYTHONPATH="${PYTHONPATH}:$(pwd)/rust/out/python"
           cd tests
+          
           python3 -c "
           import sys, os
           sys.path.insert(0, '../rust/out/python')
-          import isomdl_uniffi as mdl
-          sys.path.insert(0, '.')
-          import test_selective_disclosure
-          test_selective_disclosure.mdl = mdl
           
-          # Run just the core selective disclosure tests quickly
+          # Test import first
+          try:
+              import isomdl_uniffi as mdl
+              print('✅ Successfully imported isomdl_uniffi for selective disclosure tests')
+          except ImportError as e:
+              print(f'❌ Failed to import isomdl_uniffi: {e}')
+              print('Current working directory:', os.getcwd())
+              print('Python path:', sys.path)
+              sys.exit(1)
+          
+          # Import test module
+          sys.path.insert(0, '.')
+          try:
+              import test_selective_disclosure
+              test_selective_disclosure.mdl = mdl
+              print('✅ Successfully imported test_selective_disclosure')
+          except ImportError as e:
+              print(f'❌ Failed to import test_selective_disclosure: {e}')
+              sys.exit(1)
+          
+          # Run core selective disclosure tests
           try:
               test_selective_disclosure.test_basic_selective_disclosure()
               test_selective_disclosure.test_age_verification_attributes()
               print('✅ Core selective disclosure tests passed')
           except Exception as e:
+              import traceback
               print(f'❌ Selective disclosure test failed: {e}')
+              traceback.print_exc()
               sys.exit(1)
           "
 

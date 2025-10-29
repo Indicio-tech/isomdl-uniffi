@@ -154,7 +154,7 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          uv pip install black flake8
+          uv pip install --system black flake8
 
       - name: Build Python bindings
         run: |

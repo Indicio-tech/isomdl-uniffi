@@ -93,7 +93,7 @@ jobs:
 
       - name: Install build dependencies
         run: |
-          uv pip install wheel setuptools build
+          uv pip install --system wheel setuptools build
 
       - name: Build Rust crate
         run: |

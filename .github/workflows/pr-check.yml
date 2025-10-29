@@ -107,7 +107,7 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          uv pip install black flake8
+          uv pip install --system black flake8
 
       - name: Quick Rust checks
         run: |
@@ -144,7 +144,7 @@ jobs:
           # Install the bindings as a package
           echo "📦 Installing Python bindings..."
           cd rust/out/python
-          uv pip install -e . || {
+          uv pip install --system -e . || {
             echo "⚠️  Direct install failed, trying alternative method..."
             cd ../../../
             export PYTHONPATH="${PYTHONPATH}:$(pwd)/rust/out/python"

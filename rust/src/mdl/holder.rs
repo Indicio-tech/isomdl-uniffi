@@ -3,10 +3,9 @@
 use isomdl::definitions::x509::trust_anchor::TrustAnchorRegistry;
 use isomdl::{
     definitions::{
-        BleOptions, DeviceRetrievalMethod, SessionEstablishment,
         device_engagement::{CentralClientMode, DeviceRetrievalMethods},
         helpers::NonEmptyMap,
-        session,
+        session, BleOptions, DeviceRetrievalMethod, SessionEstablishment,
     },
     presentation::device::{self, SessionManagerInit},
 };

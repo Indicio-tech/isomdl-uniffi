@@ -1,0 +1,186 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  release:
+    types: [published]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create-release.outputs.upload_url }}
+      version: ${{ steps.get-version.outputs.version }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: get-version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Create Release
+        id: create-release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ steps.get-version.outputs.version }}
+          body: |
+            ## isomdl-uniffi Release ${{ steps.get-version.outputs.version }}
+            
+            This release includes:
+            - 🦀 Rust library for ISO 18013-5 mDL implementation
+            - 🐍 Python bindings via UniFFI
+            - 🔒 Comprehensive selective disclosure tests
+            - ✅ Full test suite validation
+            
+            ### Changes
+            Please see the commit history for detailed changes in this release.
+            
+            ### Installation
+            
+            #### Python Bindings
+            Download the appropriate wheel file for your platform and install:
+            ```bash
+            pip install isomdl_uniffi-${{ steps.get-version.outputs.version }}-*.whl
+            ```
+            
+            #### Rust Crate
+            ```toml
+            [dependencies]
+            isomdl-uniffi = "${{ steps.get-version.outputs.version }}"
+            ```
+          draft: false  
+          prerelease: false
+
+  build-python-wheels:
+    name: Build Python Wheels
+    needs: create-release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ['3.9', '3.10', '3.11', '3.12']
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install wheel setuptools build
+
+      - name: Build Rust crate
+        run: |
+          cd rust
+          cargo build --release
+
+      - name: Build Python bindings
+        shell: bash
+        run: |
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            chmod +x .pre-commit-build-bindings.sh
+            bash .pre-commit-build-bindings.sh
+          else
+            chmod +x .pre-commit-build-bindings.sh
+            ./.pre-commit-build-bindings.sh
+          fi
+
+      - name: Create Python package
+        run: |
+          # Create a minimal setup.py for wheel building
+          cat > setup.py << 'EOF'
+          from setuptools import setup, find_packages
+          import os
+          
+          # Read version from environment or default
+          version = os.environ.get('RELEASE_VERSION', '0.1.0')
+          
+          setup(
+              name="isomdl-uniffi",
+              version=version,
+              author="Indicio",
+              description="ISO 18013-5 mobile Driver License implementation with Python bindings",
+              long_description=open("README.md").read(),
+              long_description_content_type="text/markdown",
+              packages=find_packages(),
+              package_data={
+                  '': ['rust/out/python/*.py', 'rust/out/python/*.so', 'rust/out/python/*.dylib', 'rust/out/python/*.dll'],
+              },
+              include_package_data=True,
+              classifiers=[
+                  "Development Status :: 4 - Beta",
+                  "Intended Audience :: Developers",
+                  "License :: OSI Approved :: Apache Software License",
+                  "Programming Language :: Python :: 3",
+                  "Programming Language :: Python :: 3.9",
+                  "Programming Language :: Python :: 3.10", 
+                  "Programming Language :: Python :: 3.11",
+                  "Programming Language :: Python :: 3.12",
+                  "Programming Language :: Rust",
+                  "Topic :: Security :: Cryptography",
+                  "Topic :: Software Development :: Libraries",
+              ],
+              python_requires=">=3.9",
+          )
+          EOF
+          
+          # Set version for build
+          export RELEASE_VERSION=${{ needs.create-release.outputs.version }}
+          
+          # Build wheel
+          python setup.py bdist_wheel
+
+      - name: Upload wheel artifact
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: dist/isomdl_uniffi-${{ needs.create-release.outputs.version }}-py3-none-any.whl
+          asset_name: isomdl_uniffi-${{ needs.create-release.outputs.version }}-py${{ matrix.python-version }}-${{ runner.os }}.whl
+          asset_content_type: application/zip
+
+  publish-crate:
+    name: Publish Rust Crate
+    needs: create-release
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Login to crates.io
+        run: |
+          cd rust
+          cargo login ${{ secrets.CRATES_IO_TOKEN }}
+
+      - name: Publish to crates.io
+        run: |
+          cd rust
+          cargo publish --dry-run
+          cargo publish

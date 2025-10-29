@@ -1,7 +1,10 @@
 // https://github.com/spruceid/sprucekit-mobile/blob/0.11.0/rust/src/credential/mdoc.rs
 
 use std::{
-    collections::{BTreeMap, HashMap}, io::Cursor, sync::Arc, time::Duration
+    collections::{BTreeMap, HashMap},
+    io::Cursor,
+    sync::Arc,
+    time::Duration,
 };
 
 use anyhow::{Context, Result};
@@ -9,15 +12,14 @@ use base64::prelude::*;
 use ciborium::{from_reader, Value};
 use isomdl::{
     definitions::{
-        helpers::{NonEmptyMap, Tag24}, x509::X5Chain, CoseKey, DeviceKeyInfo, DigestAlgorithm, EC2Curve, IssuerSigned, Mso, ValidityInfo, EC2Y
+        helpers::{NonEmptyMap, Tag24},
+        x509::X5Chain,
+        CoseKey, DeviceKeyInfo, DigestAlgorithm, EC2Curve, IssuerSigned, Mso, ValidityInfo, EC2Y,
     },
     issuance::mdoc::Builder,
     presentation::{device::Document, Stringify},
 };
-use p256::{
-    PublicKey,
-    elliptic_curve::sec1::ToEncodedPoint,
-};
+use p256::{elliptic_curve::sec1::ToEncodedPoint, PublicKey};
 use serde::Deserialize;
 use serde::Serialize;
 use time::OffsetDateTime;
@@ -204,7 +206,6 @@ impl Mdoc {
         self.key_alias.clone()
     }
 
-    
     /// Serialize as JSON
     pub fn json(&self) -> Result<String, crate::mdl::mdoc::MdocEncodingError> {
         match serde_json::to_string(&self.inner) {
@@ -213,12 +214,11 @@ impl Mdoc {
         }
     }
 
-    
     /// Serialize to CBOR
     pub fn stringify(&self) -> Result<String, crate::mdl::mdoc::MdocEncodingError> {
         match self.inner.stringify() {
             Ok(it) => Ok(it),
-            Err(_e) => Err(MdocEncodingError::SerializationError)
+            Err(_e) => Err(MdocEncodingError::SerializationError),
         }
     }
 }
@@ -348,17 +348,18 @@ fn prepare_builder(
         .device_key_info(device_key_info))
 }
 
-
 fn convert_namespaces(
-    input: HashMap<String, HashMap<String, Vec<u8>>>
-) -> Result<BTreeMap<String, BTreeMap<String, Value>>, MdocInitError>{
+    input: HashMap<String, HashMap<String, Vec<u8>>>,
+) -> Result<BTreeMap<String, BTreeMap<String, Value>>, MdocInitError> {
     let mut outer = BTreeMap::new();
 
     for (namespace, inner_map) in input {
         let mut inner_btree = BTreeMap::new();
         for (key, vec_bytes) in inner_map {
             let mut cursor = Cursor::new(vec_bytes);
-            let value: Value = from_reader(&mut cursor).map_err(|_e|MdocInitError::DocumentCborDecoding("Error decoding CBOR value".to_owned()))?;
+            let value: Value = from_reader(&mut cursor).map_err(|_e| {
+                MdocInitError::DocumentCborDecoding("Error decoding CBOR value".to_owned())
+            })?;
             inner_btree.insert(key, value);
         }
         outer.insert(namespace, inner_btree);

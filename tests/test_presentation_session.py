@@ -3,7 +3,18 @@
 Presentation session tests for isomdl-uniffi Python bindings.
 """
 
+import sys
+import os
 import uuid
+
+# Add the project root to the path to import the generated bindings
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'rust', 'out', 'python'))
+
+try:
+    import isomdl_uniffi as mdl
+except ImportError:
+    # If running via run_tests.py, mdl will be injected as a module global
+    mdl = None
 
 
 def run_tests():
@@ -13,6 +24,10 @@ def run_tests():
     Returns:
         bool: True if all tests pass, False otherwise.
     """
+    global mdl
+    if mdl is None:
+        raise ImportError("isomdl_uniffi module not available")
+    
     try:
         print("\n1. Testing presentation session creation:")
         
@@ -62,16 +77,14 @@ def run_tests():
 
 
 if __name__ == "__main__":
-    # This allows running the test file directly for debugging
-    import sys
-    import os
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "rust", "out", "python"))
+    # This allows running the test file directly for debugging  
+    if mdl is None:
+        try:
+            import isomdl_uniffi as mdl
+        except ImportError as e:
+            print(f"❌ Could not import isomdl_uniffi: {e}")
+            print("Please run './build-python-bindings.sh' first")
+            sys.exit(1)
     
-    try:
-        import isomdl_uniffi as mdl
-        success = run_tests()
-        sys.exit(0 if success else 1)
-    except ImportError as e:
-        print(f"❌ Could not import isomdl_uniffi: {e}")
-        print("Please run './build-python-bindings.sh' first")
-        sys.exit(1)
+    success = run_tests()
+    sys.exit(0 if success else 1)

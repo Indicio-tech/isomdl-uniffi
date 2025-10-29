@@ -1,0 +1,79 @@
+# Pre-commit hooks for isomdl-uniffi
+# Install with: pip install pre-commit && pre-commit install
+
+repos:
+  # Rust checks
+  - repo: local
+    hooks:
+      - id: cargo-check
+        name: Cargo Check (Rust crate)
+        entry: cargo check
+        language: system
+        files: \.rs$|Cargo\.(toml|lock)$
+        pass_filenames: false
+        stages: [commit]
+        
+      - id: cargo-test
+        name: Cargo Test (Rust tests)
+        entry: cargo test
+        language: system
+        files: \.rs$|Cargo\.(toml|lock)$
+        pass_filenames: false
+        stages: [commit]
+        
+      - id: cargo-fmt-check
+        name: Cargo Format Check
+        entry: cargo fmt -- --check
+        language: system
+        files: \.rs$
+        pass_filenames: false
+        stages: [commit]
+
+  # Python bindings build check
+  - repo: local
+    hooks:
+      - id: python-bindings-build
+        name: Build Python Bindings
+        entry: ./.pre-commit-build-bindings.sh
+        language: system
+        files: \.rs$|Cargo\.(toml|lock)$|uniffi-bindgen\.rs$
+        pass_filenames: false
+        stages: [commit]
+
+  # Python tests
+  - repo: local
+    hooks:
+      - id: python-tests
+        name: Run Python Tests
+        entry: ./.pre-commit-run-tests.sh
+        language: system
+        files: \.rs$|Cargo\.(toml|lock)$|^tests/.*\.py$
+        pass_filenames: false
+        stages: [commit]
+
+  # Python checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: \.md$
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-merge-conflict
+      - id: check-toml
+
+  - repo: https://github.com/psf/black
+    rev: 24.1.1
+    hooks:
+      - id: black
+        files: ^tests/.*\.py$
+        language_version: python3
+
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+        files: ^tests/.*\.py$
+        args: ['--max-line-length=100', '--ignore=E203,W503']

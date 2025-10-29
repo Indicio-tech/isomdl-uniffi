@@ -53,7 +53,61 @@ cd isomdl-uniffi
 git checkout python-bindings
 ```
 
-### 2. Build Python Bindings
+### 2. (Optional) Setup Pre-commit Hooks
+
+For contributors, set up pre-commit hooks to ensure code quality:
+
+```bash
+# Install pre-commit
+pip install pre-commit
+
+# Install git hook scripts
+pre-commit install
+
+# (Optional) Run against all files
+pre-commit run --all-files
+```
+
+See [.pre-commit-setup.md](.pre-commit-setup.md) for more details.
+
+### 3. CI/CD Pipeline
+
+This project includes comprehensive GitHub Actions workflows:
+
+#### **Pull Request Checks** (`.github/workflows/pr-check.yml`)
+- Quick validation for PRs with essential checks
+- Runs on every PR to `main` and `develop` branches
+- Validates Rust formatting, compilation, and tests
+- Builds Python bindings and runs test suite
+- Verifies selective disclosure functionality
+- Checks Python code quality (black, flake8)
+
+#### **Full CI Pipeline** (`.github/workflows/ci.yml`)
+- Comprehensive testing across multiple platforms and Python versions
+- Matrix builds: Ubuntu, macOS, Windows × Python 3.9-3.12
+- Security auditing with `cargo audit`
+- Code coverage reporting with `cargo tarpaulin`
+- Integration tests including selective disclosure validation
+
+#### **Release Pipeline** (`.github/workflows/release.yml`)
+- Automated releases on version tags (`v*`)
+- Builds Python wheels for multiple platforms
+- Publishes Rust crate to [crates.io](https://crates.io)
+- Creates GitHub releases with binaries
+
+#### **Dependency Management** (`.github/dependabot.yml`)
+- Automated dependency updates for Rust crates
+- Weekly updates for GitHub Actions
+- Properly labeled and organized PRs
+
+All workflows ensure that:
+- ✅ Rust code compiles and passes tests
+- ✅ Python bindings build successfully  
+- ✅ Complete test suite passes (including selective disclosure tests)
+- ✅ Code meets formatting and quality standards
+- ✅ Security vulnerabilities are detected early
+
+### 4. Build Python Bindings
 
 ```bash
 # Build the Rust library and generate Python bindings

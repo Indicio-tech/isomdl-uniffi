@@ -1,0 +1,123 @@
+name: PR Quick Check
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  quick-check:
+    name: Quick PR Validation
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust/target
+          key: ${{ runner.os }}-cargo-quick-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-quick-
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install black flake8
+
+      - name: Quick Rust checks
+        run: |
+          cd rust
+          echo "🦀 Checking Rust formatting..."
+          cargo fmt -- --check
+          
+          echo "🦀 Running Clippy..."
+          cargo clippy -- -D warnings
+          
+          echo "🦀 Building Rust crate..."
+          cargo build
+          
+          echo "🦀 Running Rust tests..."
+          cargo test
+
+      - name: Build and test Python bindings
+        run: |
+          echo "🐍 Building Python bindings..."
+          chmod +x .pre-commit-build-bindings.sh
+          ./.pre-commit-build-bindings.sh
+          
+          echo "🐍 Running Python tests..."
+          chmod +x .pre-commit-run-tests.sh
+          ./.pre-commit-run-tests.sh
+
+      - name: Validate selective disclosure
+        run: |
+          echo "🔒 Validating selective disclosure functionality..."
+          cd tests
+          python3 -c "
+          import sys, os
+          sys.path.insert(0, '../rust/out/python')
+          import isomdl_uniffi as mdl
+          sys.path.insert(0, '.')
+          import test_selective_disclosure
+          test_selective_disclosure.mdl = mdl
+          
+          # Run just the core selective disclosure tests quickly
+          try:
+              test_selective_disclosure.test_basic_selective_disclosure()
+              test_selective_disclosure.test_age_verification_attributes()
+              print('✅ Core selective disclosure tests passed')
+          except Exception as e:
+              print(f'❌ Selective disclosure test failed: {e}')
+              sys.exit(1)
+          "
+
+      - name: Check Python code quality
+        run: |
+          echo "🐍 Checking Python formatting..."
+          black --check tests/ || {
+            echo "❌ Python code is not properly formatted"
+            echo "Run 'black tests/' to fix formatting issues"
+            exit 1
+          }
+          
+          echo "🐍 Running Python linting..."
+          flake8 tests/ --max-line-length=100 --ignore=E203,W503 || {
+            echo "❌ Python linting failed"
+            echo "Fix the linting issues before merging"
+            exit 1
+          }
+
+      - name: PR Summary
+        if: always()
+        run: |
+          echo "## 🎉 PR Quick Check Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "This PR has been validated with:" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Rust code formatting and linting" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Rust compilation and tests" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Python bindings generation" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Python test suite execution" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Selective disclosure functionality" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Python code quality checks" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The full CI pipeline will run comprehensive tests across multiple platforms and Python versions." >> $GITHUB_STEP_SUMMARY

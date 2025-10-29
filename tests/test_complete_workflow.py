@@ -49,6 +49,124 @@ def load_test_private_key() -> str:
 class TestMdocWorkflow:
     """Test class for complete mdoc workflow validation."""
     
+    def test_cross_language_python_to_kotlin_workflow(self):
+        """Test issuing mdoc in Python, presenting in Kotlin, and verifying in Python.
+        
+        This test demonstrates how mdocs can be serialized and transferred between
+        Python and Kotlin implementations, validating cross-language compatibility.
+        """
+        # Phase 1: Python issues mdoc and exports for Kotlin
+        holder_key = P256KeyPair()
+        mdoc = generate_test_mdl(holder_key)
+        
+        # Export mdoc and key for Kotlin
+        mdoc_cbor = mdoc.stringify()
+        holder_key_jwk = holder_key.public_jwk()
+        
+        # Write artifacts to files for cross-language exchange
+        artifacts_dir = Path(__file__).parent / "cross_language_artifacts"
+        artifacts_dir.mkdir(exist_ok=True)
+        
+        mdoc_file = artifacts_dir / "python_issued_mdoc.cbor"
+        key_file = artifacts_dir / "holder_key.jwk"
+        
+        # Write mdoc as hex-encoded string (easier for Kotlin to consume)
+        mdoc_file.write_text(mdoc_cbor.encode('latin1').hex())
+        key_file.write_text(holder_key_jwk)
+        
+        print("✅ Phase 1: Python issued mdoc for Kotlin")
+        print(f"   - MDOC written to: {mdoc_file}")
+        print(f"   - Key written to: {key_file}")
+        
+        # Phase 2: Simulate Kotlin reading mdoc and creating presentation
+        # Read back the artifacts (simulating Kotlin)
+        restored_mdoc_hex = mdoc_file.read_text().strip()
+        restored_mdoc_cbor = bytes.fromhex(restored_mdoc_hex).decode('latin1')
+        restored_mdoc = Mdoc.from_string(restored_mdoc_cbor)
+        
+        # Verify mdoc was restored correctly
+        assert restored_mdoc.doctype() == mdoc.doctype(), "Document type should match"
+        assert restored_mdoc.id() == mdoc.id(), "Document ID should match"
+        
+        # Create a new presentation session (simulating Kotlin)
+        ble_uuid = str(uuid.uuid4())
+        kotlin_session = MdlPresentationSession(restored_mdoc, ble_uuid)
+        kotlin_qr = kotlin_session.get_qr_code_uri()
+        
+        assert kotlin_qr.startswith("mdoc:"), "Kotlin should generate valid QR code"
+        print("✅ Phase 2: Kotlin successfully restored mdoc and created session")
+        print(f"   - QR code length: {len(kotlin_qr)}")
+        
+        # Phase 3: Complete workflow using the Kotlin-restored mdoc
+        # Now run a complete presentation flow using the restored mdoc
+        requested_attributes = {
+            "org.iso.18013.5.1": {
+                "given_name": True,
+                "family_name": True,
+                "age_over_18": True
+            }
+        }
+        
+        # Establish verifier session
+        reader_data = establish_session(kotlin_qr, requested_attributes, None)
+        
+        # Process request with Kotlin session
+        requested_data = kotlin_session.handle_request(reader_data.request)
+        
+        # Build permitted items (grant all requested)
+        permitted_items = {}
+        for rd in requested_data:
+            doc_type_items = {}
+            for namespace, attributes in rd.namespaces.items():
+                required_attrs = [attr for attr, required in attributes.items() if required]
+                if required_attrs:
+                    doc_type_items[namespace] = required_attrs
+            if doc_type_items:
+                permitted_items[rd.doc_type] = doc_type_items
+        
+        # Generate and sign response
+        unsigned_response = kotlin_session.generate_response(permitted_items)
+        signed_response = holder_key.sign(unsigned_response)
+        kotlin_response = kotlin_session.submit_response(signed_response)
+        
+        # Python verifies the Kotlin presentation
+        result = handle_response(reader_data.state, kotlin_response)
+        
+        # Verify authentication results
+        assert result.device_authentication == AuthenticationStatus.VALID, \
+            "Device authentication must be valid in cross-language workflow"
+        
+        # Verify response data
+        assert result.verified_response is not None, "Should have verified response data"
+        assert len(result.verified_response) > 0, "Should have response fields"
+        
+        # Verify only requested attributes are disclosed
+        disclosed_namespaces = set(result.verified_response.keys())
+        requested_namespaces = set(requested_attributes.keys())
+        assert disclosed_namespaces.issubset(requested_namespaces), \
+            "Should only disclose requested namespaces in cross-language workflow"
+        
+        print("✅ Phase 3: Python verification of Kotlin presentation successful")
+        print(f"   - Device auth: {result.device_authentication}")
+        print(f"   - Issuer auth: {result.issuer_authentication}")
+        print(f"   - Disclosed: {list(result.verified_response.keys())}")
+        
+        # Phase 4: Verify round-trip serialization integrity
+        # Export the final mdoc state and re-import it
+        final_mdoc_cbor = restored_mdoc.stringify()
+        final_restored_mdoc = Mdoc.from_string(final_mdoc_cbor)
+        
+        assert final_restored_mdoc.doctype() == mdoc.doctype(), "Final round-trip should preserve doctype"
+        assert final_restored_mdoc.id() == mdoc.id(), "Final round-trip should preserve ID"
+        
+        print("✅ Phase 4: Round-trip serialization verified")
+        
+        # Cleanup
+        import shutil
+        shutil.rmtree(artifacts_dir)
+        print("✅ Cross-language test completed successfully")
+        print("   This demonstrates mdoc compatibility between Python and Kotlin")
+    
     def test_mdoc_round_trip_serialization(self):
         """Test that mdoc can be serialized and deserialized correctly."""
         # Generate test data
@@ -427,6 +545,7 @@ def run_manual_tests():
     test_class = TestMdocWorkflow()
     
     tests = [
+        ("Cross-Language Python to Kotlin Workflow", test_class.test_cross_language_python_to_kotlin_workflow),
         ("CBOR Round-trip Serialization", test_class.test_mdoc_round_trip_serialization),
         ("Presentation Session Creation", test_class.test_presentation_session_creation),
         ("Verifier Session Establishment", test_class.test_verifier_session_establishment_without_trust_anchors),

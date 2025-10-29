@@ -6,7 +6,7 @@ use std::{
 use isomdl::{
     definitions::{
         device_request,
-        helpers::{NonEmptyMap, non_empty_map},
+        helpers::{non_empty_map, NonEmptyMap},
         x509::{
             self,
             trust_anchor::{PemTrustAnchor, TrustAnchorRegistry},

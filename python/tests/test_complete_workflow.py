@@ -352,7 +352,7 @@ class TestMdocWorkflow:
         requested_attributes = {
             "org.iso.18013.5.1": {
                 "given_name": True,
-                "age_over_18": True
+                "age_over_18": True,
                 # Deliberately NOT requesting family_name or other attributes
             }
         }
@@ -551,7 +551,7 @@ class TestMdocWorkflow:
         requested_attributes = {
             "org.iso.18013.5.1": {
                 "given_name": True,
-                "age_over_18": True
+                "age_over_18": True,
                 # Deliberately NOT requesting family_name or other attributes
             }
         }

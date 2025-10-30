@@ -235,8 +235,7 @@ jobs:
           import isomdl_uniffi as mdl
           sys.path.insert(0, '.')
           import test_selective_disclosure
-          test_selective_disclosure.mdl = mdl
-          result = test_selective_disclosure.run_tests()
+          result = test_selective_disclosure.run_tests(mdl)
           assert result == True, 'Selective disclosure tests failed'
           print('✅ Selective disclosure tests verified')
           "

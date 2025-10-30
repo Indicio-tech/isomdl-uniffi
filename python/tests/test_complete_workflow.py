@@ -10,23 +10,36 @@ import uuid
 import pytest
 from pathlib import Path
 
-# Add the generated bindings path
-sys.path.insert(
-    0, os.path.join(os.path.dirname(__file__), "..", "rust", "out", "python")
-)
+# Module-level variable to store the mdl module
+_mdl_module = None
 
-try:
-    from isomdl_uniffi import (
-        Mdoc,
-        MdlPresentationSession,
-        P256KeyPair,
-        establish_session,
-        handle_response,
-        generate_test_mdl,
-        AuthenticationStatus,
-    )
-except ImportError as e:
-    pytest.skip(f"isomdl_uniffi not available: {e}", allow_module_level=True)
+
+def run_tests(mdl):
+    """
+    Run complete workflow tests.
+
+    Args:
+        mdl: The isomdl_uniffi module
+
+    Returns:
+        bool: True if all tests pass, False otherwise.
+    """
+    global _mdl_module
+    _mdl_module = mdl
+
+    # Import the classes/functions from the mdl module into global scope
+    # so the existing code can use them
+    globals().update({
+        'Mdoc': mdl.Mdoc,
+        'MdlPresentationSession': mdl.MdlPresentationSession,
+        'P256KeyPair': mdl.P256KeyPair,
+        'establish_session': mdl.establish_session,
+        'handle_response': mdl.handle_response,
+        'generate_test_mdl': mdl.generate_test_mdl,
+        'AuthenticationStatus': mdl.AuthenticationStatus,
+    })
+
+    return run_manual_tests()
 
 # Test data paths
 TEST_RES_DIR = Path(__file__).parent.parent / "rust" / "tests" / "res" / "mdl"
@@ -668,8 +681,30 @@ def run_manual_tests():
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "--pytest":
-        sys.exit(run_pytest_tests())
-    else:
-        success = run_manual_tests()
-        sys.exit(0 if success else 1)
+    # This allows running the test file directly for debugging
+    try:
+        # Add the project root to the path to import the generated bindings
+        sys.path.insert(
+            0, os.path.join(os.path.dirname(__file__), "..", "rust", "out", "python")
+        )
+        import isomdl_uniffi as mdl_module
+
+        if len(sys.argv) > 1 and sys.argv[1] == "--pytest":
+            # For pytest, we need to make the imports available globally
+            globals().update({
+                'Mdoc': mdl_module.Mdoc,
+                'MdlPresentationSession': mdl_module.MdlPresentationSession,
+                'P256KeyPair': mdl_module.P256KeyPair,
+                'establish_session': mdl_module.establish_session,
+                'handle_response': mdl_module.handle_response,
+                'generate_test_mdl': mdl_module.generate_test_mdl,
+                'AuthenticationStatus': mdl_module.AuthenticationStatus,
+            })
+            sys.exit(run_pytest_tests())
+        else:
+            success = run_tests(mdl_module)
+            sys.exit(0 if success else 1)
+    except ImportError as e:
+        print(f"❌ Could not import isomdl_uniffi: {e}")
+        print("Please run './build-python-bindings.sh' first")
+        sys.exit(1)

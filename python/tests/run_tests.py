@@ -117,21 +117,17 @@ def run_all_tests():
 
             spec = importlib.util.spec_from_file_location(test_module, test_path)
             module = importlib.util.module_from_spec(spec)
-
-            # Add mdl to the module's globals so tests can use it
-            module.mdl = mdl
-
             spec.loader.exec_module(module)
 
-            # Run the test function
+            # Run the test function with mdl module as parameter
             if hasattr(module, "run_tests"):
-                success = module.run_tests()
-                if not success:
+                test_success = module.run_tests(mdl)
+                if not test_success:
                     failed_tests.append(test_module)
             else:
                 print(f"   ⚠️  No run_tests() function found in {test_module}")
 
-        except Exception as e:
+        except (ImportError, AttributeError, RuntimeError) as e:
             print(f"   ❌ Error running {test_module}: {e}")
             traceback.print_exc()
             failed_tests.append(test_module)

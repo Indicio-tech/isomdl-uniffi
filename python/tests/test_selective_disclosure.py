@@ -8,49 +8,25 @@ import sys
 import os
 import uuid
 
-# Add the project root to the path to import the generated bindings
-sys.path.insert(
-    0, os.path.join(os.path.dirname(__file__), "..", "rust", "out", "python")
-)
 
-try:
-    import isomdl_uniffi as mdl
-except ImportError:
-    # If running via run_tests.py, mdl will be injected as a module global
-    mdl = None
-
-# Global reference to mdl module (injected by run_tests.py or imported directly)
-if mdl is None:
-    mdl = None  # Will be set by run_tests.py
-
-
-def run_tests():
+def run_tests(mdl):
     """
     Run selective disclosure tests.
+
+    Args:
+        mdl: The isomdl_uniffi module
 
     Returns:
         bool: True if all tests pass, False otherwise.
     """
-    global mdl
-    # mdl should be injected by run_tests.py, but allow fallback for direct execution
-    if mdl is None:
-        try:
-            sys.path.insert(
-                0, os.path.join(os.path.dirname(__file__), "../rust/out/python")
-            )
-            import isomdl_uniffi as mdl_module
-
-            mdl = mdl_module
-        except ImportError:
-            raise ImportError("isomdl_uniffi module not available")
 
     try:
         print("\n🔒 Testing Selective Disclosure:")
-        test_basic_selective_disclosure()
-        test_age_verification_attributes()
-        test_minimal_disclosure()
-        test_namespace_filtering()
-        test_request_validation()
+        test_basic_selective_disclosure(mdl)
+        test_age_verification_attributes(mdl)
+        test_minimal_disclosure(mdl)
+        test_namespace_filtering(mdl)
+        test_request_validation(mdl)
 
         return True
 
@@ -62,7 +38,7 @@ def run_tests():
         return False
 
 
-def test_basic_selective_disclosure():
+def test_basic_selective_disclosure(mdl):
     """Test basic selective disclosure functionality."""
     print("   1. Testing basic selective disclosure...")
 
@@ -145,7 +121,7 @@ def test_basic_selective_disclosure():
     print("      ✅ Basic selective disclosure test passed")
 
 
-def test_age_verification_attributes():
+def test_age_verification_attributes(mdl):
     """Test age verification attributes without disclosing birth date"""
     print("   2. Testing age verification attributes...")
 
@@ -238,7 +214,7 @@ def test_age_verification_attributes():
     print("      ✅ Age verification test passed")
 
 
-def test_minimal_disclosure():
+def test_minimal_disclosure(mdl):
     """Test minimal disclosure - requesting only one attribute"""
     print("   3. Testing minimal disclosure...")
 
@@ -292,7 +268,7 @@ def test_minimal_disclosure():
     print("      ✅ Minimal disclosure test passed")
 
 
-def test_namespace_filtering():
+def test_namespace_filtering(mdl):
     """Test that requests can be filtered by namespace"""
     print("   4. Testing namespace filtering...")
 
@@ -348,7 +324,7 @@ def test_namespace_filtering():
     print("      ✅ Namespace filtering test passed")
 
 
-def test_request_validation():
+def test_request_validation(mdl):
     """Test that invalid requests are handled properly"""
     print("   5. Testing request validation...")
 
@@ -404,13 +380,15 @@ def test_request_validation():
 
 if __name__ == "__main__":
     # This allows running the test file directly for debugging
-    if mdl is None:
-        try:
-            import isomdl_uniffi as mdl
-        except ImportError as e:
-            print(f"❌ Could not import isomdl_uniffi: {e}")
-            print("Please run './build-python-bindings.sh' first")
-            sys.exit(1)
-
-    success = run_tests()
-    sys.exit(0 if success else 1)
+    try:
+        # Add the project root to the path to import the generated bindings
+        sys.path.insert(
+            0, os.path.join(os.path.dirname(__file__), "..", "rust", "out", "python")
+        )
+        import isomdl_uniffi as mdl_module
+        success = run_tests(mdl_module)
+        sys.exit(0 if success else 1)
+    except ImportError as e:
+        print(f"❌ Could not import isomdl_uniffi: {e}")
+        print("Please run './build-python-bindings.sh' first")
+        sys.exit(1)

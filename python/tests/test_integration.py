@@ -6,47 +6,54 @@ Test integration between existing tests and new MDL functionality.
 import sys
 import os
 
-# Add the project root to the path to import the generated bindings
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-try:
-    from isomdl_uniffi import (
-        Mdoc,
-        MdlPresentationSession,
-        P256KeyPair,
-        establish_session,
-        handle_response,
-        generate_test_mdl,
-        AuthenticationStatus,
-    )
-except ImportError:
-    # If running via run_tests.py, mdl will be injected as a module global
-    pass
+def run_tests(mdl):
+    """
+    Run integration tests.
+
+    Args:
+        mdl: The isomdl_uniffi module
+
+    Returns:
+        bool: True if all tests pass, False otherwise.
+    """
+    print("Running integration tests...")
+
+    test_success = True
+    test_success &= test_imports(mdl)
+    test_success &= test_mdl_basic(mdl)
+
+    if test_success:
+        print("\n✓ All integration tests passed!")
+    else:
+        print("\n✗ Some tests failed!")
+
+    return test_success
 
 
-def test_imports():
+def test_imports(mdl):
     """Test that all required modules can be imported"""
     try:
         # Test that imports work
-        _ = Mdoc, MdlPresentationSession, P256KeyPair
-        _ = establish_session, handle_response, generate_test_mdl, AuthenticationStatus
+        _ = mdl.Mdoc, mdl.MdlPresentationSession, mdl.P256KeyPair
+        _ = mdl.establish_session, mdl.handle_response, mdl.generate_test_mdl
+        _ = mdl.AuthenticationStatus
         print("✓ All imports successful")
         return True
-    except (ImportError, NameError) as e:
+    except (ImportError, AttributeError) as e:
         print(f"✗ Import failed: {e}")
         return False
 
 
-def test_mdl_basic():
+def test_mdl_basic(mdl):
     """Basic test of MDL functionality"""
     try:
-
         # Generate a key pair
-        holder_key = P256KeyPair()
+        holder_key = mdl.P256KeyPair()
         print("✓ Key pair generated")
 
         # Generate test MDL
-        mdoc = generate_test_mdl(holder_key)
+        mdoc = mdl.generate_test_mdl(holder_key)
         print("✓ Test MDL generated")
 
         # Test basic mdoc operations
@@ -61,7 +68,7 @@ def test_mdl_basic():
         print(f"✓ Serialized to CBOR: {len(cbor)} bytes")
 
         # Test deserialization
-        restored = Mdoc.from_string(cbor)
+        restored = mdl.Mdoc.from_string(cbor)
         assert (
             restored.doctype() == doctype
         ), "Document type should match after round-trip"
@@ -70,20 +77,22 @@ def test_mdl_basic():
 
         return True
 
-    except Exception as e:
+    except (ValueError, RuntimeError, AttributeError) as e:
         print(f"✗ MDL test failed: {e}")
         return False
 
 
 if __name__ == "__main__":
-    print("Running integration tests...")
-
-    success = True
-    success &= test_imports()
-    success &= test_mdl_basic()
-
-    if success:
-        print("\n✓ All integration tests passed!")
-    else:
-        print("\n✗ Some tests failed!")
+    # This allows running the test file directly for debugging
+    try:
+        # Add the project root to the path to import the generated bindings
+        sys.path.insert(
+            0, os.path.join(os.path.dirname(__file__), "..", "rust", "out", "python")
+        )
+        import isomdl_uniffi as mdl_module
+        success = run_tests(mdl_module)
+        sys.exit(0 if success else 1)
+    except ImportError as e:
+        print(f"❌ Could not import isomdl_uniffi: {e}")
+        print("Please run './build-python-bindings.sh' first")
         sys.exit(1)

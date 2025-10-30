@@ -90,6 +90,7 @@ if __name__ == "__main__":
             0, os.path.join(os.path.dirname(__file__), "..", "rust", "out", "python")
         )
         import isomdl_uniffi as mdl_module
+
         success = run_tests(mdl_module)
         sys.exit(0 if success else 1)
     except ImportError as e:

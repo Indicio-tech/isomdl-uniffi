@@ -29,17 +29,20 @@ def run_tests(mdl):
 
     # Import the classes/functions from the mdl module into global scope
     # so the existing code can use them
-    globals().update({
-        'Mdoc': mdl.Mdoc,
-        'MdlPresentationSession': mdl.MdlPresentationSession,
-        'P256KeyPair': mdl.P256KeyPair,
-        'establish_session': mdl.establish_session,
-        'handle_response': mdl.handle_response,
-        'generate_test_mdl': mdl.generate_test_mdl,
-        'AuthenticationStatus': mdl.AuthenticationStatus,
-    })
+    globals().update(
+        {
+            "Mdoc": mdl.Mdoc,
+            "MdlPresentationSession": mdl.MdlPresentationSession,
+            "P256KeyPair": mdl.P256KeyPair,
+            "establish_session": mdl.establish_session,
+            "handle_response": mdl.handle_response,
+            "generate_test_mdl": mdl.generate_test_mdl,
+            "AuthenticationStatus": mdl.AuthenticationStatus,
+        }
+    )
 
     return run_manual_tests()
+
 
 # Test data paths
 TEST_RES_DIR = Path(__file__).parent.parent / "rust" / "tests" / "res" / "mdl"
@@ -691,15 +694,17 @@ if __name__ == "__main__":
 
         if len(sys.argv) > 1 and sys.argv[1] == "--pytest":
             # For pytest, we need to make the imports available globally
-            globals().update({
-                'Mdoc': mdl_module.Mdoc,
-                'MdlPresentationSession': mdl_module.MdlPresentationSession,
-                'P256KeyPair': mdl_module.P256KeyPair,
-                'establish_session': mdl_module.establish_session,
-                'handle_response': mdl_module.handle_response,
-                'generate_test_mdl': mdl_module.generate_test_mdl,
-                'AuthenticationStatus': mdl_module.AuthenticationStatus,
-            })
+            globals().update(
+                {
+                    "Mdoc": mdl_module.Mdoc,
+                    "MdlPresentationSession": mdl_module.MdlPresentationSession,
+                    "P256KeyPair": mdl_module.P256KeyPair,
+                    "establish_session": mdl_module.establish_session,
+                    "handle_response": mdl_module.handle_response,
+                    "generate_test_mdl": mdl_module.generate_test_mdl,
+                    "AuthenticationStatus": mdl_module.AuthenticationStatus,
+                }
+            )
             sys.exit(run_pytest_tests())
         else:
             success = run_tests(mdl_module)

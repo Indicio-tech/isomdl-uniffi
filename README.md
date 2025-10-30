@@ -86,7 +86,6 @@ This project includes comprehensive GitHub Actions workflows:
 - Comprehensive testing across multiple platforms and Python versions
 - Matrix builds: Ubuntu, macOS, Windows × Python 3.9-3.12
 - Security auditing with `cargo audit`
-- Code coverage reporting with `cargo tarpaulin`
 - Integration tests including selective disclosure validation
 
 #### **Release Pipeline** (`.github/workflows/release.yml`)

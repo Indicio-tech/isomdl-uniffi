@@ -16,7 +16,6 @@
    - Comprehensive testing across multiple environments
    - **Matrix Strategy**: Ubuntu, macOS, Windows × Python 3.9, 3.10, 3.11, 3.12
    - **Security**: `cargo audit` for vulnerability scanning
-   - **Coverage**: `cargo tarpaulin` for code coverage reporting
    - **Integration Tests**: End-to-end validation including selective disclosure
 
 3. **Release Pipeline** (`.github/workflows/release.yml`)
@@ -75,7 +74,6 @@ Every PR must pass:
 ### **Repository Secrets** (for releases)
 ```
 CRATES_IO_TOKEN - Token for publishing to crates.io
-CODECOV_TOKEN - (Optional) Token for code coverage reporting
 ```
 
 ### **Branch Protection** (recommended)

@@ -1,22 +1,3 @@
 [build-system]
 requires = ["setuptools>=45", "wheel"]
 build-backend = "setuptools.build_meta"
-
-[project]
-name = "isomdl-uniffi-tests"
-version = "0.1.0"
-description = "Test suite for isomdl-uniffi Python bindings"
-requires-python = ">=3.8"
-dependencies = [
-    "pytest>=7.0.0",
-]
-
-[tool.setuptools.packages.find]
-where = ["tests"]
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = ["test_*.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
-addopts = "-v --tb=short"

@@ -156,6 +156,8 @@ jobs:
         run: |
           chmod +x python/precommit/build-bindings.sh
           echo "🔍 Current working directory: $(pwd)"
+          echo "🔍 Python version: $(python3 --version)"
+          echo "🔍 Rust version: $(rustc --version)"
           ./python/precommit/build-bindings.sh
 
       - name: Debug built artifacts

@@ -10,7 +10,9 @@ cd "$(dirname "$0")/../.."
 cd rust
 
 # Build the Rust library in release mode
-cargo build --release
+# Note: We need to preserve symbols for UniFFI, so build without stripping
+echo "🔧 Building library for UniFFI bindgen (preserving symbols)..."
+RUSTFLAGS="-C strip=none" cargo build --release
 
 echo "🐍 Generating Python bindings..."
 # Determine the library extension based on OS
@@ -34,10 +36,40 @@ ls -la target/release/${LIBRARY_NAME}.$LIB_EXT || {
     exit 1
 }
 
-cargo run --bin uniffi-bindgen generate \
+echo "🔧 Testing uniffi-bindgen binary..."
+cargo run --bin uniffi-bindgen --help >/dev/null || {
+    echo "❌ uniffi-bindgen binary not working!"
+    exit 1
+}
+
+echo "🔧 Running uniffi-bindgen to generate Python bindings..."
+echo "Command: cargo run --bin uniffi-bindgen generate --library target/release/${LIBRARY_NAME}.$LIB_EXT --language python --out-dir out/python"
+
+if ! cargo run --bin uniffi-bindgen generate \
     --library target/release/${LIBRARY_NAME}.$LIB_EXT \
     --language python \
-    --out-dir out/python
+    --out-dir out/python 2>&1; then
+    EXIT_CODE=$?
+    echo "❌ uniffi-bindgen failed!"
+    echo "Exit code: $EXIT_CODE"
+    exit 1
+fi
+
+echo "🔍 Checking what uniffi-bindgen generated..."
+ls -la out/python/ || {
+    echo "❌ Output directory not created!"
+    exit 1
+}
+
+# Verify the Python module was generated
+if [ ! -f "out/python/isomdl_uniffi.py" ]; then
+    echo "❌ Python module file not generated!"
+    echo "🔍 Contents of out/python/:"
+    find out/python/ -type f || echo "No files found"
+    exit 1
+fi
+
+echo "✅ Python module generated successfully"
 
 # Copy the shared library to the Python output directory
 echo "📦 Copying shared library to Python bindings directory..."
@@ -48,3 +80,17 @@ echo "✅ Python bindings built successfully!"
 # Debug: List what was created
 echo "📁 Contents of rust/out/python/:"
 ls -la out/python/ || echo "   Directory not found!"
+
+# Verify both files exist
+echo "🔍 Verifying binding files:"
+if [ -f "out/python/isomdl_uniffi.py" ]; then
+    echo "  ✅ isomdl_uniffi.py exists ($(wc -l < out/python/isomdl_uniffi.py) lines)"
+else
+    echo "  ❌ isomdl_uniffi.py missing!"
+fi
+
+if [ -f "out/python/${LIBRARY_NAME}.$LIB_EXT" ]; then
+    echo "  ✅ ${LIBRARY_NAME}.$LIB_EXT exists ($(ls -lh out/python/${LIBRARY_NAME}.$LIB_EXT | awk '{print $5}'))"
+else
+    echo "  ❌ ${LIBRARY_NAME}.$LIB_EXT missing!"
+fi

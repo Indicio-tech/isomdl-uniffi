@@ -23,21 +23,25 @@ else
 fi
 
 # Generate Python bindings
-echo "🔧 Generating bindings with: target/release/libisomdl_uniffi.$LIB_EXT"
-ls -la target/release/libisomdl_uniffi.$LIB_EXT || {
+# Rust converts hyphens to underscores in library names
+LIBRARY_NAME="libisomdl_uniffi"
+echo "🔧 Generating bindings with: target/release/${LIBRARY_NAME}.$LIB_EXT"
+ls -la target/release/${LIBRARY_NAME}.$LIB_EXT || {
     echo "❌ Library file not found!"
-    ls -la target/release/
+    echo "🔍 Looking for alternative names..."
+    ls -la target/release/lib* 2>/dev/null || echo "No lib* files found"
+    find target/release/ -name "*.so" -o -name "*.dylib" -o -name "*.dll" 2>/dev/null || echo "No shared libraries found"
     exit 1
 }
 
 cargo run --bin uniffi-bindgen generate \
-    --library target/release/libisomdl_uniffi.$LIB_EXT \
+    --library target/release/${LIBRARY_NAME}.$LIB_EXT \
     --language python \
     --out-dir out/python
 
 # Copy the shared library to the Python output directory
 echo "📦 Copying shared library to Python bindings directory..."
-cp target/release/libisomdl_uniffi.$LIB_EXT out/python/
+cp target/release/${LIBRARY_NAME}.$LIB_EXT out/python/
 
 echo "✅ Python bindings built successfully!"
 

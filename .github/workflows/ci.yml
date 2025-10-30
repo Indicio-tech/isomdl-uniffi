@@ -155,7 +155,16 @@ jobs:
       - name: Build Python bindings
         run: |
           chmod +x python/precommit/build-bindings.sh
+          echo "🔍 Current working directory: $(pwd)"
           ./python/precommit/build-bindings.sh
+
+      - name: Debug built artifacts
+        run: |
+          echo "🔍 Checking built artifacts before upload..."
+          ls -la rust/out/python/ || echo "Directory not found!"
+          find rust/out/python/ -type f || echo "No files found"
+          echo "🔍 File details:"
+          file rust/out/python/* 2>/dev/null || echo "No files to analyze"
 
       - name: Upload bindings artifact
         uses: actions/upload-artifact@v4
@@ -195,6 +204,14 @@ jobs:
           name: python-bindings-${{ matrix.os }}
           path: rust/out/python/
 
+      - name: Debug downloaded artifacts
+        run: |
+          echo "🔍 Checking downloaded artifacts..."
+          ls -la rust/out/python/ || echo "Directory not found!"
+          find . -name "*.so" -o -name "*.dylib" -o -name "*.dll" || echo "No shared libraries found"
+          # Ensure shared libraries are executable
+          find rust/out/python/ -name "*.so" -o -name "*.dylib" -o -name "*.dll" | xargs chmod +x 2>/dev/null || true
+
       - name: Install Python dependencies
         run: |
           uv pip install --system black flake8
@@ -202,6 +219,9 @@ jobs:
       - name: Run Python tests
         run: |
           chmod +x python/precommit/run-tests.sh
+          echo "🔍 Current working directory: $(pwd)"
+          echo "🔍 Contents of rust/out/python before test:"
+          ls -la rust/out/python/ || echo "Directory not found!"
           ./python/precommit/run-tests.sh
 
       - name: Check Python code formatting (once per OS)

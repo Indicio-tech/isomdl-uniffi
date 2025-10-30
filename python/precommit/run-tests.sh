@@ -11,18 +11,22 @@ cd "$(dirname "$0")/../.."
 
 # Check if bindings are built
 if [ ! -d "rust/out/python" ]; then
-    echo "⚠️  Python bindings not found. Building first..."
-    ./python/precommit/build-bindings.sh
+    if [ -n "$CI" ]; then
+        echo "❌ Python bindings not found in CI environment!"
+        echo "   This indicates an issue with artifact download."
+        exit 1
+    else
+        echo "⚠️  Python bindings not found. Building first..."
+        ./python/precommit/build-bindings.sh
+    fi
 fi
 
 # Run the test suite
-cd python/tests
-
 # Try to find Python - prefer python3, fallback to python
 if command -v python3 >/dev/null 2>&1; then
-    python3 run_tests.py
+    python3 python/tests/run_tests.py
 elif command -v python >/dev/null 2>&1; then
-    python run_tests.py
+    python python/tests/run_tests.py
 else
     echo "❌ Python not found. Please install Python 3."
     exit 1

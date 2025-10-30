@@ -19,9 +19,26 @@ def import_bindings():
     Returns:
         The imported isomdl_uniffi module, or None if import fails.
     """
-    # Get the absolute path to the test directory
-    test_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.dirname(test_dir)
+    # Find the project root by looking for the rust directory
+    # Start from current working directory and move up
+    current_dir = os.getcwd()
+    project_root = current_dir
+    
+    # Look for rust directory to identify project root
+    max_levels = 5  # Prevent infinite loop
+    for _ in range(max_levels):
+        rust_dir = os.path.join(project_root, "rust")
+        if os.path.exists(rust_dir) and os.path.isdir(rust_dir):
+            break
+        parent = os.path.dirname(project_root)
+        if parent == project_root:  # Reached filesystem root
+            break
+        project_root = parent
+    else:
+        # Fallback to the old method if rust directory not found
+        test_dir = os.path.dirname(os.path.abspath(__file__))
+        python_dir = os.path.dirname(test_dir)  # python directory
+        project_root = os.path.dirname(python_dir)  # actual project root
     
     # Try to import from the generated bindings directory
     bindings_path = os.path.join(project_root, "rust", "out", "python")
@@ -31,7 +48,7 @@ def import_bindings():
     if not os.path.exists(bindings_path):
         print("❌ Python bindings not found!")
         print(f"   Expected path: {bindings_path}")
-        print(f"   Test directory: {test_dir}")
+        print(f"   Current working directory: {current_dir}")
         print(f"   Project root: {project_root}")
         
         # List what's actually there for debugging

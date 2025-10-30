@@ -241,7 +241,7 @@ jobs:
           cd python/tests
           python3 -c "
           import sys, os
-          sys.path.insert(0, '../rust/out/python')
+          sys.path.insert(0, '../../rust/out/python')
           import isomdl_uniffi as mdl
           sys.path.insert(0, '.')
           import test_selective_disclosure

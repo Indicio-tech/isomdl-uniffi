@@ -3,8 +3,8 @@ set -e
 
 echo "Building isomdl-uniffi Python bindings..."
 
-# Navigate to rust directory
-cd "$(dirname "$0")/rust"
+# Navigate to rust directory (go up from python/ to project root, then to rust/)
+cd "$(dirname "$0")/../rust"
 
 # Note: This script builds for the current platform only.
 # For cross-platform builds (macOS universal, Linux, Windows), see:

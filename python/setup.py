@@ -9,29 +9,29 @@ from setuptools.command.build_py import build_py
 
 class BuildRustCommand(build_py):
     """Custom build command that builds Rust library and generates bindings"""
-    
+
     def run(self):
         # Build Rust library and bindings
         self.build_rust_and_bindings()
         # Run the standard build
         super().run()
-    
+
     def build_rust_and_bindings(self):
         """Build Rust library and generate Python bindings"""
-        project_root = Path(__file__).parent.parent.absolute()  # Go up one level from python/
-        
+        project_root = Path(
+            __file__
+        ).parent.parent.absolute()  # Go up one level from python/
+
         # Build Rust library
         rust_dir = project_root / "rust"
         print("🔧 Building Rust library...")
         try:
-            subprocess.run([
-                "cargo", "build", "--release"
-            ], cwd=rust_dir, check=True)
+            subprocess.run(["cargo", "build", "--release"], cwd=rust_dir, check=True)
         except (subprocess.CalledProcessError, FileNotFoundError) as e:
             print(f"❌ Failed to build Rust library: {e}")
             print("Make sure Rust is installed and available in PATH")
             sys.exit(1)
-        
+
         # Generate Python bindings
         print("🐍 Generating Python bindings...")
         build_script = project_root / "python" / "precommit" / "build-bindings.sh"
@@ -40,16 +40,19 @@ class BuildRustCommand(build_py):
         except (subprocess.CalledProcessError, FileNotFoundError) as e:
             print(f"❌ Failed to generate bindings: {e}")
             sys.exit(1)
-        
+
         # Copy bindings to package directory
         bindings_dir = project_root / "rust" / "out" / "python"
-        package_dir = Path(__file__).parent / "isomdl_uniffi"  # Now in python/isomdl_uniffi
-        
+        package_dir = (
+            Path(__file__).parent / "isomdl_uniffi"
+        )  # Now in python/isomdl_uniffi
+
         if bindings_dir.exists():
             print("📦 Copying bindings to package directory...")
             package_dir.mkdir(exist_ok=True)
-            
+
             import shutil
+
             for file in bindings_dir.glob("*"):
                 if file.is_file():
                     shutil.copy2(file, package_dir)
@@ -87,6 +90,6 @@ if __name__ == "__main__":
         ],
         python_requires=">=3.8",
         cmdclass={
-            'build_py': BuildRustCommand,
+            "build_py": BuildRustCommand,
         },
     )

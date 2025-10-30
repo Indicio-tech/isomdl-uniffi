@@ -518,9 +518,10 @@ class TestMdocWorkflow:
                     for attr, required in requested_attributes[namespace].items()
                     if required
                 )
-                assert (
-                    disclosed_attrs == requested_attrs
-                ), f"Disclosed attributes {disclosed_attrs} should match requested {requested_attrs}"
+                assert disclosed_attrs == requested_attrs, (
+                    f"Disclosed attributes {disclosed_attrs} should match "
+                    f"requested {requested_attrs}"
+                )
 
     def test_selective_disclosure_with_verified_response(self):
         """Test that selective disclosure is properly enforced in verified response."""

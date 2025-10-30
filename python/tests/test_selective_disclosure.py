@@ -6,7 +6,7 @@ Tests that verify only requested attributes are shared and age verification work
 
 import sys
 import os
-import json
+import uuid
 
 # Add the project root to the path to import the generated bindings
 sys.path.insert(
@@ -17,12 +17,11 @@ try:
     import isomdl_uniffi as mdl
 except ImportError:
     # If running via run_tests.py, mdl will be injected as a module global
-    import sys
-import os
-import uuid
+    mdl = None
 
 # Global reference to mdl module (injected by run_tests.py or imported directly)
-mdl = None
+if mdl is None:
+    mdl = None  # Will be set by run_tests.py
 
 
 def run_tests():
@@ -112,8 +111,8 @@ def test_basic_selective_disclosure():
     ), f"Expected {expected_attrs}, got {requested_attrs}"
 
     # Verify attributes are marked as required
-    assert iso_namespace["given_name"] == True, "given_name should be required"
-    assert iso_namespace["family_name"] == True, "family_name should be required"
+    assert iso_namespace["given_name"] is True, "given_name should be required"
+    assert iso_namespace["family_name"] is True, "family_name should be required"
 
     print("      ✅ Only requested attributes are present in request")
 
@@ -266,7 +265,7 @@ def test_minimal_disclosure():
     assert len(iso_namespace) == 1, "Should only have one attribute"
     assert "document_number" in iso_namespace, "Should have document_number"
     assert (
-        iso_namespace["document_number"] == True
+        iso_namespace["document_number"] is True
     ), "document_number should be required"
 
     # Generate minimal response

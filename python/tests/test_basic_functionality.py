@@ -5,7 +5,6 @@ Basic functionality tests for isomdl-uniffi Python bindings.
 
 import sys
 import os
-import uuid
 
 # Add the project root to the path to import the generated bindings
 sys.path.insert(

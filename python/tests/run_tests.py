@@ -92,7 +92,7 @@ def run_all_tests():
     if mdl is None:
         return False
 
-    print(f"✅ Successfully imported isomdl_uniffi from bindings")
+    print("✅ Successfully imported isomdl_uniffi from bindings")
 
     # Run tests
     test_modules = [

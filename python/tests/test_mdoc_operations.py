@@ -60,7 +60,8 @@ def run_tests():
                 print(f"   ✅ Document types match: {original_doctype}")
             else:
                 print(
-                    f"   ❌ Document types don't match: {original_doctype} vs {reconstructed_doctype}"
+                    f"   ❌ Document types don't match: {original_doctype} "
+                    f"vs {reconstructed_doctype}"
                 )
                 return False
 

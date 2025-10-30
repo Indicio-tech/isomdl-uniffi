@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
+# flake8: noqa: F821
 """
 Rigorous mdoc workflow test using real test vectors and proper assertions.
 This test validates the complete mdoc functionality without synthetic data or mocking.
+
+Note: F821 (undefined name) errors are ignored because symbols like P256KeyPair,
+generate_test_mdl, etc. are dynamically imported at runtime via globals().update()
+in the run_tests() function.
 """
 
 import sys

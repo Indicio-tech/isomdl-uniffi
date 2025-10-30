@@ -42,7 +42,7 @@ jobs:
 
       - name: Run Python linting
         run: |
-          flake8 python/tests/ --max-line-length=100 --ignore=E203,W503
+          flake8 python/tests/ --max-line-length=100 --ignore=E203,W503,F821
 
       - name: Run Clippy (without building)
         run: |

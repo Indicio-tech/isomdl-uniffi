@@ -375,7 +375,14 @@ For complete DCO requirements and procedures, see [.github/DCO.md](.github/DCO.m
 
 ## License
 
-[Add appropriate license information here]
+This project incorporates code from the following open-source projects:
+
+- **isomdl** by Spruce Systems, Inc. - [https://github.com/spruceid/isomdl](https://github.com/spruceid/isomdl)
+- **sprucekit-mobile** by Spruce Systems, Inc. - [https://github.com/spruceid/sprucekit-mobile](https://github.com/spruceid/sprucekit-mobile)
+
+Both projects are dual-licensed under Apache 2.0 and MIT licenses.
+
+See [THIRD_PARTY_LICENSES.md](./THIRD_PARTY_LICENSES.md) for complete license information and attributions.
 
 ## Troubleshooting
 

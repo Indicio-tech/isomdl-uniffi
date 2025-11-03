@@ -375,6 +375,10 @@ For complete DCO requirements and procedures, see [.github/DCO.md](.github/DCO.m
 
 ## License
 
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+### Third-Party Dependencies
+
 This project incorporates code from the following open-source projects:
 
 - **isomdl** by Spruce Systems, Inc. - [https://github.com/spruceid/isomdl](https://github.com/spruceid/isomdl)

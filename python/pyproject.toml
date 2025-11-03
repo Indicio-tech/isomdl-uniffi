@@ -1,3 +1,35 @@
 [build-system]
 requires = ["setuptools>=45", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "isomdl-uniffi"
+version = "0.1.0"
+authors = [
+    { name = "Indicio", email = "maintainers@indicio.tech" },
+]
+description = "Python bindings for the ISO 18013-5 Mobile Driver's License (mDL) library using UniFFI"
+readme = "README.md"
+license = { file = "LICENSE" }
+keywords = ["mdl", "iso18013", "digital-identity", "mobile-drivers-license", "verifiable-credentials"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Rust",
+    "Topic :: Security :: Cryptography",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+requires-python = ">=3.8"
+
+[project.urls]
+Homepage = "https://github.com/Indicio-tech/isomdl-uniffi"
+Repository = "https://github.com/Indicio-tech/isomdl-uniffi"
+"Bug Tracker" = "https://github.com/Indicio-tech/isomdl-uniffi/issues"

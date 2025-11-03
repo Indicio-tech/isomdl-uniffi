@@ -15,7 +15,7 @@ Thank you for your interest in contributing to the ISO MDL UniFFI Python Binding
 
 ## Code of Conduct
 
-This project adheres to a code of conduct that we expect all contributors to follow. By participating, you are expected to uphold this code. Please report unacceptable behavior to [maintainers@indicio.tech](mailto:maintainers@indicio.tech).
+This project adheres to a code of conduct that we expect all contributors to follow. By participating, you are expected to uphold this code. Please report unacceptable behavior to [support@indicio.tech](mailto:support@indicio.tech).
 
 ## Getting Started
 
@@ -289,7 +289,7 @@ cd python
 
 - **Issues:** Open a GitHub issue for bugs or feature requests
 - **Discussions:** Use GitHub Discussions for questions
-- **Email:** Contact maintainers at [maintainers@indicio.tech](mailto:maintainers@indicio.tech)
+- **Email:** Contact maintainers at [support@indicio.tech](mailto:support@indicio.tech)
 
 ## License
 

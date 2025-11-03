@@ -2,7 +2,7 @@
 name = "isomdl-uniffi"
 version = "0.1.0"
 edition = "2021"
-authors = ["Indicio <maintainers@indicio.tech>"]
+authors = ["Indicio <support@indicio.tech>"]
 description = "Python bindings for ISO 18013-5 Mobile Driver's License (mDL) library using UniFFI"
 license = "MIT"
 readme = "../README.md"

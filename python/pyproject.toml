@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "isomdl-uniffi"
 version = "0.1.0"
 authors = [
-    { name = "Indicio", email = "maintainers@indicio.tech" },
+    { name = "Indicio", email = "support@indicio.tech" },
 ]
 description = "Python bindings for the ISO 18013-5 Mobile Driver's License (mDL) library using UniFFI"
 readme = "README.md"

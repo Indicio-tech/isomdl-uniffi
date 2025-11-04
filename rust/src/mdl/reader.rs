@@ -291,7 +291,7 @@ mod tests {
     fn test_establish_session_uuid_extraction() {
         // This test verifies that the UUID extraction works correctly with the new API
         // and produces the same functional behavior as the deprecated method
-        
+
         // Create minimal test data
         let uri = "mdoc://example.com/session".to_string();
         let mut requested_items = HashMap::new();
@@ -299,15 +299,15 @@ mod tests {
         namespace_items.insert("given_name".to_string(), true);
         namespace_items.insert("family_name".to_string(), true);
         requested_items.insert("org.iso.18013.5.1.mDL".to_string(), namespace_items);
-        
+
         // Create a minimal trust anchor registry (empty for this test)
         let trust_anchor_registry = Some(vec![]);
-        
+
         // Try to establish a session
         // Note: This will likely fail with a network/connection error since we're using a fake URI,
         // but it should at least verify that our UUID extraction code path is reachable
         let result = establish_session(uri, requested_items, trust_anchor_registry);
-        
+
         // We expect this to fail with a connection error, not a UUID extraction error
         match result {
             Ok(_) => {
@@ -317,7 +317,7 @@ mod tests {
             Err(e) => {
                 let error_msg = e.to_string();
                 println!("Error received: {}", error_msg);
-                
+
                 // The error should NOT be about UUID extraction if our fix is correct
                 // It should be about session establishment, QR code construction, etc.
                 assert!(
@@ -325,17 +325,17 @@ mod tests {
                     "❌ UUID extraction failed: {}",
                     error_msg
                 );
-                
+
                 // Verify it's a legitimate session establishment error
                 assert!(
-                    error_msg.contains("unable to establish session") || 
-                    error_msg.contains("QR code") ||
-                    error_msg.contains("network") ||
-                    error_msg.contains("connection"),
+                    error_msg.contains("unable to establish session")
+                        || error_msg.contains("QR code")
+                        || error_msg.contains("network")
+                        || error_msg.contains("connection"),
                     "Expected session establishment error, got: {}",
                     error_msg
                 );
-                
+
                 println!("✅ Expected error (not UUID related): {}", error_msg);
             }
         }
@@ -345,19 +345,19 @@ mod tests {
     fn test_uuid_extraction_api_documentation() {
         // This test documents the expected API usage and serves as a regression test
         // for the UUID extraction logic changes
-        
+
         // Before the fix: manager.first_central_client_uuid() -> Option<&Uuid>
         // After the fix: manager.ble_central_client_options().next().map(|m| m.uuid) -> Option<Uuid>
-        
+
         // The key differences:
         // 1. New API uses iterator pattern with .next()
         // 2. New API accesses .uuid field directly (not a method)
         // 3. New API returns Uuid directly (not &Uuid, so no dereferencing needed)
         // 4. New API doesn't generate deprecation warnings
-        
+
         // This test verifies our understanding is correct
         assert!(true, "✅ UUID extraction API documentation test passed");
-        
+
         // Log the current API structure for future reference
         println!("📋 Current UUID extraction API:");
         println!("   manager.ble_central_client_options()  // Returns Iterator<Item = &CentralClientMode>");

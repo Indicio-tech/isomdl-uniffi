@@ -25,7 +25,6 @@ use p256::{
     pkcs8::{DecodePrivateKey, EncodePublicKey, ObjectIdentifier},
     PublicKey,
 };
-use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sha1::{Digest, Sha1};
 use signature::Keypair;
@@ -182,15 +181,6 @@ pub fn generate_test_mdl(key_pair: Arc<P256KeyPair>) -> Result<Mdoc, MdlUtilErro
         document,
         KeyAlias(Uuid::new_v4().to_string()),
     ))
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[allow(dead_code)]
-struct MinimalEcJwk {
-    kty: String,
-    crv: String,
-    x: String,
-    y: String,
 }
 
 fn prepare_mdoc(pub_key: PublicKey) -> Result<isomdl::issuance::mdoc::Builder> {

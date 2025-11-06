@@ -4,8 +4,6 @@ on:
   push:
     tags:
       - 'v*'
-  release:
-    types: [published]
 
 env:
   CARGO_TERM_COLOR: always
@@ -31,12 +29,12 @@ jobs:
 
       - name: Create Release
         id: create-release
-        uses: actions/create-release@v1
+        uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.ref }}
-          release_name: Release ${{ steps.get-version.outputs.version }}
+          name: Release ${{ steps.get-version.outputs.version }}
           body: |
             ## isomdl-uniffi Release ${{ steps.get-version.outputs.version }}
             
@@ -90,6 +88,17 @@ jobs:
         uses: astral-sh/setup-uv@v3
         with:
           enable-cache: true
+          cache-suffix: py${{ matrix.python-version }}
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
 
       - name: Install build dependencies
         run: |
@@ -103,13 +112,8 @@ jobs:
       - name: Build Python bindings
         shell: bash
         run: |
-          if [[ "${{ runner.os }}" == "Windows" ]]; then
-            chmod +x .pre-commit-build-bindings.sh
-            bash .pre-commit-build-bindings.sh
-          else
-            chmod +x .pre-commit-build-bindings.sh
-            ./.pre-commit-build-bindings.sh
-          fi
+          chmod +x python/precommit/build-bindings.sh
+          ./python/precommit/build-bindings.sh
 
       - name: Create Python package
         run: |
@@ -126,35 +130,30 @@ jobs:
           # Build wheel
           uv build
 
+      - name: Debug built wheels
+        run: |
+          echo "🔍 Built wheels:"
+          ls -la dist/
+          echo "🔍 Wheel details:"
+          file dist/*.whl 2>/dev/null || echo "No wheels found"
+
       - name: Upload wheel to release
-        uses: actions/upload-release-asset@v1
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/*.whl
+          tag_name: ${{ github.ref }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: dist/isomdl_uniffi-${{ needs.create-release.outputs.version }}-py3-none-${{ runner.os == 'Linux' && 'linux_x86_64' || (runner.os == 'macOS' && 'macosx_10_9_x86_64' || 'win_amd64') }}.whl
-          asset_name: isomdl_uniffi-${{ needs.create-release.outputs.version }}-py3-none-${{ runner.os == 'Linux' && 'linux_x86_64' || (runner.os == 'macOS' && 'macosx_10_9_x86_64' || 'win_amd64') }}.whl
-          asset_content_type: application/zip
 
-  publish-crate:
-    name: Publish Rust Crate
-    needs: create-release
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Login to crates.io
+      - name: Publish to PyPI
+        continue-on-error: true
         run: |
-          cd rust
-          cargo login ${{ secrets.CRATES_IO_TOKEN }}
-
-      - name: Publish to crates.io
-        run: |
-          cd rust
-          cargo publish --dry-run
-          cargo publish
+          echo "📦 Publishing to PyPI..."
+          if [ -z "$UV_PUBLISH_TOKEN" ]; then
+            echo "⚠️  PYPI_TOKEN not configured - skipping PyPI publishing"
+            echo "   To enable PyPI publishing, add PYPI_TOKEN secret to repository settings"
+            exit 0
+          fi
+          uv publish
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}

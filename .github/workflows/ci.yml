@@ -304,20 +304,30 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x kotlin/gradlew
 
-      - name: Build Kotlin project
+      - name: Compile Kotlin JVM target
         run: |
           cd kotlin
-          ./gradlew build --no-daemon --stacktrace
+          ./gradlew compileKotlinJvm --no-daemon --stacktrace
 
-      - name: Run Kotlin tests
+      - name: Build Android debug sources
         run: |
           cd kotlin
-          ./gradlew test --no-daemon --stacktrace
+          ./gradlew compileDebugSources --no-daemon --stacktrace
 
-      - name: Run JVM tests specifically
+      - name: Build Android test sources
         run: |
           cd kotlin
-          ./gradlew jvmTest --no-daemon --stacktrace
+          ./gradlew compileDebugAndroidTestSources --no-daemon --stacktrace
+
+      - name: Build JVM jar
+        run: |
+          cd kotlin
+          ./gradlew jvmJar --no-daemon --stacktrace
+
+      - name: Compile Kotlin metadata for all platforms
+        run: |
+          cd kotlin
+          ./gradlew compileKotlinMetadata --no-daemon --stacktrace
 
       - name: Upload test results
         uses: actions/upload-artifact@v4

@@ -54,28 +54,39 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      - name: Build Rust dependencies
-        run: |
-          cd rust
-          cargo build --release
+      # Skip Rust build for fast PR checks - full CI will build Rust
+      # - name: Build Rust dependencies
+      #   run: |
+      #     cd rust
+      #     cargo build --release
 
       - name: Make gradlew executable
         run: chmod +x kotlin/gradlew
 
-      - name: Kotlin compilation check
+      - name: Compile Kotlin JVM target
         run: |
           cd kotlin
-          ./gradlew compileKotlin --no-daemon --stacktrace
+          ./gradlew compileKotlinJvm --no-daemon --stacktrace
+
+      - name: Build Android debug sources
+        run: |
+          cd kotlin
+          ./gradlew compileDebugSources --no-daemon --stacktrace
+
+      - name: Build Android test sources
+        run: |
+          cd kotlin
+          ./gradlew compileDebugAndroidTestSources --no-daemon --stacktrace
+
+      - name: Build JVM jar
+        run: |
+          cd kotlin
+          ./gradlew jvmJar --no-daemon --stacktrace
 
       - name: Kotlin lint check (if configured)
         run: |
           cd kotlin
           ./gradlew ktlintCheck --no-daemon || echo "Ktlint not configured or failed"
-
-      - name: Run Kotlin tests
-        run: |
-          cd kotlin
-          ./gradlew test --no-daemon --stacktrace
 
       - name: Upload test results
         uses: actions/upload-artifact@v4

@@ -152,7 +152,7 @@ jobs:
         run: |
           echo "🔍 Checking built artifacts before upload..."
           ls -la rust/out/python/ || echo "Directory not found!"
-          find rust/out/python/ -type f || echo "No files found"
+          find rust/out/python/ -name "*.so" -o -name "*.dylib" -o -name "*.dll" -o -name "*.py" || echo "No binding files found"
           echo "🔍 File details:"
           file rust/out/python/* 2>/dev/null || echo "No files to analyze"
 
@@ -197,7 +197,7 @@ jobs:
         run: |
           echo "🔍 Checking downloaded artifacts..."
           ls -la rust/out/python/ || echo "Directory not found!"
-          find . -name "*.so" -o -name "*.dylib" -o -name "*.dll" || echo "No shared libraries found"
+          find rust/out/python/ -name "*.so" -o -name "*.dylib" -o -name "*.dll" -o -name "*.py" || echo "No binding files found"
           # Ensure shared libraries are executable
           find rust/out/python/ -name "*.so" -o -name "*.dylib" -o -name "*.dll" | xargs chmod +x 2>/dev/null || true
 
@@ -241,11 +241,11 @@ jobs:
 
       - name: Debug downloaded bindings
         run: |
-          echo "🔍 Checking downloaded bindings..."
+          echo "🔍 Checking downloaded artifacts..."
           ls -la rust/out/python/ || echo "Directory not found!"
-          find rust/out/python/ -name "*.so" -o -name "*.py" || echo "No binding files found"
+          find rust/out/python/ -name "*.so" -o -name "*.dylib" -o -name "*.dll" -o -name "*.py" || echo "No binding files found"
           # Ensure shared libraries are executable
-          find rust/out/python/ -name "*.so" | xargs chmod +x 2>/dev/null || true
+          find rust/out/python/ -name "*.so" -o -name "*.dylib" -o -name "*.dll" | xargs chmod +x 2>/dev/null || true
 
       - name: Run comprehensive Python test suite
         run: |

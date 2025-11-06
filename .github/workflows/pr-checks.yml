@@ -1,0 +1,157 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches: [ main ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  kotlin-pr-checks:
+    name: Kotlin PR Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          api-level: 35
+          build-tools: 35.0.0
+          ndk: 28.2.13676358
+
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            kotlin/.gradle
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Build Rust dependencies
+        run: |
+          cd rust
+          cargo build --release
+
+      - name: Make gradlew executable
+        run: chmod +x kotlin/gradlew
+
+      - name: Kotlin compilation check
+        run: |
+          cd kotlin
+          ./gradlew compileKotlin --no-daemon --stacktrace
+
+      - name: Kotlin lint check (if configured)
+        run: |
+          cd kotlin
+          ./gradlew ktlintCheck --no-daemon || echo "Ktlint not configured or failed"
+
+      - name: Run Kotlin tests
+        run: |
+          cd kotlin
+          ./gradlew test --no-daemon --stacktrace
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kotlin-pr-test-results
+          path: |
+            kotlin/build/reports/
+            kotlin/build/test-results/
+          retention-days: 3
+
+  rust-pr-checks:
+    name: Rust PR Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Check Rust formatting
+        run: |
+          cd rust
+          cargo fmt -- --check
+
+      - name: Run Clippy
+        run: |
+          cd rust
+          cargo clippy -- -D warnings
+
+      - name: Build Rust crate
+        run: |
+          cd rust
+          cargo build --release
+
+      - name: Run Rust tests
+        run: |
+          cd rust
+          cargo test
+
+  python-pr-checks:
+    name: Python PR Checks  
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install Python linting tools
+        run: |
+          pip install black flake8
+
+      - name: Check Python formatting
+        run: |
+          black --check python/tests/
+
+      - name: Run Python linting
+        run: |
+          flake8 python/tests/ --max-line-length=100 --ignore=E203,W503,F821

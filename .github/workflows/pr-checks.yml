@@ -11,7 +11,7 @@ jobs:
   kotlin-pr-checks:
     name: Kotlin PR Checks
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -101,7 +101,7 @@ jobs:
   rust-pr-checks:
     name: Rust PR Checks
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -143,9 +143,9 @@ jobs:
           cargo test
 
   python-pr-checks:
-    name: Python PR Checks  
+    name: Python PR Checks
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

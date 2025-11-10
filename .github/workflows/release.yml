@@ -15,7 +15,7 @@ jobs:
     outputs:
       upload_url: ${{ steps.create-release.outputs.upload_url }}
       version: ${{ steps.get-version.outputs.version }}
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -37,30 +37,30 @@ jobs:
           name: Release ${{ steps.get-version.outputs.version }}
           body: |
             ## isomdl-uniffi Release ${{ steps.get-version.outputs.version }}
-            
+
             This release includes:
             - 🦀 Rust library for ISO 18013-5 mDL implementation
             - 🐍 Python bindings via UniFFI
             - 🔒 Comprehensive selective disclosure tests
             - ✅ Full test suite validation
-            
+
             ### Changes
             Please see the commit history for detailed changes in this release.
-            
+
             ### Installation
-            
+
             #### Python Bindings
             Download the appropriate wheel file for your platform and install:
             ```bash
             uv pip install isomdl_uniffi-${{ steps.get-version.outputs.version }}-*.whl
             ```
-            
+
             #### Rust Crate
             ```toml
             [dependencies]
             isomdl-uniffi = "${{ steps.get-version.outputs.version }}"
             ```
-          draft: false  
+          draft: false
           prerelease: false
 
   build-python-wheels:
@@ -71,7 +71,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ['3.9', '3.10', '3.11', '3.12']
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -120,13 +120,13 @@ jobs:
           # Copy generated bindings to package directory
           mkdir -p isomdl_uniffi
           cp rust/out/python/*.py isomdl_uniffi/ || echo "No Python files to copy"
-          cp rust/out/python/*.so isomdl_uniffi/ 2>/dev/null || echo "No .so files to copy" 
+          cp rust/out/python/*.so isomdl_uniffi/ 2>/dev/null || echo "No .so files to copy"
           cp rust/out/python/*.dylib isomdl_uniffi/ 2>/dev/null || echo "No .dylib files to copy"
           cp rust/out/python/*.dll isomdl_uniffi/ 2>/dev/null || echo "No .dll files to copy"
-          
+
           # Update version in pyproject.toml
           sed -i.bak 's/version = "0.1.0"/version = "${{ needs.create-release.outputs.version }}"/' pyproject.toml
-          
+
           # Build wheel
           uv build
 

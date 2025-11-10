@@ -84,6 +84,13 @@ isomdl-uniffi/
    
    # Test Python bindings
    ./test-bindings.py
+   
+   # Build Kotlin/Android bindings
+   cd ../kotlin
+   ./gradlew build
+   
+   # Run Kotlin tests
+   ./gradlew test
    ```
 
 ## Making Changes
@@ -157,18 +164,6 @@ See [.github/DCO.md](.github/DCO.md) for complete details.
    ```bash
    git push origin feat/your-feature-name
    ```
-
-### Pull Request Guidelines
-
-- **Title:** Use a clear, descriptive title
-- **Description:** Include:
-  - What changes were made and why
-  - Any breaking changes
-  - Testing instructions
-  - Links to related issues
-- **Tests:** Ensure all tests pass
-- **Documentation:** Update relevant documentation
-- **DCO:** All commits must be signed off
 
 ### Review Process
 
@@ -259,6 +254,16 @@ cd python
 python -m pytest tests/                    # Run all tests
 python -m pytest tests/test_specific.py   # Run specific test file
 python -m pytest -v                       # Verbose output
+```
+
+### Kotlin Tests
+
+```bash
+cd kotlin
+./gradlew test                            # Run all tests
+./gradlew testDebugUnitTest              # Run debug unit tests
+./gradlew connectedAndroidTest           # Run Android instrumented tests
+./gradlew build                          # Build and run all tests
 ```
 
 ### Integration Tests

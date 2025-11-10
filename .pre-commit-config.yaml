@@ -7,27 +7,27 @@ repos:
     hooks:
       - id: cargo-check
         name: Cargo Check (Rust crate)
-        entry: cargo check
+        entry: bash -c "cd rust && cargo check"
         language: system
-        files: \.rs$|Cargo\.(toml|lock)$
+        files: ^rust/.*\.rs$|^rust/Cargo\.(toml|lock)$
         pass_filenames: false
-        stages: [commit]
-        
+        stages: [pre-commit]
+
       - id: cargo-test
         name: Cargo Test (Rust tests)
-        entry: cargo test
+        entry: bash -c "cd rust && cargo test"
         language: system
-        files: \.rs$|Cargo\.(toml|lock)$
+        files: ^rust/.*\.rs$|^rust/Cargo\.(toml|lock)$
         pass_filenames: false
-        stages: [commit]
-        
+        stages: [pre-commit]
+
       - id: cargo-fmt-check
         name: Cargo Format Check
-        entry: cargo fmt -- --check
+        entry: bash -c "cd rust && cargo fmt -- --check"
         language: system
-        files: \.rs$
+        files: ^rust/.*\.rs$
         pass_filenames: false
-        stages: [commit]
+        stages: [pre-commit]
 
   # Python bindings build check
   - repo: local
@@ -36,9 +36,9 @@ repos:
         name: Build Python Bindings
         entry: ./python/precommit/build-bindings.sh
         language: system
-        files: \.rs$|Cargo\.(toml|lock)$|uniffi-bindgen\.rs$
+        files: ^rust/.*\.rs$|^rust/Cargo\.(toml|lock)$|^rust/uniffi-bindgen\.rs$
         pass_filenames: false
-        stages: [commit]
+        stages: [pre-commit]
 
   # Python tests
   - repo: local
@@ -47,17 +47,37 @@ repos:
         name: Run Python Tests
         entry: ./python/precommit/run-tests.sh
         language: system
-        files: \.rs$|Cargo\.(toml|lock)$|^python/tests/.*\.py$
+        files: ^rust/.*\.rs$|^rust/Cargo\.(toml|lock)$|^python/tests/.*\.py$
         pass_filenames: false
-        stages: [commit]
+        stages: [pre-commit]
+
+  # Kotlin/Android checks
+  - repo: local
+    hooks:
+      - id: kotlin-build-check
+        name: Kotlin Build Check
+        entry: bash -c "cd kotlin && ./gradlew compileKotlinJvm --no-daemon"
+        language: system
+        files: ^rust/.*\.rs$|^rust/Cargo\.(toml|lock)$|^kotlin/.*\.(kt|gradle)$|^kotlin/gradle\.properties$
+        pass_filenames: false
+        stages: [pre-commit]
+
+      - id: kotlin-android-check
+        name: Kotlin Android Build Check
+        entry: bash -c "cd kotlin && ./gradlew compileDebugSources --no-daemon"
+        language: system
+        files: ^rust/.*\.rs$|^rust/Cargo\.(toml|lock)$|^kotlin/.*\.(kt|gradle)$|^kotlin/gradle\.properties$
+        pass_filenames: false
+        stages: [pre-commit]
 
   # Python checks
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0
     hooks:
       - id: trailing-whitespace
-        exclude: \.md$
+        exclude: \.md$|^rust/tests/res/
       - id: end-of-file-fixer
+        exclude: ^rust/tests/res/
       - id: check-yaml
       - id: check-added-large-files
         args: ['--maxkb=1000']

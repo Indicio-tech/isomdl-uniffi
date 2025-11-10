@@ -26,6 +26,13 @@ This project adheres to a code of conduct that we expect all contributors to fol
 - Git
 - Basic familiarity with ISO 18013-5 mDL concepts
 
+#### For Kotlin/Android Development
+
+- Java Development Kit (JDK) 8 or later
+- Android SDK (API level 24+)
+- Android NDK (version 28.2.13676358 or compatible)
+- Gradle (included via wrapper)
+
 ### Repository Structure
 
 ```

@@ -6,16 +6,24 @@ This directory contains all Python-related components for the isomdl-uniffi proj
 
 ```
 python/
-├── pyproject.toml          # Python package configuration
-├── test-bindings.py        # Simple binding test script
-├── precommit/              # Pre-commit hooks and scripts
-│   ├── build-bindings.sh   # Build Python bindings script
-│   ├── run-tests.sh        # Run Python tests script
-│   └── README.md           # Pre-commit setup documentation
-└── tests/                  # Comprehensive test suite
-    ├── run_tests.py        # Test runner
-    ├── test_*.py           # Individual test modules
-    └── README.md           # Detailed test documentation
+├── pyproject.toml              # Python package configuration
+├── setup.py                    # Legacy setup script
+├── build.py                    # Build configuration
+├── uv.lock                     # UV package manager lock file
+├── INSTALL.md                  # Installation instructions
+├── build-python-bindings.sh    # Build Python bindings script
+├── test-bindings.py            # Simple binding test script
+├── isomdl_uniffi/              # Generated Python package
+├── isomdl_uniffi.egg-info/     # Package metadata
+├── precommit/                  # Pre-commit hooks and scripts
+│   ├── build-bindings.sh       # Build Python bindings script
+│   ├── run-tests.sh            # Run Python tests script
+│   └── README.md               # Pre-commit setup documentation
+└── tests/                      # Comprehensive test suite
+    ├── run_tests.py            # Test runner
+    ├── test_*.py               # Individual test modules
+    ├── isomdl_uniffi_tests.egg-info/  # Test package metadata
+    └── README.md               # Detailed test documentation
 ```
 
 ## Quick Start

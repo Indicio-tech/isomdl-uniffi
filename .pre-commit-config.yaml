@@ -72,7 +72,7 @@ repos:
 
   # Python checks
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v6.0.0
     hooks:
       - id: trailing-whitespace
         exclude: \.md$|^rust/tests/res/
@@ -84,16 +84,13 @@ repos:
       - id: check-merge-conflict
       - id: check-toml
 
-  - repo: https://github.com/psf/black
-    rev: 24.1.1
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.4
     hooks:
-      - id: black
-        files: ^python/tests/.*\.py$
-        language_version: python3
-
-  - repo: https://github.com/pycqa/flake8
-    rev: 7.0.0
-    hooks:
-      - id: flake8
-        files: ^python/tests/.*\.py$
-        args: ['--max-line-length=100', '--ignore=E203,W503']
+      - id: ruff
+        name: ruff check
+        files: ^python/.*\.py$
+        args: [--fix]
+      - id: ruff-format
+        name: ruff format
+        files: ^python/.*\.py$

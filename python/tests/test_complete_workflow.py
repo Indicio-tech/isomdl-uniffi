@@ -9,11 +9,12 @@ generate_test_mdl, etc. are dynamically imported at runtime via globals().update
 in the run_tests() function.
 """
 
-import sys
 import os
+import sys
 import uuid
-import pytest
 from pathlib import Path
+
+import pytest
 
 # Module-level variable to store the mdl module
 _mdl_module = None
@@ -141,9 +142,7 @@ class TestMdocWorkflow:
         for rd in requested_data:
             doc_type_items = {}
             for namespace, attributes in rd.namespaces.items():
-                required_attrs = [
-                    attr for attr, required in attributes.items() if required
-                ]
+                required_attrs = [attr for attr, required in attributes.items() if required]
                 if required_attrs:
                     doc_type_items[namespace] = required_attrs
             if doc_type_items:
@@ -158,22 +157,20 @@ class TestMdocWorkflow:
         result = handle_response(reader_data.state, kotlin_response)
 
         # Verify authentication results
-        assert (
-            result.device_authentication == AuthenticationStatus.VALID
-        ), "Device authentication must be valid in cross-language workflow"
+        assert result.device_authentication == AuthenticationStatus.VALID, (
+            "Device authentication must be valid in cross-language workflow"
+        )
 
         # Verify response data
-        assert (
-            result.verified_response is not None
-        ), "Should have verified response data"
+        assert result.verified_response is not None, "Should have verified response data"
         assert len(result.verified_response) > 0, "Should have response fields"
 
         # Verify only requested attributes are disclosed
         disclosed_namespaces = set(result.verified_response.keys())
         requested_namespaces = set(requested_attributes.keys())
-        assert disclosed_namespaces.issubset(
-            requested_namespaces
-        ), "Should only disclose requested namespaces in cross-language workflow"
+        assert disclosed_namespaces.issubset(requested_namespaces), (
+            "Should only disclose requested namespaces in cross-language workflow"
+        )
 
         print("✅ Phase 3: Python verification of Kotlin presentation successful")
         print(f"   - Device auth: {result.device_authentication}")
@@ -185,12 +182,10 @@ class TestMdocWorkflow:
         final_mdoc_cbor = restored_mdoc.stringify()
         final_restored_mdoc = Mdoc.from_string(final_mdoc_cbor)
 
-        assert (
-            final_restored_mdoc.doctype() == mdoc.doctype()
-        ), "Final round-trip should preserve doctype"
-        assert (
-            final_restored_mdoc.id() == mdoc.id()
-        ), "Final round-trip should preserve ID"
+        assert final_restored_mdoc.doctype() == mdoc.doctype(), (
+            "Final round-trip should preserve doctype"
+        )
+        assert final_restored_mdoc.id() == mdoc.id(), "Final round-trip should preserve ID"
 
         print("✅ Phase 4: Round-trip serialization verified")
 
@@ -215,9 +210,7 @@ class TestMdocWorkflow:
         restored_mdoc = Mdoc.from_string(cbor_data)
 
         # Verify essential properties match
-        assert (
-            original_mdoc.doctype() == restored_mdoc.doctype()
-        ), "Document types must match"
+        assert original_mdoc.doctype() == restored_mdoc.doctype(), "Document types must match"
         assert original_mdoc.id() == restored_mdoc.id(), "Document IDs must match"
 
         # Note: key_alias may change during parsing/restoration, which is acceptable
@@ -299,9 +292,7 @@ class TestMdocWorkflow:
         for rd in requested_data:
             doc_type_items = {}
             for namespace, attributes in rd.namespaces.items():
-                required_attrs = [
-                    attr for attr, required in attributes.items() if required
-                ]
+                required_attrs = [attr for attr, required in attributes.items() if required]
                 if required_attrs:
                     doc_type_items[namespace] = required_attrs
             if doc_type_items:
@@ -325,25 +316,23 @@ class TestMdocWorkflow:
         result = handle_response(reader_data.state, response)
 
         # Verify authentication results
-        assert (
-            result.device_authentication == AuthenticationStatus.VALID
-        ), "Device authentication must be valid"
+        assert result.device_authentication == AuthenticationStatus.VALID, (
+            "Device authentication must be valid"
+        )
 
         # In development mode without trust anchors, issuer auth will be invalid
         # but that's expected - we're testing the flow, not production security
 
         # Verify we got response data
-        assert (
-            result.verified_response is not None
-        ), "Should have verified response data"
+        assert result.verified_response is not None, "Should have verified response data"
         assert len(result.verified_response) > 0, "Should have response fields"
 
         # Verify disclosed attributes match what was requested
         disclosed_namespaces = set(result.verified_response.keys())
         requested_namespaces = set(requested_attributes.keys())
-        assert disclosed_namespaces.issubset(
-            requested_namespaces
-        ), "Should only disclose requested namespaces"
+        assert disclosed_namespaces.issubset(requested_namespaces), (
+            "Should only disclose requested namespaces"
+        )
 
     def test_selective_disclosure_enforcement(self):
         """Test that only requested attributes are disclosed."""
@@ -369,18 +358,12 @@ class TestMdocWorkflow:
         for rd in requested_data:
             for namespace, attributes in rd.namespaces.items():
                 if namespace == "org.iso.18013.5.1":
-                    required_attrs = [
-                        attr for attr, required in attributes.items() if required
-                    ]
-                    assert (
-                        "given_name" in required_attrs
-                    ), "given_name should be requested"
-                    assert (
-                        "age_over_18" in required_attrs
-                    ), "age_over_18 should be requested"
-                    assert (
-                        "family_name" not in required_attrs
-                    ), "family_name should NOT be requested"
+                    required_attrs = [attr for attr, required in attributes.items() if required]
+                    assert "given_name" in required_attrs, "given_name should be requested"
+                    assert "age_over_18" in required_attrs, "age_over_18 should be requested"
+                    assert "family_name" not in required_attrs, (
+                        "family_name should NOT be requested"
+                    )
 
     def test_tampered_response_detection(self):
         """Test that tampered responses are detected."""
@@ -399,9 +382,7 @@ class TestMdocWorkflow:
         for rd in requested_data:
             doc_type_items = {}
             for namespace, attributes in rd.namespaces.items():
-                required_attrs = [
-                    attr for attr, required in attributes.items() if required
-                ]
+                required_attrs = [attr for attr, required in attributes.items() if required]
                 if required_attrs:
                     doc_type_items[namespace] = required_attrs
             if doc_type_items:
@@ -417,9 +398,9 @@ class TestMdocWorkflow:
         result = handle_response(reader_data.state, tampered_response)
 
         # Device authentication should fail with wrong key
-        assert (
-            result.device_authentication != AuthenticationStatus.VALID
-        ), "Device authentication should fail with wrong signing key"
+        assert result.device_authentication != AuthenticationStatus.VALID, (
+            "Device authentication should fail with wrong signing key"
+        )
 
     def test_key_pair_independence(self):
         """Test that different key pairs produce different signatures."""
@@ -495,9 +476,7 @@ class TestMdocWorkflow:
         for rd in requested_data:
             doc_type_items = {}
             for namespace, attributes in rd.namespaces.items():
-                required_attrs = [
-                    attr for attr, required in attributes.items() if required
-                ]
+                required_attrs = [attr for attr, required in attributes.items() if required]
                 if required_attrs:
                     doc_type_items[namespace] = required_attrs
             if doc_type_items:
@@ -514,20 +493,18 @@ class TestMdocWorkflow:
         result = handle_response(reader_data.state, response)
 
         # Device authentication should be valid
-        assert (
-            result.device_authentication == AuthenticationStatus.VALID
-        ), "Device authentication must be valid"
+        assert result.device_authentication == AuthenticationStatus.VALID, (
+            "Device authentication must be valid"
+        )
 
         # With proper trust anchor and issuer chain, issuer auth should be VALID
         # This will xfail until test vectors are properly aligned
-        assert (
-            result.issuer_authentication == AuthenticationStatus.VALID
-        ), "Issuer authentication should be valid with proper trust anchor"
+        assert result.issuer_authentication == AuthenticationStatus.VALID, (
+            "Issuer authentication should be valid with proper trust anchor"
+        )
 
         # Verify we got response data
-        assert (
-            result.verified_response is not None
-        ), "Should have verified response data"
+        assert result.verified_response is not None, "Should have verified response data"
         assert len(result.verified_response) > 0, "Should have response fields"
 
         # Verify only requested attributes are disclosed
@@ -535,9 +512,7 @@ class TestMdocWorkflow:
             if namespace in requested_attributes:
                 disclosed_attrs = set(attrs.keys())
                 requested_attrs = set(
-                    attr
-                    for attr, required in requested_attributes[namespace].items()
-                    if required
+                    attr for attr, required in requested_attributes[namespace].items() if required
                 )
                 assert disclosed_attrs == requested_attrs, (
                     f"Disclosed attributes {disclosed_attrs} should match "
@@ -569,9 +544,7 @@ class TestMdocWorkflow:
         for rd in requested_data:
             doc_type_items = {}
             for namespace, attributes in rd.namespaces.items():
-                required_attrs = [
-                    attr for attr, required in attributes.items() if required
-                ]
+                required_attrs = [attr for attr, required in attributes.items() if required]
                 if required_attrs:
                     doc_type_items[namespace] = required_attrs
             if doc_type_items:
@@ -591,18 +564,14 @@ class TestMdocWorkflow:
                 disclosed_attrs = set(attrs.keys())
                 # Should only contain requested attributes
                 assert "given_name" in disclosed_attrs, "given_name should be disclosed"
-                assert (
-                    "age_over_18" in disclosed_attrs
-                ), "age_over_18 should be disclosed"
+                assert "age_over_18" in disclosed_attrs, "age_over_18 should be disclosed"
                 # Should NOT contain unrequested attributes
-                assert (
-                    "family_name" not in disclosed_attrs
-                ), "family_name should NOT be disclosed"
+                assert "family_name" not in disclosed_attrs, "family_name should NOT be disclosed"
                 # Verify we only got what we asked for
                 expected_attrs = {"given_name", "age_over_18"}
-                assert (
-                    disclosed_attrs == expected_attrs
-                ), f"Should only disclose requested attrs, got {disclosed_attrs}"
+                assert disclosed_attrs == expected_attrs, (
+                    f"Should only disclose requested attrs, got {disclosed_attrs}"
+                )
 
 
 def run_pytest_tests():
@@ -675,7 +644,7 @@ def run_manual_tests():
     print("=" * 60)
     print(f"✅ Passed: {passed}")
     print(f"❌ Failed: {failed}")
-    print(f"📈 Success Rate: {passed/(passed+failed)*100:.1f}%")
+    print(f"📈 Success Rate: {passed / (passed + failed) * 100:.1f}%")
 
     if failed == 0:
         print("\n🎉 ALL TESTS PASSED!")
@@ -692,9 +661,7 @@ if __name__ == "__main__":
     # This allows running the test file directly for debugging
     try:
         # Add the project root to the path to import the generated bindings
-        sys.path.insert(
-            0, os.path.join(os.path.dirname(__file__), "..", "rust", "out", "python")
-        )
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "rust", "out", "python"))
         import isomdl_uniffi as mdl_module
 
         if len(sys.argv) > 1 and sys.argv[1] == "--pytest":

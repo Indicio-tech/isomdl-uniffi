@@ -3,7 +3,8 @@
 import subprocess
 import sys
 from pathlib import Path
-from setuptools import setup, find_packages
+
+from setuptools import find_packages, setup
 from setuptools.command.build_py import build_py
 
 
@@ -18,9 +19,7 @@ class BuildRustCommand(build_py):
 
     def build_rust_and_bindings(self):
         """Build Rust library and generate Python bindings"""
-        project_root = Path(
-            __file__
-        ).parent.parent.absolute()  # Go up one level from python/
+        project_root = Path(__file__).parent.parent.absolute()  # Go up one level from python/
 
         # Build Rust library
         rust_dir = project_root / "rust"
@@ -43,9 +42,7 @@ class BuildRustCommand(build_py):
 
         # Copy bindings to package directory
         bindings_dir = project_root / "rust" / "out" / "python"
-        package_dir = (
-            Path(__file__).parent / "isomdl_uniffi"
-        )  # Now in python/isomdl_uniffi
+        package_dir = Path(__file__).parent / "isomdl_uniffi"  # Now in python/isomdl_uniffi
 
         if bindings_dir.exists():
             print("📦 Copying bindings to package directory...")

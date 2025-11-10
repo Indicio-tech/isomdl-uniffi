@@ -10,9 +10,7 @@ from pathlib import Path
 
 def build_rust_and_bindings():
     """Build Rust library and generate Python bindings"""
-    project_root = Path(
-        __file__
-    ).parent.parent.absolute()  # Go up from python/ to project root
+    project_root = Path(__file__).parent.parent.absolute()  # Go up from python/ to project root
 
     # Build Rust library
     rust_dir = project_root / "rust"

@@ -3,8 +3,8 @@
 Basic functionality tests for isomdl-uniffi Python bindings.
 """
 
-import sys
 import os
+import sys
 
 
 def run_tests(mdl):
@@ -48,9 +48,7 @@ def run_tests(mdl):
             assert "kty" in jwk_obj, "JWK should have key type (kty)"
             assert jwk_obj["kty"] == "EC", f"Expected EC key type, got {jwk_obj['kty']}"
             assert "crv" in jwk_obj, "JWK should have curve (crv)"
-            assert (
-                jwk_obj["crv"] == "P-256"
-            ), f"Expected P-256 curve, got {jwk_obj['crv']}"
+            assert jwk_obj["crv"] == "P-256", f"Expected P-256 curve, got {jwk_obj['crv']}"
             assert "x" in jwk_obj, "JWK should have x coordinate"
             assert "y" in jwk_obj, "JWK should have y coordinate"
         except json.JSONDecodeError as e:
@@ -70,9 +68,7 @@ def run_tests(mdl):
         # Test signing different messages produces different signatures
         test_message2 = b"Different message"
         signature2 = key_pair.sign(test_message2)
-        assert (
-            signature != signature2
-        ), "Different messages should produce different signatures"
+        assert signature != signature2, "Different messages should produce different signatures"
 
         print(f"   ✅ Signature generation validated, length: {len(signature)} bytes")
 
@@ -92,9 +88,7 @@ def run_tests(mdl):
         # Test getting document type with validation
         doc_type = test_mdl.doctype()
         assert isinstance(doc_type, str), "Document type should be a string"
-        assert (
-            doc_type == "org.iso.18013.5.1.mDL"
-        ), f"Expected mDL doc type, got {doc_type}"
+        assert doc_type == "org.iso.18013.5.1.mDL", f"Expected mDL doc type, got {doc_type}"
 
         print(f"   ✅ Document type validated: {doc_type}")
 
@@ -143,12 +137,8 @@ def run_tests(mdl):
         for namespace in required_namespaces:
             assert namespace in details, f"Missing required namespace: {namespace}"
             namespace_elements = details[namespace]
-            assert isinstance(
-                namespace_elements, list
-            ), f"Namespace {namespace} should be a list"
-            assert (
-                len(namespace_elements) > 0
-            ), f"Namespace {namespace} should not be empty"
+            assert isinstance(namespace_elements, list), f"Namespace {namespace} should be a list"
+            assert len(namespace_elements) > 0, f"Namespace {namespace} should not be empty"
 
         # Validate ISO namespace contents
         iso_elements = details["org.iso.18013.5.1"]
@@ -158,12 +148,8 @@ def run_tests(mdl):
         for element in iso_elements:
             assert hasattr(element, "identifier"), "Element should have identifier"
             assert hasattr(element, "value"), "Element should have value"
-            assert isinstance(
-                element.identifier, str
-            ), "Element identifier should be string"
-            assert (
-                element.value is not None
-            ), f"Element {element.identifier} should have value"
+            assert isinstance(element.identifier, str), "Element identifier should be string"
+            assert element.value is not None, f"Element {element.identifier} should have value"
             iso_dict[element.identifier] = element.value
 
         # Validate required attributes exist
@@ -178,9 +164,7 @@ def run_tests(mdl):
         # Validate some data types
         assert isinstance(iso_dict["given_name"], str), "given_name should be string"
         assert isinstance(iso_dict["family_name"], str), "family_name should be string"
-        assert isinstance(
-            iso_dict["document_number"], str
-        ), "document_number should be string"
+        assert isinstance(iso_dict["document_number"], str), "document_number should be string"
 
         print(f"   ✅ ISO namespace validated with {len(iso_elements)} attributes")
 
@@ -192,14 +176,10 @@ def run_tests(mdl):
 
             # Validate structure of AAMVA elements
             for element in aamva_elements[:3]:  # Check first few elements
-                assert hasattr(
-                    element, "identifier"
-                ), "AAMVA element should have identifier"
+                assert hasattr(element, "identifier"), "AAMVA element should have identifier"
                 assert hasattr(element, "value"), "AAMVA element should have value"
 
-            print(
-                f"   ✅ AAMVA namespace validated with {len(aamva_elements)} attributes"
-            )
+            print(f"   ✅ AAMVA namespace validated with {len(aamva_elements)} attributes")
 
         for namespace, elements in details.items():
             print(f"   📋 Namespace '{namespace}': {len(elements)} elements")
@@ -222,9 +202,7 @@ if __name__ == "__main__":
     # This allows running the test file directly for debugging
     try:
         # Add the project root to the path to import the generated bindings
-        sys.path.insert(
-            0, os.path.join(os.path.dirname(__file__), "..", "rust", "out", "python")
-        )
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "rust", "out", "python"))
         import isomdl_uniffi as mdl_module
 
         success = run_tests(mdl_module)

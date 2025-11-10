@@ -3,9 +3,9 @@
 Reader functionality tests for isomdl-uniffi Python bindings.
 """
 
-import sys
-import os
 import json
+import os
+import sys
 import uuid
 
 
@@ -72,17 +72,15 @@ def run_tests(mdl):
         # Validate request data
         assert isinstance(session_data.request, bytes), "Request should be bytes"
         assert len(session_data.request) > 0, "Request should not be empty"
-        assert (
-            len(session_data.request) < 10000
-        ), f"Request suspiciously large: {len(session_data.request)}"
+        assert len(session_data.request) < 10000, (
+            f"Request suspiciously large: {len(session_data.request)}"
+        )
 
         # Validate BLE identifier
-        assert isinstance(
-            session_data.ble_ident, bytes
-        ), "BLE identifier should be bytes"
-        assert (
-            len(session_data.ble_ident) == 16
-        ), f"BLE identifier should be 16 bytes, got {len(session_data.ble_ident)}"
+        assert isinstance(session_data.ble_ident, bytes), "BLE identifier should be bytes"
+        assert len(session_data.ble_ident) == 16, (
+            f"BLE identifier should be 16 bytes, got {len(session_data.ble_ident)}"
+        )
 
         # Validate session manager
         session_manager = session_data.state
@@ -106,12 +104,10 @@ def run_tests(mdl):
 
         doc_request = requested_data[0]
         assert hasattr(doc_request, "doc_type"), "Document request should have doc_type"
-        assert hasattr(
-            doc_request, "namespaces"
-        ), "Document request should have namespaces"
-        assert (
-            doc_request.doc_type == "org.iso.18013.5.1.mDL"
-        ), f"Wrong doc type: {doc_request.doc_type}"
+        assert hasattr(doc_request, "namespaces"), "Document request should have namespaces"
+        assert doc_request.doc_type == "org.iso.18013.5.1.mDL", (
+            f"Wrong doc type: {doc_request.doc_type}"
+        )
 
         # Validate requested attributes match what we requested
         assert "org.iso.18013.5.1" in doc_request.namespaces, "Missing ISO namespace"
@@ -119,16 +115,10 @@ def run_tests(mdl):
 
         # Verify all requested attributes are present
         for attr_name in requested_items["org.iso.18013.5.1"].keys():
-            assert (
-                attr_name in iso_namespace
-            ), f"Missing requested attribute: {attr_name}"
-            assert (
-                iso_namespace[attr_name] is True
-            ), f"Attribute {attr_name} should be required"
+            assert attr_name in iso_namespace, f"Missing requested attribute: {attr_name}"
+            assert iso_namespace[attr_name] is True, f"Attribute {attr_name} should be required"
 
-        print(
-            f"   ✅ Request validation passed - {len(iso_namespace)} attributes requested"
-        )
+        print(f"   ✅ Request validation passed - {len(iso_namespace)} attributes requested")
 
         # Generate and validate response
         permitted_items = {
@@ -145,9 +135,7 @@ def run_tests(mdl):
         signed_response = key_pair.sign(unsigned_response)
         assert isinstance(signed_response, bytes), "Signed response should be bytes"
         assert len(signed_response) > 0, "Signed response should not be empty"
-        assert (
-            signed_response != unsigned_response
-        ), "Signed response should differ from unsigned"
+        assert signed_response != unsigned_response, "Signed response should differ from unsigned"
 
         # Submit the response
         final_response = presentation_session.submit_response(signed_response)
@@ -159,18 +147,14 @@ def run_tests(mdl):
         # Verify the reader can handle the response
         result = mdl.handle_response(session_manager, final_response)
         assert result is not None, "Response handling should not return None"
-        assert hasattr(
-            result, "device_authentication"
-        ), "Result should have device_authentication"
-        assert hasattr(
-            result, "verified_response"
-        ), "Result should have verified_response"
+        assert hasattr(result, "device_authentication"), "Result should have device_authentication"
+        assert hasattr(result, "verified_response"), "Result should have verified_response"
 
         # Validate authentication status
         auth_status = result.device_authentication
-        assert (
-            auth_status == mdl.AuthenticationStatus.VALID
-        ), f"Expected VALID auth, got {auth_status}"
+        assert auth_status == mdl.AuthenticationStatus.VALID, (
+            f"Expected VALID auth, got {auth_status}"
+        )
 
         # Validate response data
         verified_response = result.verified_response
@@ -182,16 +166,12 @@ def run_tests(mdl):
 
         # Verify all permitted attributes are in response
         for attr_name in permitted_items["org.iso.18013.5.1.mDL"]["org.iso.18013.5.1"]:
-            assert (
-                attr_name in response_attrs
-            ), f"Missing attribute in response: {attr_name}"
+            assert attr_name in response_attrs, f"Missing attribute in response: {attr_name}"
             # Verify attribute has actual value
             attr_value = response_attrs[attr_name]
             assert attr_value is not None, f"Attribute {attr_name} should have a value"
 
-        print(
-            f"   ✅ Complete workflow validated - {len(response_attrs)} attributes returned"
-        )
+        print(f"   ✅ Complete workflow validated - {len(response_attrs)} attributes returned")
 
         return True
 
@@ -207,9 +187,7 @@ if __name__ == "__main__":
     # This allows running the test file directly for debugging
     try:
         # Add the project root to the path to import the generated bindings
-        sys.path.insert(
-            0, os.path.join(os.path.dirname(__file__), "..", "rust", "out", "python")
-        )
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "rust", "out", "python"))
         import isomdl_uniffi as mdl_module
 
         success = run_tests(mdl_module)

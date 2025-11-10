@@ -14,18 +14,16 @@
 # helpers directly inline like we're doing here.
 
 from __future__ import annotations
-import os
-import sys
+
+import contextlib
 import ctypes
 import enum
-import struct
-import contextlib
-import datetime
-import threading
 import itertools
-import traceback
+import os
+import struct
+import sys
+import threading
 import typing
-import platform
 
 # Used for default argument values
 _DEFAULT = object()  # type: typing.Any
@@ -48,17 +46,13 @@ class _UniffiRustBuffer(ctypes.Structure):
 
     @staticmethod
     def reserve(rbuf, additional):
-        return _uniffi_rust_call(
-            _UniffiLib.ffi_isomdl_uniffi_rustbuffer_reserve, rbuf, additional
-        )
+        return _uniffi_rust_call(_UniffiLib.ffi_isomdl_uniffi_rustbuffer_reserve, rbuf, additional)
 
     def free(self):
         return _uniffi_rust_call(_UniffiLib.ffi_isomdl_uniffi_rustbuffer_free, self)
 
     def __str__(self):
-        return "_UniffiRustBuffer(capacity={}, len={}, data={})".format(
-            self.capacity, self.len, self.data[0 : self.len]
-        )
+        return f"_UniffiRustBuffer(capacity={self.capacity}, len={self.len}, data={self.data[0 : self.len]})"
 
     @contextlib.contextmanager
     def alloc_with_builder(*args):
@@ -85,9 +79,7 @@ class _UniffiRustBuffer(ctypes.Structure):
             s = _UniffiRustBufferStream.from_rust_buffer(self)
             yield s
             if s.remaining() != 0:
-                raise RuntimeError(
-                    "junk data left in buffer at end of consume_with_stream"
-                )
+                raise RuntimeError("junk data left in buffer at end of consume_with_stream")
         finally:
             self.free()
 
@@ -111,9 +103,7 @@ class _UniffiForeignBytes(ctypes.Structure):
     ]
 
     def __str__(self):
-        return "_UniffiForeignBytes(len={}, data={})".format(
-            self.len, self.data[0 : self.len]
-        )
+        return f"_UniffiForeignBytes(len={self.len}, data={self.data[0 : self.len]})"
 
 
 class _UniffiRustBufferStream:
@@ -330,9 +320,7 @@ def _uniffi_check_call_status(error_ffi_converter, call_status):
             msg = "Unknown rust panic"
         raise InternalError(msg)
     else:
-        raise InternalError(
-            "Invalid _UniffiRustCallStatus code: {}".format(call_status.code)
-        )
+        raise InternalError(f"Invalid _UniffiRustCallStatus code: {call_status.code}")
 
 
 def _uniffi_trait_interface_call(call_status, make_call, write_return_value):
@@ -409,20 +397,12 @@ class _UniffiConverterPrimitiveInt(_UniffiConverterPrimitive):
         try:
             value = value.__index__()
         except Exception:
-            raise TypeError(
-                "'{}' object cannot be interpreted as an integer".format(
-                    type(value).__name__
-                )
-            )
+            raise TypeError(f"'{type(value).__name__}' object cannot be interpreted as an integer")
         if not isinstance(value, int):
-            raise TypeError(
-                "__index__ returned non-int (type {})".format(type(value).__name__)
-            )
+            raise TypeError(f"__index__ returned non-int (type {type(value).__name__})")
         if not cls.VALUE_MIN <= value < cls.VALUE_MAX:
             raise ValueError(
-                "{} requires {} <= value < {}".format(
-                    cls.CLASS_NAME, cls.VALUE_MIN, cls.VALUE_MAX
-                )
+                f"{cls.CLASS_NAME} requires {cls.VALUE_MIN} <= value < {cls.VALUE_MAX}"
             )
 
 
@@ -432,11 +412,9 @@ class _UniffiConverterPrimitiveFloat(_UniffiConverterPrimitive):
         try:
             value = value.__float__()
         except Exception:
-            raise TypeError("must be real number, not {}".format(type(value).__name__))
+            raise TypeError(f"must be real number, not {type(value).__name__}")
         if not isinstance(value, float):
-            raise TypeError(
-                "__float__ returned non-float (type {})".format(type(value).__name__)
-            )
+            raise TypeError(f"__float__ returned non-float (type {type(value).__name__})")
 
 
 # Helper class for wrapper types that will always go through a _UniffiRustBuffer.
@@ -528,52 +506,31 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError(
             "UniFFI API checksum mismatch: try cleaning and rebuilding your project"
         )
-    if (
-        lib.uniffi_isomdl_uniffi_checksum_func_verified_response_as_json_string()
-        != 24954
-    ):
+    if lib.uniffi_isomdl_uniffi_checksum_func_verified_response_as_json_string() != 24954:
         raise InternalError(
             "UniFFI API checksum mismatch: try cleaning and rebuilding your project"
         )
-    if (
-        lib.uniffi_isomdl_uniffi_checksum_method_mdlpresentationsession_generate_response()
-        != 18706
-    ):
+    if lib.uniffi_isomdl_uniffi_checksum_method_mdlpresentationsession_generate_response() != 18706:
         raise InternalError(
             "UniFFI API checksum mismatch: try cleaning and rebuilding your project"
         )
-    if (
-        lib.uniffi_isomdl_uniffi_checksum_method_mdlpresentationsession_get_ble_ident()
-        != 27464
-    ):
+    if lib.uniffi_isomdl_uniffi_checksum_method_mdlpresentationsession_get_ble_ident() != 27464:
         raise InternalError(
             "UniFFI API checksum mismatch: try cleaning and rebuilding your project"
         )
-    if (
-        lib.uniffi_isomdl_uniffi_checksum_method_mdlpresentationsession_get_qr_code_uri()
-        != 59339
-    ):
+    if lib.uniffi_isomdl_uniffi_checksum_method_mdlpresentationsession_get_qr_code_uri() != 59339:
         raise InternalError(
             "UniFFI API checksum mismatch: try cleaning and rebuilding your project"
         )
-    if (
-        lib.uniffi_isomdl_uniffi_checksum_method_mdlpresentationsession_handle_request()
-        != 50972
-    ):
+    if lib.uniffi_isomdl_uniffi_checksum_method_mdlpresentationsession_handle_request() != 50972:
         raise InternalError(
             "UniFFI API checksum mismatch: try cleaning and rebuilding your project"
         )
-    if (
-        lib.uniffi_isomdl_uniffi_checksum_method_mdlpresentationsession_submit_response()
-        != 12859
-    ):
+    if lib.uniffi_isomdl_uniffi_checksum_method_mdlpresentationsession_submit_response() != 12859:
         raise InternalError(
             "UniFFI API checksum mismatch: try cleaning and rebuilding your project"
         )
-    if (
-        lib.uniffi_isomdl_uniffi_checksum_method_mdlpresentationsession_terminate_session()
-        != 32687
-    ):
+    if lib.uniffi_isomdl_uniffi_checksum_method_mdlpresentationsession_terminate_session() != 32687:
         raise InternalError(
             "UniFFI API checksum mismatch: try cleaning and rebuilding your project"
         )
@@ -609,10 +566,7 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError(
             "UniFFI API checksum mismatch: try cleaning and rebuilding your project"
         )
-    if (
-        lib.uniffi_isomdl_uniffi_checksum_constructor_mdlpresentationsession_new()
-        != 18493
-    ):
+    if lib.uniffi_isomdl_uniffi_checksum_constructor_mdlpresentationsession_new() != 18493:
         raise InternalError(
             "UniFFI API checksum mismatch: try cleaning and rebuilding your project"
         )
@@ -620,10 +574,7 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError(
             "UniFFI API checksum mismatch: try cleaning and rebuilding your project"
         )
-    if (
-        lib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_from_cbor_encoded_document()
-        != 38241
-    ):
+    if lib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_from_cbor_encoded_document() != 38241:
         raise InternalError(
             "UniFFI API checksum mismatch: try cleaning and rebuilding your project"
         )
@@ -631,10 +582,7 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError(
             "UniFFI API checksum mismatch: try cleaning and rebuilding your project"
         )
-    if (
-        lib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_from_stringified_document()
-        != 9578
-    ):
+    if lib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_from_stringified_document() != 9578:
         raise InternalError(
             "UniFFI API checksum mismatch: try cleaning and rebuilding your project"
         )
@@ -880,9 +828,7 @@ _UniffiLib.uniffi_isomdl_uniffi_fn_clone_mdlpresentationsession.argtypes = (
     ctypes.c_void_p,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_clone_mdlpresentationsession.restype = (
-    ctypes.c_void_p
-)
+_UniffiLib.uniffi_isomdl_uniffi_fn_clone_mdlpresentationsession.restype = ctypes.c_void_p
 _UniffiLib.uniffi_isomdl_uniffi_fn_free_mdlpresentationsession.argtypes = (
     ctypes.c_void_p,
     ctypes.POINTER(_UniffiRustCallStatus),
@@ -893,9 +839,7 @@ _UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdlpresentationsession_new.argtyp
     _UniffiRustBuffer,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdlpresentationsession_new.restype = (
-    ctypes.c_void_p
-)
+_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdlpresentationsession_new.restype = ctypes.c_void_p
 _UniffiLib.uniffi_isomdl_uniffi_fn_method_mdlpresentationsession_generate_response.argtypes = (
     ctypes.c_void_p,
     _UniffiRustBuffer,
@@ -959,9 +903,7 @@ _UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_create_and_sign.argtypes = (
     _UniffiRustBuffer,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_create_and_sign.restype = (
-    ctypes.c_void_p
-)
+_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_create_and_sign.restype = ctypes.c_void_p
 _UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_from_cbor_encoded_document.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
@@ -974,9 +916,7 @@ _UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_from_string.argtypes = (
     _UniffiRustBuffer,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_from_string.restype = (
-    ctypes.c_void_p
-)
+_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_from_string.restype = ctypes.c_void_p
 _UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_from_stringified_document.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
@@ -990,9 +930,7 @@ _UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_new_from_base64url_encoded_i
     _UniffiRustBuffer,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_new_from_base64url_encoded_issuer_signed.restype = (
-    ctypes.c_void_p
-)
+_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_new_from_base64url_encoded_issuer_signed.restype = ctypes.c_void_p
 _UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_details.argtypes = (
     ctypes.c_void_p,
     ctypes.POINTER(_UniffiRustCallStatus),
@@ -1041,9 +979,7 @@ _UniffiLib.uniffi_isomdl_uniffi_fn_method_p256keypair_public_jwk.argtypes = (
     ctypes.c_void_p,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_method_p256keypair_public_jwk.restype = (
-    _UniffiRustBuffer
-)
+_UniffiLib.uniffi_isomdl_uniffi_fn_method_p256keypair_public_jwk.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_isomdl_uniffi_fn_method_p256keypair_sign.argtypes = (
     ctypes.c_void_p,
     _UniffiRustBuffer,
@@ -1072,9 +1008,7 @@ _UniffiLib.uniffi_isomdl_uniffi_fn_func_iso1801351_aamva_from_json.argtypes = (
     _UniffiRustBuffer,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_func_iso1801351_aamva_from_json.restype = (
-    _UniffiRustBuffer
-)
+_UniffiLib.uniffi_isomdl_uniffi_fn_func_iso1801351_aamva_from_json.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_isomdl_uniffi_fn_func_iso1801351_from_json.argtypes = (
     _UniffiRustBuffer,
     ctypes.POINTER(_UniffiRustCallStatus),
@@ -1084,9 +1018,7 @@ _UniffiLib.uniffi_isomdl_uniffi_fn_func_verified_response_as_json_string.argtype
     _UniffiRustBuffer,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_func_verified_response_as_json_string.restype = (
-    _UniffiRustBuffer
-)
+_UniffiLib.uniffi_isomdl_uniffi_fn_func_verified_response_as_json_string.restype = _UniffiRustBuffer
 _UniffiLib.ffi_isomdl_uniffi_rustbuffer_alloc.argtypes = (
     ctypes.c_uint64,
     ctypes.POINTER(_UniffiRustCallStatus),
@@ -1279,9 +1211,7 @@ _UniffiLib.ffi_isomdl_uniffi_rust_future_poll_rust_buffer.argtypes = (
     ctypes.c_uint64,
 )
 _UniffiLib.ffi_isomdl_uniffi_rust_future_poll_rust_buffer.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_cancel_rust_buffer.argtypes = (
-    ctypes.c_uint64,
-)
+_UniffiLib.ffi_isomdl_uniffi_rust_future_cancel_rust_buffer.argtypes = (ctypes.c_uint64,)
 _UniffiLib.ffi_isomdl_uniffi_rust_future_cancel_rust_buffer.restype = None
 _UniffiLib.ffi_isomdl_uniffi_rust_future_free_rust_buffer.argtypes = (ctypes.c_uint64,)
 _UniffiLib.ffi_isomdl_uniffi_rust_future_free_rust_buffer.restype = None
@@ -1289,9 +1219,7 @@ _UniffiLib.ffi_isomdl_uniffi_rust_future_complete_rust_buffer.argtypes = (
     ctypes.c_uint64,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_complete_rust_buffer.restype = (
-    _UniffiRustBuffer
-)
+_UniffiLib.ffi_isomdl_uniffi_rust_future_complete_rust_buffer.restype = _UniffiRustBuffer
 _UniffiLib.ffi_isomdl_uniffi_rust_future_poll_void.argtypes = (
     ctypes.c_uint64,
     _UNIFFI_RUST_FUTURE_CONTINUATION_CALLBACK,
@@ -1308,23 +1236,15 @@ _UniffiLib.ffi_isomdl_uniffi_rust_future_complete_void.argtypes = (
 )
 _UniffiLib.ffi_isomdl_uniffi_rust_future_complete_void.restype = None
 _UniffiLib.uniffi_isomdl_uniffi_checksum_func_establish_session.argtypes = ()
-_UniffiLib.uniffi_isomdl_uniffi_checksum_func_establish_session.restype = (
-    ctypes.c_uint16
-)
+_UniffiLib.uniffi_isomdl_uniffi_checksum_func_establish_session.restype = ctypes.c_uint16
 _UniffiLib.uniffi_isomdl_uniffi_checksum_func_generate_test_mdl.argtypes = ()
-_UniffiLib.uniffi_isomdl_uniffi_checksum_func_generate_test_mdl.restype = (
-    ctypes.c_uint16
-)
+_UniffiLib.uniffi_isomdl_uniffi_checksum_func_generate_test_mdl.restype = ctypes.c_uint16
 _UniffiLib.uniffi_isomdl_uniffi_checksum_func_handle_response.argtypes = ()
 _UniffiLib.uniffi_isomdl_uniffi_checksum_func_handle_response.restype = ctypes.c_uint16
 _UniffiLib.uniffi_isomdl_uniffi_checksum_func_iso1801351_aamva_from_json.argtypes = ()
-_UniffiLib.uniffi_isomdl_uniffi_checksum_func_iso1801351_aamva_from_json.restype = (
-    ctypes.c_uint16
-)
+_UniffiLib.uniffi_isomdl_uniffi_checksum_func_iso1801351_aamva_from_json.restype = ctypes.c_uint16
 _UniffiLib.uniffi_isomdl_uniffi_checksum_func_iso1801351_from_json.argtypes = ()
-_UniffiLib.uniffi_isomdl_uniffi_checksum_func_iso1801351_from_json.restype = (
-    ctypes.c_uint16
-)
+_UniffiLib.uniffi_isomdl_uniffi_checksum_func_iso1801351_from_json.restype = ctypes.c_uint16
 _UniffiLib.uniffi_isomdl_uniffi_checksum_func_verified_response_as_json_string.argtypes = ()
 _UniffiLib.uniffi_isomdl_uniffi_checksum_func_verified_response_as_json_string.restype = (
     ctypes.c_uint16
@@ -1366,41 +1286,29 @@ _UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdoc_key_alias.restype = ctypes.
 _UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdoc_stringify.argtypes = ()
 _UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdoc_stringify.restype = ctypes.c_uint16
 _UniffiLib.uniffi_isomdl_uniffi_checksum_method_p256keypair_public_jwk.argtypes = ()
-_UniffiLib.uniffi_isomdl_uniffi_checksum_method_p256keypair_public_jwk.restype = (
-    ctypes.c_uint16
-)
+_UniffiLib.uniffi_isomdl_uniffi_checksum_method_p256keypair_public_jwk.restype = ctypes.c_uint16
 _UniffiLib.uniffi_isomdl_uniffi_checksum_method_p256keypair_sign.argtypes = ()
-_UniffiLib.uniffi_isomdl_uniffi_checksum_method_p256keypair_sign.restype = (
-    ctypes.c_uint16
-)
+_UniffiLib.uniffi_isomdl_uniffi_checksum_method_p256keypair_sign.restype = ctypes.c_uint16
 _UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdlpresentationsession_new.argtypes = ()
 _UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdlpresentationsession_new.restype = (
     ctypes.c_uint16
 )
 _UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_create_and_sign.argtypes = ()
-_UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_create_and_sign.restype = (
-    ctypes.c_uint16
-)
+_UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_create_and_sign.restype = ctypes.c_uint16
 _UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_from_cbor_encoded_document.argtypes = ()
 _UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_from_cbor_encoded_document.restype = (
     ctypes.c_uint16
 )
 _UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_from_string.argtypes = ()
-_UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_from_string.restype = (
-    ctypes.c_uint16
-)
+_UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_from_string.restype = ctypes.c_uint16
 _UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_from_stringified_document.argtypes = ()
 _UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_from_stringified_document.restype = (
     ctypes.c_uint16
 )
 _UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_new_from_base64url_encoded_issuer_signed.argtypes = ()
-_UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_new_from_base64url_encoded_issuer_signed.restype = (
-    ctypes.c_uint16
-)
+_UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_new_from_base64url_encoded_issuer_signed.restype = ctypes.c_uint16
 _UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_p256keypair_new.argtypes = ()
-_UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_p256keypair_new.restype = (
-    ctypes.c_uint16
-)
+_UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_p256keypair_new.restype = ctypes.c_uint16
 _UniffiLib.ffi_isomdl_uniffi_uniffi_contract_version.argtypes = ()
 _UniffiLib.ffi_isomdl_uniffi_uniffi_contract_version.restype = ctypes.c_uint32
 
@@ -1427,7 +1335,7 @@ class _UniffiConverterInt64(_UniffiConverterPrimitiveInt):
 class _UniffiConverterBool:
     @classmethod
     def check_lower(cls, value):
-        return not not value
+        return bool(value)
 
     @classmethod
     def lower(cls, value):
@@ -1450,7 +1358,7 @@ class _UniffiConverterString:
     @staticmethod
     def check_lower(value):
         if not isinstance(value, str):
-            raise TypeError("argument must be str, not {}".format(type(value).__name__))
+            raise TypeError(f"argument must be str, not {type(value).__name__}")
         return value
 
     @staticmethod
@@ -1492,9 +1400,7 @@ class _UniffiConverterBytes(_UniffiConverterRustBuffer):
         try:
             memoryview(value)
         except TypeError:
-            raise TypeError(
-                "a bytes-like object is required, not {!r}".format(type(value).__name__)
-            )
+            raise TypeError(f"a bytes-like object is required, not {type(value).__name__!r}")
 
     @staticmethod
     def write(value, buf):
@@ -1516,9 +1422,7 @@ class InProcessRecord:
         # In case of partial initialization of instances.
         pointer = getattr(self, "_pointer", None)
         if pointer is not None:
-            _uniffi_rust_call(
-                _UniffiLib.uniffi_isomdl_uniffi_fn_free_inprocessrecord, pointer
-            )
+            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_free_inprocessrecord, pointer)
 
     def _uniffi_clone_pointer(self):
         return _uniffi_rust_call(
@@ -1543,20 +1447,12 @@ class _UniffiConverterTypeInProcessRecord:
     @staticmethod
     def check_lower(value: InProcessRecord):
         if not isinstance(value, InProcessRecord):
-            raise TypeError(
-                "Expected InProcessRecord instance, {} found".format(
-                    type(value).__name__
-                )
-            )
+            raise TypeError(f"Expected InProcessRecord instance, {type(value).__name__} found")
 
     @staticmethod
     def lower(value: InProcessRecordProtocol):
         if not isinstance(value, InProcessRecord):
-            raise TypeError(
-                "Expected InProcessRecord instance, {} found".format(
-                    type(value).__name__
-                )
-            )
+            raise TypeError(f"Expected InProcessRecord instance, {type(value).__name__} found")
         return value._uniffi_clone_pointer()
 
     @classmethod
@@ -1572,9 +1468,7 @@ class _UniffiConverterTypeInProcessRecord:
 
 
 class MdlPresentationSessionProtocol(typing.Protocol):
-    def generate_response(
-        self, permitted_items: "dict[str, dict[str, typing.List[str]]]"
-    ):
+    def generate_response(self, permitted_items: dict[str, dict[str, typing.List[str]]]):
         """
         Constructs the response to be sent from the holder to the reader containing
         the items of information the user has consented to share.
@@ -1605,7 +1499,7 @@ class MdlPresentationSessionProtocol(typing.Protocol):
 
         raise NotImplementedError
 
-    def handle_request(self, request: "bytes"):
+    def handle_request(self, request: bytes):
         """
         Handle a request from a reader that is seeking information from the mDL holder.
 
@@ -1616,7 +1510,7 @@ class MdlPresentationSessionProtocol(typing.Protocol):
 
         raise NotImplementedError
 
-    def submit_response(self, signature: "bytes"):
+    def submit_response(self, signature: bytes):
         raise NotImplementedError
 
     def terminate_session(
@@ -1634,7 +1528,7 @@ class MdlPresentationSessionProtocol(typing.Protocol):
 class MdlPresentationSession:
     _pointer: ctypes.c_void_p
 
-    def __init__(self, mdoc: "Mdoc", uuid: "Uuid"):
+    def __init__(self, mdoc: Mdoc, uuid: Uuid):
         """
         Begin the mDL presentation process for the holder by passing in the credential
         to be presented in the form of an [Mdoc] object.
@@ -1687,9 +1581,7 @@ class MdlPresentationSession:
         inst._pointer = pointer
         return inst
 
-    def generate_response(
-        self, permitted_items: "dict[str, dict[str, typing.List[str]]]"
-    ) -> "bytes":
+    def generate_response(self, permitted_items: dict[str, dict[str, typing.List[str]]]) -> bytes:
         """
         Constructs the response to be sent from the holder to the reader containing
         the items of information the user has consented to share.
@@ -1713,7 +1605,7 @@ class MdlPresentationSession:
 
     def get_ble_ident(
         self,
-    ) -> "bytes":
+    ) -> bytes:
         """
         Returns the BLE identification
         """
@@ -1727,7 +1619,7 @@ class MdlPresentationSession:
 
     def get_qr_code_uri(
         self,
-    ) -> "str":
+    ) -> str:
         """
         Returns the generated QR code
         """
@@ -1739,7 +1631,7 @@ class MdlPresentationSession:
             )
         )
 
-    def handle_request(self, request: "bytes") -> "typing.List[ItemsRequest]":
+    def handle_request(self, request: bytes) -> typing.List[ItemsRequest]:
         """
         Handle a request from a reader that is seeking information from the mDL holder.
 
@@ -1759,7 +1651,7 @@ class MdlPresentationSession:
             )
         )
 
-    def submit_response(self, signature: "bytes") -> "bytes":
+    def submit_response(self, signature: bytes) -> bytes:
         _UniffiConverterBytes.check_lower(signature)
 
         return _UniffiConverterBytes.lift(
@@ -1773,7 +1665,7 @@ class MdlPresentationSession:
 
     def terminate_session(
         self,
-    ) -> "bytes":
+    ) -> bytes:
         """
         Terminates the mDL exchange session.
 
@@ -1798,18 +1690,14 @@ class _UniffiConverterTypeMdlPresentationSession:
     def check_lower(value: MdlPresentationSession):
         if not isinstance(value, MdlPresentationSession):
             raise TypeError(
-                "Expected MdlPresentationSession instance, {} found".format(
-                    type(value).__name__
-                )
+                f"Expected MdlPresentationSession instance, {type(value).__name__} found"
             )
 
     @staticmethod
     def lower(value: MdlPresentationSessionProtocol):
         if not isinstance(value, MdlPresentationSession):
             raise TypeError(
-                "Expected MdlPresentationSession instance, {} found".format(
-                    type(value).__name__
-                )
+                f"Expected MdlPresentationSession instance, {type(value).__name__} found"
             )
         return value._uniffi_clone_pointer()
 
@@ -1839,9 +1727,7 @@ class MdlSessionManager:
         # In case of partial initialization of instances.
         pointer = getattr(self, "_pointer", None)
         if pointer is not None:
-            _uniffi_rust_call(
-                _UniffiLib.uniffi_isomdl_uniffi_fn_free_mdlsessionmanager, pointer
-            )
+            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_free_mdlsessionmanager, pointer)
 
     def _uniffi_clone_pointer(self):
         return _uniffi_rust_call(
@@ -1866,20 +1752,12 @@ class _UniffiConverterTypeMdlSessionManager:
     @staticmethod
     def check_lower(value: MdlSessionManager):
         if not isinstance(value, MdlSessionManager):
-            raise TypeError(
-                "Expected MdlSessionManager instance, {} found".format(
-                    type(value).__name__
-                )
-            )
+            raise TypeError(f"Expected MdlSessionManager instance, {type(value).__name__} found")
 
     @staticmethod
     def lower(value: MdlSessionManagerProtocol):
         if not isinstance(value, MdlSessionManager):
-            raise TypeError(
-                "Expected MdlSessionManager instance, {} found".format(
-                    type(value).__name__
-                )
-            )
+            raise TypeError(f"Expected MdlSessionManager instance, {type(value).__name__} found")
         return value._uniffi_clone_pointer()
 
     @classmethod
@@ -1959,9 +1837,7 @@ class Mdoc:
             _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_free_mdoc, pointer)
 
     def _uniffi_clone_pointer(self):
-        return _uniffi_rust_call(
-            _UniffiLib.uniffi_isomdl_uniffi_fn_clone_mdoc, self._pointer
-        )
+        return _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_clone_mdoc, self._pointer)
 
     # Used by alternative constructors or any methods which return this type.
     @classmethod
@@ -1975,11 +1851,11 @@ class Mdoc:
     @classmethod
     def create_and_sign(
         cls,
-        doc_type: "str",
-        namespaces: "dict[str, dict[str, bytes]]",
-        holder_jwk: "str",
-        iaca_cert_perm: "str",
-        iaca_key_perm: "str",
+        doc_type: str,
+        namespaces: dict[str, dict[str, bytes]],
+        holder_jwk: str,
+        iaca_cert_perm: str,
+        iaca_key_perm: str,
     ):
         _UniffiConverterString.check_lower(doc_type)
 
@@ -2004,9 +1880,7 @@ class Mdoc:
         return cls._make_instance_(pointer)
 
     @classmethod
-    def from_cbor_encoded_document(
-        cls, cbor_encoded_document: "bytes", key_alias: "KeyAlias"
-    ):
+    def from_cbor_encoded_document(cls, cbor_encoded_document: bytes, key_alias: KeyAlias):
         """
         Construct a SpruceKit MDoc from a cbor-encoded
         [spruceid/isomdl `Document`](https://github.com/spruceid/isomdl/blob/main/src/presentation/device.rs#L145-L152)
@@ -2026,7 +1900,7 @@ class Mdoc:
         return cls._make_instance_(pointer)
 
     @classmethod
-    def from_string(cls, stringified_document: "str"):
+    def from_string(cls, stringified_document: str):
         """
         Parse an MDoc from a stringified document with a default key alias.
         This is a convenience method for parsing mdocs where the key alias is not critical.
@@ -2043,9 +1917,7 @@ class Mdoc:
         return cls._make_instance_(pointer)
 
     @classmethod
-    def from_stringified_document(
-        cls, stringified_document: "str", key_alias: "KeyAlias"
-    ):
+    def from_stringified_document(cls, stringified_document: str, key_alias: KeyAlias):
         """
         Compatibility feature: construct an MDoc from a
         [stringified spruceid/isomdl `Document`](https://github.com/spruceid/isomdl/blob/main/src/presentation/mod.rs#L100)
@@ -2066,7 +1938,7 @@ class Mdoc:
 
     @classmethod
     def new_from_base64url_encoded_issuer_signed(
-        cls, base64url_encoded_issuer_signed: "str", key_alias: "KeyAlias"
+        cls, base64url_encoded_issuer_signed: str, key_alias: KeyAlias
     ):
         """
         Construct a new MDoc from base64url-encoded IssuerSigned.
@@ -2087,7 +1959,7 @@ class Mdoc:
 
     def details(
         self,
-    ) -> "dict[Namespace, typing.List[Element]]":
+    ) -> dict[Namespace, typing.List[Element]]:
         """
         Simple representation of mdoc namespace and data elements for display in the UI.
         """
@@ -2101,7 +1973,7 @@ class Mdoc:
 
     def doctype(
         self,
-    ) -> "str":
+    ) -> str:
         """
         The document type of this mdoc, for example `org.iso.18013.5.1.mDL`.
         """
@@ -2115,7 +1987,7 @@ class Mdoc:
 
     def id(
         self,
-    ) -> "Uuid":
+    ) -> Uuid:
         """
         The local ID of this credential.
         """
@@ -2129,7 +2001,7 @@ class Mdoc:
 
     def json(
         self,
-    ) -> "str":
+    ) -> str:
         """
         Serialize as JSON
         """
@@ -2144,7 +2016,7 @@ class Mdoc:
 
     def key_alias(
         self,
-    ) -> "KeyAlias":
+    ) -> KeyAlias:
         return _UniffiConverterTypeKeyAlias.lift(
             _uniffi_rust_call(
                 _UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_key_alias,
@@ -2154,7 +2026,7 @@ class Mdoc:
 
     def stringify(
         self,
-    ) -> "str":
+    ) -> str:
         """
         Serialize to CBOR
         """
@@ -2176,16 +2048,12 @@ class _UniffiConverterTypeMdoc:
     @staticmethod
     def check_lower(value: Mdoc):
         if not isinstance(value, Mdoc):
-            raise TypeError(
-                "Expected Mdoc instance, {} found".format(type(value).__name__)
-            )
+            raise TypeError(f"Expected Mdoc instance, {type(value).__name__} found")
 
     @staticmethod
     def lower(value: MdocProtocol):
         if not isinstance(value, Mdoc):
-            raise TypeError(
-                "Expected Mdoc instance, {} found".format(type(value).__name__)
-            )
+            raise TypeError(f"Expected Mdoc instance, {type(value).__name__} found")
         return value._uniffi_clone_pointer()
 
     @classmethod
@@ -2206,7 +2074,7 @@ class P256KeyPairProtocol(typing.Protocol):
     ):
         raise NotImplementedError
 
-    def sign(self, msg: "bytes"):
+    def sign(self, msg: bytes):
         raise NotImplementedError
 
 
@@ -2224,9 +2092,7 @@ class P256KeyPair:
         # In case of partial initialization of instances.
         pointer = getattr(self, "_pointer", None)
         if pointer is not None:
-            _uniffi_rust_call(
-                _UniffiLib.uniffi_isomdl_uniffi_fn_free_p256keypair, pointer
-            )
+            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_free_p256keypair, pointer)
 
     def _uniffi_clone_pointer(self):
         return _uniffi_rust_call(
@@ -2244,7 +2110,7 @@ class P256KeyPair:
 
     def public_jwk(
         self,
-    ) -> "str":
+    ) -> str:
         return _UniffiConverterString.lift(
             _uniffi_rust_call(
                 _UniffiLib.uniffi_isomdl_uniffi_fn_method_p256keypair_public_jwk,
@@ -2252,7 +2118,7 @@ class P256KeyPair:
             )
         )
 
-    def sign(self, msg: "bytes") -> "bytes":
+    def sign(self, msg: bytes) -> bytes:
         _UniffiConverterBytes.check_lower(msg)
 
         return _UniffiConverterBytes.lift(
@@ -2272,16 +2138,12 @@ class _UniffiConverterTypeP256KeyPair:
     @staticmethod
     def check_lower(value: P256KeyPair):
         if not isinstance(value, P256KeyPair):
-            raise TypeError(
-                "Expected P256KeyPair instance, {} found".format(type(value).__name__)
-            )
+            raise TypeError(f"Expected P256KeyPair instance, {type(value).__name__} found")
 
     @staticmethod
     def lower(value: P256KeyPairProtocol):
         if not isinstance(value, P256KeyPair):
-            raise TypeError(
-                "Expected P256KeyPair instance, {} found".format(type(value).__name__)
-            )
+            raise TypeError(f"Expected P256KeyPair instance, {type(value).__name__} found")
         return value._uniffi_clone_pointer()
 
     @classmethod
@@ -2301,22 +2163,22 @@ class Element:
     Simple representation of an mdoc data element.
     """
 
-    identifier: "str"
+    identifier: str
     """
     Name of the data element.
     """
 
-    value: "typing.Optional[str]"
+    value: typing.Optional[str]
     """
     JSON representation of the data element, missing if the value cannot be represented as JSON.
     """
 
-    def __init__(self, *, identifier: "str", value: "typing.Optional[str]"):
+    def __init__(self, *, identifier: str, value: typing.Optional[str]):
         self.identifier = identifier
         self.value = value
 
     def __str__(self):
-        return "Element(identifier={}, value={})".format(self.identifier, self.value)
+        return f"Element(identifier={self.identifier}, value={self.value})"
 
     def __eq__(self, other):
         if self.identifier != other.identifier:
@@ -2346,17 +2208,15 @@ class _UniffiConverterTypeElement(_UniffiConverterRustBuffer):
 
 
 class ItemsRequest:
-    doc_type: "str"
-    namespaces: "dict[str, dict[str, bool]]"
+    doc_type: str
+    namespaces: dict[str, dict[str, bool]]
 
-    def __init__(self, *, doc_type: "str", namespaces: "dict[str, dict[str, bool]]"):
+    def __init__(self, *, doc_type: str, namespaces: dict[str, dict[str, bool]]):
         self.doc_type = doc_type
         self.namespaces = namespaces
 
     def __str__(self):
-        return "ItemsRequest(doc_type={}, namespaces={})".format(
-            self.doc_type, self.namespaces
-        )
+        return f"ItemsRequest(doc_type={self.doc_type}, namespaces={self.namespaces})"
 
     def __eq__(self, other):
         if self.doc_type != other.doc_type:
@@ -2386,23 +2246,23 @@ class _UniffiConverterTypeItemsRequest(_UniffiConverterRustBuffer):
 
 
 class MdlReaderResponseData:
-    state: "MdlSessionManager"
-    verified_response: "dict[str, dict[str, MDocItem]]"
+    state: MdlSessionManager
+    verified_response: dict[str, dict[str, MDocItem]]
     """
     Contains the namespaces for the mDL directly, without top-level doc types
     """
 
-    issuer_authentication: "AuthenticationStatus"
+    issuer_authentication: AuthenticationStatus
     """
     Outcome of issuer authentication.
     """
 
-    device_authentication: "AuthenticationStatus"
+    device_authentication: AuthenticationStatus
     """
     Outcome of device authentication.
     """
 
-    errors: "typing.Optional[str]"
+    errors: typing.Optional[str]
     """
     Errors that occurred during response processing.
     """
@@ -2410,11 +2270,11 @@ class MdlReaderResponseData:
     def __init__(
         self,
         *,
-        state: "MdlSessionManager",
-        verified_response: "dict[str, dict[str, MDocItem]]",
-        issuer_authentication: "AuthenticationStatus",
-        device_authentication: "AuthenticationStatus",
-        errors: "typing.Optional[str]",
+        state: MdlSessionManager,
+        verified_response: dict[str, dict[str, MDocItem]],
+        issuer_authentication: AuthenticationStatus,
+        device_authentication: AuthenticationStatus,
+        errors: typing.Optional[str],
     ):
         self.state = state
         self.verified_response = verified_response
@@ -2423,13 +2283,7 @@ class MdlReaderResponseData:
         self.errors = errors
 
     def __str__(self):
-        return "MdlReaderResponseData(state={}, verified_response={}, issuer_authentication={}, device_authentication={}, errors={})".format(
-            self.state,
-            self.verified_response,
-            self.issuer_authentication,
-            self.device_authentication,
-            self.errors,
-        )
+        return f"MdlReaderResponseData(state={self.state}, verified_response={self.verified_response}, issuer_authentication={self.issuer_authentication}, device_authentication={self.device_authentication}, errors={self.errors})"
 
     def __eq__(self, other):
         if self.state != other.state:
@@ -2459,41 +2313,33 @@ class _UniffiConverterTypeMdlReaderResponseData(_UniffiConverterRustBuffer):
     @staticmethod
     def check_lower(value):
         _UniffiConverterTypeMdlSessionManager.check_lower(value.state)
-        _UniffiConverterMapStringMapStringTypeMDocItem.check_lower(
-            value.verified_response
-        )
-        _UniffiConverterTypeAuthenticationStatus.check_lower(
-            value.issuer_authentication
-        )
-        _UniffiConverterTypeAuthenticationStatus.check_lower(
-            value.device_authentication
-        )
+        _UniffiConverterMapStringMapStringTypeMDocItem.check_lower(value.verified_response)
+        _UniffiConverterTypeAuthenticationStatus.check_lower(value.issuer_authentication)
+        _UniffiConverterTypeAuthenticationStatus.check_lower(value.device_authentication)
         _UniffiConverterOptionalString.check_lower(value.errors)
 
     @staticmethod
     def write(value, buf):
         _UniffiConverterTypeMdlSessionManager.write(value.state, buf)
-        _UniffiConverterMapStringMapStringTypeMDocItem.write(
-            value.verified_response, buf
-        )
+        _UniffiConverterMapStringMapStringTypeMDocItem.write(value.verified_response, buf)
         _UniffiConverterTypeAuthenticationStatus.write(value.issuer_authentication, buf)
         _UniffiConverterTypeAuthenticationStatus.write(value.device_authentication, buf)
         _UniffiConverterOptionalString.write(value.errors, buf)
 
 
 class MdlReaderSessionData:
-    state: "MdlSessionManager"
-    uuid: "Uuid"
-    request: "bytes"
-    ble_ident: "bytes"
+    state: MdlSessionManager
+    uuid: Uuid
+    request: bytes
+    ble_ident: bytes
 
     def __init__(
         self,
         *,
-        state: "MdlSessionManager",
-        uuid: "Uuid",
-        request: "bytes",
-        ble_ident: "bytes",
+        state: MdlSessionManager,
+        uuid: Uuid,
+        request: bytes,
+        ble_ident: bytes,
     ):
         self.state = state
         self.uuid = uuid
@@ -2501,11 +2347,7 @@ class MdlReaderSessionData:
         self.ble_ident = ble_ident
 
     def __str__(self):
-        return (
-            "MdlReaderSessionData(state={}, uuid={}, request={}, ble_ident={})".format(
-                self.state, self.uuid, self.request, self.ble_ident
-            )
-        )
+        return f"MdlReaderSessionData(state={self.state}, uuid={self.uuid}, request={self.request}, ble_ident={self.ble_ident})"
 
     def __eq__(self, other):
         if self.state != other.state:
@@ -2603,14 +2445,14 @@ class KeyTransformationError:  # type: ignore
             super().__init__(
                 ", ".join(
                     [
-                        "value={!r}".format(value),
+                        f"value={value!r}",
                     ]
                 )
             )
             self.value = value
 
         def __repr__(self):
-            return "KeyTransformationError.ToPkcs8({})".format(str(self))
+            return f"KeyTransformationError.ToPkcs8({str(self)})"
 
     _UniffiTempKeyTransformationError.ToPkcs8 = ToPkcs8  # type: ignore
 
@@ -2619,14 +2461,14 @@ class KeyTransformationError:  # type: ignore
             super().__init__(
                 ", ".join(
                     [
-                        "value={!r}".format(value),
+                        f"value={value!r}",
                     ]
                 )
             )
             self.value = value
 
         def __repr__(self):
-            return "KeyTransformationError.FromPkcs8({})".format(str(self))
+            return f"KeyTransformationError.FromPkcs8({str(self)})"
 
     _UniffiTempKeyTransformationError.FromPkcs8 = FromPkcs8  # type: ignore
 
@@ -2635,14 +2477,14 @@ class KeyTransformationError:  # type: ignore
             super().__init__(
                 ", ".join(
                     [
-                        "value={!r}".format(value),
+                        f"value={value!r}",
                     ]
                 )
             )
             self.value = value
 
         def __repr__(self):
-            return "KeyTransformationError.FromSec1({})".format(str(self))
+            return f"KeyTransformationError.FromSec1({str(self)})"
 
     _UniffiTempKeyTransformationError.FromSec1 = FromSec1  # type: ignore
 
@@ -2651,14 +2493,14 @@ class KeyTransformationError:  # type: ignore
             super().__init__(
                 ", ".join(
                     [
-                        "value={!r}".format(value),
+                        f"value={value!r}",
                     ]
                 )
             )
             self.value = value
 
         def __repr__(self):
-            return "KeyTransformationError.ToSec1({})".format(str(self))
+            return f"KeyTransformationError.ToSec1({str(self)})"
 
     _UniffiTempKeyTransformationError.ToSec1 = ToSec1  # type: ignore
 
@@ -2976,7 +2818,7 @@ class MdlReaderResponseError:  # type: ignore
             pass
 
         def __repr__(self):
-            return "MdlReaderResponseError.InvalidDecryption({})".format(str(self))
+            return f"MdlReaderResponseError.InvalidDecryption({str(self)})"
 
     _UniffiTempMdlReaderResponseError.InvalidDecryption = InvalidDecryption  # type: ignore
 
@@ -2985,7 +2827,7 @@ class MdlReaderResponseError:  # type: ignore
             pass
 
         def __repr__(self):
-            return "MdlReaderResponseError.InvalidParsing({})".format(str(self))
+            return f"MdlReaderResponseError.InvalidParsing({str(self)})"
 
     _UniffiTempMdlReaderResponseError.InvalidParsing = InvalidParsing  # type: ignore
 
@@ -2994,9 +2836,7 @@ class MdlReaderResponseError:  # type: ignore
             pass
 
         def __repr__(self):
-            return "MdlReaderResponseError.InvalidIssuerAuthentication({})".format(
-                str(self)
-            )
+            return f"MdlReaderResponseError.InvalidIssuerAuthentication({str(self)})"
 
     _UniffiTempMdlReaderResponseError.InvalidIssuerAuthentication = InvalidIssuerAuthentication  # type: ignore
 
@@ -3005,9 +2845,7 @@ class MdlReaderResponseError:  # type: ignore
             pass
 
         def __repr__(self):
-            return "MdlReaderResponseError.InvalidDeviceAuthentication({})".format(
-                str(self)
-            )
+            return f"MdlReaderResponseError.InvalidDeviceAuthentication({str(self)})"
 
     _UniffiTempMdlReaderResponseError.InvalidDeviceAuthentication = InvalidDeviceAuthentication  # type: ignore
 
@@ -3016,14 +2854,14 @@ class MdlReaderResponseError:  # type: ignore
             super().__init__(
                 ", ".join(
                     [
-                        "value={!r}".format(value),
+                        f"value={value!r}",
                     ]
                 )
             )
             self.value = value
 
         def __repr__(self):
-            return "MdlReaderResponseError.Generic({})".format(str(self))
+            return f"MdlReaderResponseError.Generic({str(self)})"
 
     _UniffiTempMdlReaderResponseError.Generic = Generic  # type: ignore
 
@@ -3098,14 +2936,14 @@ class MdlReaderResponseSerializeError:  # type: ignore
             super().__init__(
                 ", ".join(
                     [
-                        "value={!r}".format(value),
+                        f"value={value!r}",
                     ]
                 )
             )
             self.value = value
 
         def __repr__(self):
-            return "MdlReaderResponseSerializeError.Generic({})".format(str(self))
+            return f"MdlReaderResponseSerializeError.Generic({str(self)})"
 
     _UniffiTempMdlReaderResponseSerializeError.Generic = Generic  # type: ignore
 
@@ -3156,14 +2994,14 @@ class MdlReaderSessionError:  # type: ignore
             super().__init__(
                 ", ".join(
                     [
-                        "value={!r}".format(value),
+                        f"value={value!r}",
                     ]
                 )
             )
             self.value = value
 
         def __repr__(self):
-            return "MdlReaderSessionError.Generic({})".format(str(self))
+            return f"MdlReaderSessionError.Generic({str(self)})"
 
     _UniffiTempMdlReaderSessionError.Generic = Generic  # type: ignore
 
@@ -3224,7 +3062,7 @@ class MdlUtilError:  # type: ignore
             return self._values[index]
 
         def __repr__(self):
-            return "MdlUtilError.General({})".format(str(self))
+            return f"MdlUtilError.General({str(self)})"
 
     _UniffiTempMdlUtilError.General = General  # type: ignore
 
@@ -3275,7 +3113,7 @@ class MdocEncodingError:  # type: ignore
             pass
 
         def __repr__(self):
-            return "MdocEncodingError.DocumentCborEncoding({})".format(str(self))
+            return f"MdocEncodingError.DocumentCborEncoding({str(self)})"
 
     _UniffiTempMdocEncodingError.DocumentCborEncoding = DocumentCborEncoding  # type: ignore
 
@@ -3284,7 +3122,7 @@ class MdocEncodingError:  # type: ignore
             pass
 
         def __repr__(self):
-            return "MdocEncodingError.SerializationError({})".format(str(self))
+            return f"MdocEncodingError.SerializationError({str(self)})"
 
     _UniffiTempMdocEncodingError.SerializationError = SerializationError  # type: ignore
 
@@ -3347,7 +3185,7 @@ class MdocInitError:  # type: ignore
             return self._values[index]
 
         def __repr__(self):
-            return "MdocInitError.DocumentCborDecoding({})".format(str(self))
+            return f"MdocInitError.DocumentCborDecoding({str(self)})"
 
     _UniffiTempMdocInitError.DocumentCborDecoding = DocumentCborDecoding  # type: ignore
 
@@ -3356,7 +3194,7 @@ class MdocInitError:  # type: ignore
             pass
 
         def __repr__(self):
-            return "MdocInitError.IssuerSignedBase64UrlDecoding({})".format(str(self))
+            return f"MdocInitError.IssuerSignedBase64UrlDecoding({str(self)})"
 
     _UniffiTempMdocInitError.IssuerSignedBase64UrlDecoding = IssuerSignedBase64UrlDecoding  # type: ignore
 
@@ -3365,7 +3203,7 @@ class MdocInitError:  # type: ignore
             pass
 
         def __repr__(self):
-            return "MdocInitError.IssuerSignedCborDecoding({})".format(str(self))
+            return f"MdocInitError.IssuerSignedCborDecoding({str(self)})"
 
     _UniffiTempMdocInitError.IssuerSignedCborDecoding = IssuerSignedCborDecoding  # type: ignore
 
@@ -3374,7 +3212,7 @@ class MdocInitError:  # type: ignore
             pass
 
         def __repr__(self):
-            return "MdocInitError.IssuerAuthPayloadMissing({})".format(str(self))
+            return f"MdocInitError.IssuerAuthPayloadMissing({str(self)})"
 
     _UniffiTempMdocInitError.IssuerAuthPayloadMissing = IssuerAuthPayloadMissing  # type: ignore
 
@@ -3383,7 +3221,7 @@ class MdocInitError:  # type: ignore
             pass
 
         def __repr__(self):
-            return "MdocInitError.IssuerAuthPayloadDecoding({})".format(str(self))
+            return f"MdocInitError.IssuerAuthPayloadDecoding({str(self)})"
 
     _UniffiTempMdocInitError.IssuerAuthPayloadDecoding = IssuerAuthPayloadDecoding  # type: ignore
 
@@ -3392,7 +3230,7 @@ class MdocInitError:  # type: ignore
             pass
 
         def __repr__(self):
-            return "MdocInitError.KeyAliasMissing({})".format(str(self))
+            return f"MdocInitError.KeyAliasMissing({str(self)})"
 
     _UniffiTempMdocInitError.KeyAliasMissing = KeyAliasMissing  # type: ignore
 
@@ -3401,7 +3239,7 @@ class MdocInitError:  # type: ignore
             pass
 
         def __repr__(self):
-            return "MdocInitError.NamespacesMissing({})".format(str(self))
+            return f"MdocInitError.NamespacesMissing({str(self)})"
 
     _UniffiTempMdocInitError.NamespacesMissing = NamespacesMissing  # type: ignore
 
@@ -3410,7 +3248,7 @@ class MdocInitError:  # type: ignore
             pass
 
         def __repr__(self):
-            return "MdocInitError.DocumentUtf8Decoding({})".format(str(self))
+            return f"MdocInitError.DocumentUtf8Decoding({str(self)})"
 
     _UniffiTempMdocInitError.DocumentUtf8Decoding = DocumentUtf8Decoding  # type: ignore
 
@@ -3419,7 +3257,7 @@ class MdocInitError:  # type: ignore
             pass
 
         def __repr__(self):
-            return "MdocInitError.InvalidJwk({})".format(str(self))
+            return f"MdocInitError.InvalidJwk({str(self)})"
 
     _UniffiTempMdocInitError.InvalidJwk = InvalidJwk  # type: ignore
 
@@ -3428,7 +3266,7 @@ class MdocInitError:  # type: ignore
             pass
 
         def __repr__(self):
-            return "MdocInitError.GeneralConstructionError({})".format(str(self))
+            return f"MdocInitError.GeneralConstructionError({str(self)})"
 
     _UniffiTempMdocInitError.GeneralConstructionError = GeneralConstructionError  # type: ignore
 
@@ -3533,14 +3371,14 @@ class RequestError:  # type: ignore
             super().__init__(
                 ", ".join(
                     [
-                        "value={!r}".format(value),
+                        f"value={value!r}",
                     ]
                 )
             )
             self.value = value
 
         def __repr__(self):
-            return "RequestError.Generic({})".format(str(self))
+            return f"RequestError.Generic({str(self)})"
 
     _UniffiTempRequestError.Generic = Generic  # type: ignore
 
@@ -3591,7 +3429,7 @@ class ResponseError:  # type: ignore
             pass
 
         def __repr__(self):
-            return "ResponseError.MissingSignature({})".format(str(self))
+            return f"ResponseError.MissingSignature({str(self)})"
 
     _UniffiTempResponseError.MissingSignature = MissingSignature  # type: ignore
 
@@ -3600,14 +3438,14 @@ class ResponseError:  # type: ignore
             super().__init__(
                 ", ".join(
                     [
-                        "value={!r}".format(value),
+                        f"value={value!r}",
                     ]
                 )
             )
             self.value = value
 
         def __repr__(self):
-            return "ResponseError.Generic({})".format(str(self))
+            return f"ResponseError.Generic({str(self)})"
 
     _UniffiTempResponseError.Generic = Generic  # type: ignore
 
@@ -3664,14 +3502,14 @@ class SessionError:  # type: ignore
             super().__init__(
                 ", ".join(
                     [
-                        "value={!r}".format(value),
+                        f"value={value!r}",
                     ]
                 )
             )
             self.value = value
 
         def __repr__(self):
-            return "SessionError.Generic({})".format(str(self))
+            return f"SessionError.Generic({str(self)})"
 
     _UniffiTempSessionError.Generic = Generic  # type: ignore
 
@@ -3722,14 +3560,14 @@ class SignatureError:  # type: ignore
             super().__init__(
                 ", ".join(
                     [
-                        "value={!r}".format(value),
+                        f"value={value!r}",
                     ]
                 )
             )
             self.value = value
 
         def __repr__(self):
-            return "SignatureError.InvalidSignature({})".format(str(self))
+            return f"SignatureError.InvalidSignature({str(self)})"
 
     _UniffiTempSignatureError.InvalidSignature = InvalidSignature  # type: ignore
 
@@ -3738,7 +3576,7 @@ class SignatureError:  # type: ignore
             pass
 
         def __repr__(self):
-            return "SignatureError.TooManyDocuments({})".format(str(self))
+            return f"SignatureError.TooManyDocuments({str(self)})"
 
     _UniffiTempSignatureError.TooManyDocuments = TooManyDocuments  # type: ignore
 
@@ -3747,14 +3585,14 @@ class SignatureError:  # type: ignore
             super().__init__(
                 ", ".join(
                     [
-                        "value={!r}".format(value),
+                        f"value={value!r}",
                     ]
                 )
             )
             self.value = value
 
         def __repr__(self):
-            return "SignatureError.Generic({})".format(str(self))
+            return f"SignatureError.Generic({str(self)})"
 
     _UniffiTempSignatureError.Generic = Generic  # type: ignore
 
@@ -3821,14 +3659,14 @@ class TerminationError:  # type: ignore
             super().__init__(
                 ", ".join(
                     [
-                        "value={!r}".format(value),
+                        f"value={value!r}",
                     ]
                 )
             )
             self.value = value
 
         def __repr__(self):
-            return "TerminationError.Generic({})".format(str(self))
+            return f"TerminationError.Generic({str(self)})"
 
     _UniffiTempTerminationError.Generic = Generic  # type: ignore
 
@@ -4003,14 +3841,14 @@ class _UniffiConverterSequenceTypeMDocItem(_UniffiConverterRustBuffer):
 class _UniffiConverterMapStringBool(_UniffiConverterRustBuffer):
     @classmethod
     def check_lower(cls, items):
-        for (key, value) in items.items():
+        for key, value in items.items():
             _UniffiConverterString.check_lower(key)
             _UniffiConverterBool.check_lower(value)
 
     @classmethod
     def write(cls, items, buf):
         buf.write_i32(len(items))
-        for (key, value) in items.items():
+        for key, value in items.items():
             _UniffiConverterString.write(key, buf)
             _UniffiConverterBool.write(value, buf)
 
@@ -4035,14 +3873,14 @@ class _UniffiConverterMapStringBool(_UniffiConverterRustBuffer):
 class _UniffiConverterMapStringBytes(_UniffiConverterRustBuffer):
     @classmethod
     def check_lower(cls, items):
-        for (key, value) in items.items():
+        for key, value in items.items():
             _UniffiConverterString.check_lower(key)
             _UniffiConverterBytes.check_lower(value)
 
     @classmethod
     def write(cls, items, buf):
         buf.write_i32(len(items))
-        for (key, value) in items.items():
+        for key, value in items.items():
             _UniffiConverterString.write(key, buf)
             _UniffiConverterBytes.write(value, buf)
 
@@ -4067,14 +3905,14 @@ class _UniffiConverterMapStringBytes(_UniffiConverterRustBuffer):
 class _UniffiConverterMapStringTypeMDocItem(_UniffiConverterRustBuffer):
     @classmethod
     def check_lower(cls, items):
-        for (key, value) in items.items():
+        for key, value in items.items():
             _UniffiConverterString.check_lower(key)
             _UniffiConverterTypeMDocItem.check_lower(value)
 
     @classmethod
     def write(cls, items, buf):
         buf.write_i32(len(items))
-        for (key, value) in items.items():
+        for key, value in items.items():
             _UniffiConverterString.write(key, buf)
             _UniffiConverterTypeMDocItem.write(value, buf)
 
@@ -4099,14 +3937,14 @@ class _UniffiConverterMapStringTypeMDocItem(_UniffiConverterRustBuffer):
 class _UniffiConverterMapStringSequenceString(_UniffiConverterRustBuffer):
     @classmethod
     def check_lower(cls, items):
-        for (key, value) in items.items():
+        for key, value in items.items():
             _UniffiConverterString.check_lower(key)
             _UniffiConverterSequenceString.check_lower(value)
 
     @classmethod
     def write(cls, items, buf):
         buf.write_i32(len(items))
-        for (key, value) in items.items():
+        for key, value in items.items():
             _UniffiConverterString.write(key, buf)
             _UniffiConverterSequenceString.write(value, buf)
 
@@ -4131,14 +3969,14 @@ class _UniffiConverterMapStringSequenceString(_UniffiConverterRustBuffer):
 class _UniffiConverterMapStringMapStringBool(_UniffiConverterRustBuffer):
     @classmethod
     def check_lower(cls, items):
-        for (key, value) in items.items():
+        for key, value in items.items():
             _UniffiConverterString.check_lower(key)
             _UniffiConverterMapStringBool.check_lower(value)
 
     @classmethod
     def write(cls, items, buf):
         buf.write_i32(len(items))
-        for (key, value) in items.items():
+        for key, value in items.items():
             _UniffiConverterString.write(key, buf)
             _UniffiConverterMapStringBool.write(value, buf)
 
@@ -4163,14 +4001,14 @@ class _UniffiConverterMapStringMapStringBool(_UniffiConverterRustBuffer):
 class _UniffiConverterMapStringMapStringBytes(_UniffiConverterRustBuffer):
     @classmethod
     def check_lower(cls, items):
-        for (key, value) in items.items():
+        for key, value in items.items():
             _UniffiConverterString.check_lower(key)
             _UniffiConverterMapStringBytes.check_lower(value)
 
     @classmethod
     def write(cls, items, buf):
         buf.write_i32(len(items))
-        for (key, value) in items.items():
+        for key, value in items.items():
             _UniffiConverterString.write(key, buf)
             _UniffiConverterMapStringBytes.write(value, buf)
 
@@ -4195,14 +4033,14 @@ class _UniffiConverterMapStringMapStringBytes(_UniffiConverterRustBuffer):
 class _UniffiConverterMapStringMapStringTypeMDocItem(_UniffiConverterRustBuffer):
     @classmethod
     def check_lower(cls, items):
-        for (key, value) in items.items():
+        for key, value in items.items():
             _UniffiConverterString.check_lower(key)
             _UniffiConverterMapStringTypeMDocItem.check_lower(value)
 
     @classmethod
     def write(cls, items, buf):
         buf.write_i32(len(items))
-        for (key, value) in items.items():
+        for key, value in items.items():
             _UniffiConverterString.write(key, buf)
             _UniffiConverterMapStringTypeMDocItem.write(value, buf)
 
@@ -4227,14 +4065,14 @@ class _UniffiConverterMapStringMapStringTypeMDocItem(_UniffiConverterRustBuffer)
 class _UniffiConverterMapStringMapStringSequenceString(_UniffiConverterRustBuffer):
     @classmethod
     def check_lower(cls, items):
-        for (key, value) in items.items():
+        for key, value in items.items():
             _UniffiConverterString.check_lower(key)
             _UniffiConverterMapStringSequenceString.check_lower(value)
 
     @classmethod
     def write(cls, items, buf):
         buf.write_i32(len(items))
-        for (key, value) in items.items():
+        for key, value in items.items():
             _UniffiConverterString.write(key, buf)
             _UniffiConverterMapStringSequenceString.write(value, buf)
 
@@ -4259,14 +4097,14 @@ class _UniffiConverterMapStringMapStringSequenceString(_UniffiConverterRustBuffe
 class _UniffiConverterMapTypeNamespaceSequenceTypeElement(_UniffiConverterRustBuffer):
     @classmethod
     def check_lower(cls, items):
-        for (key, value) in items.items():
+        for key, value in items.items():
             _UniffiConverterTypeNamespace.check_lower(key)
             _UniffiConverterSequenceTypeElement.check_lower(value)
 
     @classmethod
     def write(cls, items, buf):
         buf.write_i32(len(items))
-        for (key, value) in items.items():
+        for key, value in items.items():
             _UniffiConverterTypeNamespace.write(key, buf)
             _UniffiConverterSequenceTypeElement.write(value, buf)
 
@@ -4362,10 +4200,10 @@ Uuid = str
 
 
 def establish_session(
-    uri: "str",
-    requested_items: "dict[str, dict[str, bool]]",
-    trust_anchor_registry: "typing.Optional[typing.List[str]]",
-) -> "MdlReaderSessionData":
+    uri: str,
+    requested_items: dict[str, dict[str, bool]],
+    trust_anchor_registry: typing.Optional[typing.List[str]],
+) -> MdlReaderSessionData:
     _UniffiConverterString.check_lower(uri)
 
     _UniffiConverterMapStringMapStringBool.check_lower(requested_items)
@@ -4383,7 +4221,7 @@ def establish_session(
     )
 
 
-def generate_test_mdl(key_pair: "P256KeyPair") -> "Mdoc":
+def generate_test_mdl(key_pair: P256KeyPair) -> Mdoc:
     """
     Generate a new test mDL with hardcoded values, using the supplied key as the DeviceKey.
     """
@@ -4399,9 +4237,7 @@ def generate_test_mdl(key_pair: "P256KeyPair") -> "Mdoc":
     )
 
 
-def handle_response(
-    state: "MdlSessionManager", response: "bytes"
-) -> "MdlReaderResponseData":
+def handle_response(state: MdlSessionManager, response: bytes) -> MdlReaderResponseData:
     _UniffiConverterTypeMdlSessionManager.check_lower(state)
 
     _UniffiConverterBytes.check_lower(response)
@@ -4416,7 +4252,7 @@ def handle_response(
     )
 
 
-def iso1801351_aamva_from_json(json: "str") -> "dict[str, bytes]":
+def iso1801351_aamva_from_json(json: str) -> dict[str, bytes]:
     _UniffiConverterString.check_lower(json)
 
     return _UniffiConverterMapStringBytes.lift(
@@ -4428,7 +4264,7 @@ def iso1801351_aamva_from_json(json: "str") -> "dict[str, bytes]":
     )
 
 
-def iso1801351_from_json(json: "str") -> "dict[str, bytes]":
+def iso1801351_from_json(json: str) -> dict[str, bytes]:
     _UniffiConverterString.check_lower(json)
 
     return _UniffiConverterMapStringBytes.lift(
@@ -4440,7 +4276,7 @@ def iso1801351_from_json(json: "str") -> "dict[str, bytes]":
     )
 
 
-def verified_response_as_json_string(response: "MdlReaderResponseData") -> "str":
+def verified_response_as_json_string(response: MdlReaderResponseData) -> str:
     _UniffiConverterTypeMdlReaderResponseData.check_lower(response)
 
     return _UniffiConverterString.lift(

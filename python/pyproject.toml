@@ -33,3 +33,25 @@ requires-python = ">=3.8"
 Homepage = "https://github.com/Indicio-tech/isomdl-uniffi"
 Repository = "https://github.com/Indicio-tech/isomdl-uniffi"
 "Bug Tracker" = "https://github.com/Indicio-tech/isomdl-uniffi/issues"
+
+[tool.ruff]
+# Enable the following rules
+line-length = 100
+target-version = "py38"
+
+[tool.ruff.lint]
+# Enable pycodestyle (`E`) and Pyflakes (`F`) codes by default
+# Add isort (`I`) for import sorting, and other useful rules
+select = ["E", "F", "I", "W", "B", "C4", "UP", "SIM"]
+ignore = [
+    "E203",  # whitespace before ':' (conflicts with Black/ruff format)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["isomdl_uniffi"]
+
+[tool.ruff.format]
+# Use double quotes for strings
+quote-style = "double"
+# Use 4 spaces for indentation
+indent-style = "space"

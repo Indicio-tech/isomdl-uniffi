@@ -3,8 +3,8 @@
 Presentation session tests for isomdl-uniffi Python bindings.
 """
 
-import sys
 import os
+import sys
 import uuid
 
 
@@ -64,18 +64,16 @@ def run_tests(mdl):
 
         # VALIDATE requested data structure
         assert isinstance(requested_data, list), "Requested data should be a list"
-        assert (
-            len(requested_data) == 1
-        ), f"Should have exactly 1 document, got {len(requested_data)}"
+        assert len(requested_data) == 1, (
+            f"Should have exactly 1 document, got {len(requested_data)}"
+        )
 
         doc_request = requested_data[0]
         assert hasattr(doc_request, "doc_type"), "Document request should have doc_type"
-        assert hasattr(
-            doc_request, "namespaces"
-        ), "Document request should have namespaces"
-        assert (
-            doc_request.doc_type == "org.iso.18013.5.1.mDL"
-        ), f"Wrong doc type: {doc_request.doc_type}"
+        assert hasattr(doc_request, "namespaces"), "Document request should have namespaces"
+        assert doc_request.doc_type == "org.iso.18013.5.1.mDL", (
+            f"Wrong doc type: {doc_request.doc_type}"
+        )
 
         # Validate namespace structure
         assert "org.iso.18013.5.1" in doc_request.namespaces, "Missing ISO namespace"
@@ -84,9 +82,7 @@ def run_tests(mdl):
         # Validate requested attributes match what we requested
         expected_attrs = {"family_name", "given_name"}
         actual_attrs = set(iso_namespace.keys())
-        assert (
-            actual_attrs == expected_attrs
-        ), f"Expected {expected_attrs}, got {actual_attrs}"
+        assert actual_attrs == expected_attrs, f"Expected {expected_attrs}, got {actual_attrs}"
 
         # Validate all attributes are marked as required
         for attr in expected_attrs:
@@ -96,9 +92,7 @@ def run_tests(mdl):
 
         # Now generate response with permitted items
         permitted_items = {
-            "org.iso.18013.5.1.mDL": {
-                "org.iso.18013.5.1": ["family_name", "given_name"]
-            }
+            "org.iso.18013.5.1.mDL": {"org.iso.18013.5.1": ["family_name", "given_name"]}
         }
 
         unsigned_response = presentation_session.generate_response(permitted_items)
@@ -106,13 +100,9 @@ def run_tests(mdl):
         # VALIDATE response generation
         assert isinstance(unsigned_response, bytes), "Response should be bytes"
         assert len(unsigned_response) > 0, "Response should not be empty"
-        assert (
-            len(unsigned_response) > 10
-        ), f"Response too short: {len(unsigned_response)}"
+        assert len(unsigned_response) > 10, f"Response too short: {len(unsigned_response)}"
 
-        print(
-            f"   ✅ Unsigned response validated, length: {len(unsigned_response)} bytes"
-        )
+        print(f"   ✅ Unsigned response validated, length: {len(unsigned_response)} bytes")
 
         print("\n3. Testing complete presentation workflow:")
 
@@ -122,9 +112,7 @@ def run_tests(mdl):
         # VALIDATE signing
         assert isinstance(signed_response, bytes), "Signed response should be bytes"
         assert len(signed_response) > 0, "Signed response should not be empty"
-        assert (
-            signed_response != unsigned_response
-        ), "Signed response should differ from unsigned"
+        assert signed_response != unsigned_response, "Signed response should differ from unsigned"
 
         # Submit the signed response
         final_response = presentation_session.submit_response(signed_response)
@@ -140,33 +128,27 @@ def run_tests(mdl):
 
         # VALIDATE response handling
         assert result is not None, "Response handling result should not be None"
-        assert hasattr(
-            result, "device_authentication"
-        ), "Result should have device_authentication"
-        assert hasattr(
-            result, "verified_response"
-        ), "Result should have verified_response"
+        assert hasattr(result, "device_authentication"), "Result should have device_authentication"
+        assert hasattr(result, "verified_response"), "Result should have verified_response"
 
         # Validate authentication status
         auth_status = result.device_authentication
-        assert (
-            auth_status == mdl.AuthenticationStatus.VALID
-        ), f"Expected VALID auth, got {auth_status}"
+        assert auth_status == mdl.AuthenticationStatus.VALID, (
+            f"Expected VALID auth, got {auth_status}"
+        )
 
         # Validate verified response structure
         verified_response = result.verified_response
         assert isinstance(verified_response, dict), "Verified response should be a dict"
-        assert (
-            "org.iso.18013.5.1" in verified_response
-        ), "Missing namespace in verified response"
+        assert "org.iso.18013.5.1" in verified_response, "Missing namespace in verified response"
 
         # Validate response contains only permitted attributes
         response_attrs = verified_response["org.iso.18013.5.1"]
         expected_response_attrs = {"family_name", "given_name"}
         actual_response_attrs = set(response_attrs.keys())
-        assert (
-            actual_response_attrs == expected_response_attrs
-        ), f"Expected {expected_response_attrs}, got {actual_response_attrs}"
+        assert actual_response_attrs == expected_response_attrs, (
+            f"Expected {expected_response_attrs}, got {actual_response_attrs}"
+        )
 
         # Validate attribute values exist
         for attr in expected_response_attrs:
@@ -175,16 +157,10 @@ def run_tests(mdl):
             # Extract the actual value (it's wrapped in an MDocItem)
             if hasattr(attr_value, "__len__") and len(attr_value) > 0:
                 actual_value = attr_value[0]
-                assert (
-                    actual_value is not None
-                ), f"Attribute {attr} inner value should not be None"
-                assert (
-                    len(str(actual_value)) > 0
-                ), f"Attribute {attr} should not be empty"
+                assert actual_value is not None, f"Attribute {attr} inner value should not be None"
+                assert len(str(actual_value)) > 0, f"Attribute {attr} should not be empty"
 
-        print(
-            f"   ✅ Complete workflow validated - {len(response_attrs)} attributes verified"
-        )
+        print(f"   ✅ Complete workflow validated - {len(response_attrs)} attributes verified")
 
         return True
 
@@ -200,9 +176,7 @@ if __name__ == "__main__":
     # This allows running the test file directly for debugging
     try:
         # Add the project root to the path to import the generated bindings
-        sys.path.insert(
-            0, os.path.join(os.path.dirname(__file__), "..", "rust", "out", "python")
-        )
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "rust", "out", "python"))
         import isomdl_uniffi as mdl_module
 
         success = run_tests(mdl_module)

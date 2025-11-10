@@ -16,8 +16,8 @@ Usage:
     ./test-bindings.py
 """
 
-import sys
 import os
+import sys
 
 if __name__ == "__main__":
     # Add the tests directory to the path

@@ -6,9 +6,9 @@ This module provides utilities to run the test suite after the Python bindings
 have been generated.
 """
 
-import sys
-import os
 import importlib.util
+import os
+import sys
 import traceback
 
 

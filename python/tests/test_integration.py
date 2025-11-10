@@ -3,8 +3,8 @@
 Test integration between existing tests and new MDL functionality.
 """
 
-import sys
 import os
+import sys
 
 
 def run_tests(mdl):
@@ -69,9 +69,7 @@ def test_mdl_basic(mdl):
 
         # Test deserialization
         restored = mdl.Mdoc.from_string(cbor)
-        assert (
-            restored.doctype() == doctype
-        ), "Document type should match after round-trip"
+        assert restored.doctype() == doctype, "Document type should match after round-trip"
         assert restored.id() == mdoc_id, "Document ID should match after round-trip"
         print("✓ Round-trip serialization successful")
 
@@ -86,9 +84,7 @@ if __name__ == "__main__":
     # This allows running the test file directly for debugging
     try:
         # Add the project root to the path to import the generated bindings
-        sys.path.insert(
-            0, os.path.join(os.path.dirname(__file__), "..", "rust", "out", "python")
-        )
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "rust", "out", "python"))
         import isomdl_uniffi as mdl_module
 
         success = run_tests(mdl_module)

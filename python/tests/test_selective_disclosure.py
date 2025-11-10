@@ -4,8 +4,8 @@ Selective disclosure tests for isomdl-uniffi Python bindings.
 Tests that verify only requested attributes are shared and age verification works correctly.
 """
 
-import sys
 import os
+import sys
 import uuid
 
 
@@ -82,9 +82,7 @@ def test_basic_selective_disclosure(mdl):
     requested_attrs = set(iso_namespace.keys())
     expected_attrs = {"given_name", "family_name"}
 
-    assert (
-        requested_attrs == expected_attrs
-    ), f"Expected {expected_attrs}, got {requested_attrs}"
+    assert requested_attrs == expected_attrs, f"Expected {expected_attrs}, got {requested_attrs}"
 
     # Verify attributes are marked as required
     assert iso_namespace["given_name"] is True, "given_name should be required"
@@ -105,17 +103,17 @@ def test_basic_selective_disclosure(mdl):
     result = mdl.handle_response(reader_session.state, response)
 
     # Check that only disclosed attributes are in the response
-    assert (
-        result.device_authentication == mdl.AuthenticationStatus.VALID
-    ), "Device auth should be valid"
+    assert result.device_authentication == mdl.AuthenticationStatus.VALID, (
+        "Device auth should be valid"
+    )
     assert len(result.verified_response) == 1, "Should have one namespace"
 
     iso_response = result.verified_response["org.iso.18013.5.1"]
     disclosed_attrs = set(iso_response.keys())
 
-    assert (
-        disclosed_attrs == expected_attrs
-    ), f"Response should only contain {expected_attrs}, got {disclosed_attrs}"
+    assert disclosed_attrs == expected_attrs, (
+        f"Response should only contain {expected_attrs}, got {disclosed_attrs}"
+    )
 
     print("      ✅ Response contains only disclosed attributes")
     print("      ✅ Basic selective disclosure test passed")
@@ -156,9 +154,7 @@ def test_age_verification_attributes(mdl):
     expected_age_attrs = {"age_over_18", "age_over_21"}
     actual_attrs = set(iso_namespace.keys())
 
-    assert (
-        actual_attrs == expected_age_attrs
-    ), f"Expected {expected_age_attrs}, got {actual_attrs}"
+    assert actual_attrs == expected_age_attrs, f"Expected {expected_age_attrs}, got {actual_attrs}"
 
     # Verify no birth_date is requested
     assert "birth_date" not in actual_attrs, "birth_date should not be requested"
@@ -177,9 +173,9 @@ def test_age_verification_attributes(mdl):
     # Verify age verification response
     result = mdl.handle_response(reader_session.state, response)
 
-    assert (
-        result.device_authentication == mdl.AuthenticationStatus.VALID
-    ), "Device auth should be valid"
+    assert result.device_authentication == mdl.AuthenticationStatus.VALID, (
+        "Device auth should be valid"
+    )
 
     iso_response = result.verified_response["org.iso.18013.5.1"]
 
@@ -193,22 +189,18 @@ def test_age_verification_attributes(mdl):
     age_21_item = iso_response["age_over_21"]
 
     # Age verification should return MDocItem.BOOL values
-    assert (
-        age_18_item.is_bool()
-    ), f"age_over_18 should be boolean MDocItem, got: {type(age_18_item)}"
-    assert (
-        age_21_item.is_bool()
-    ), f"age_over_21 should be boolean MDocItem, got: {type(age_21_item)}"
+    assert age_18_item.is_bool(), (
+        f"age_over_18 should be boolean MDocItem, got: {type(age_18_item)}"
+    )
+    assert age_21_item.is_bool(), (
+        f"age_over_21 should be boolean MDocItem, got: {type(age_21_item)}"
+    )
 
     # Extract actual boolean values
     age_18 = age_18_item[0]
     age_21 = age_21_item[0]
-    assert isinstance(
-        age_18, bool
-    ), f"age_over_18 value should be boolean, got: {type(age_18)}"
-    assert isinstance(
-        age_21, bool
-    ), f"age_over_21 value should be boolean, got: {type(age_21)}"
+    assert isinstance(age_18, bool), f"age_over_18 value should be boolean, got: {type(age_18)}"
+    assert isinstance(age_21, bool), f"age_over_21 value should be boolean, got: {type(age_21)}"
 
     print("      ✅ Age verification works without disclosing birth date")
     print("      ✅ Age verification test passed")
@@ -240,14 +232,10 @@ def test_minimal_disclosure(mdl):
 
     assert len(iso_namespace) == 1, "Should only have one attribute"
     assert "document_number" in iso_namespace, "Should have document_number"
-    assert (
-        iso_namespace["document_number"] is True
-    ), "document_number should be required"
+    assert iso_namespace["document_number"] is True, "document_number should be required"
 
     # Generate minimal response
-    minimal_permitted = {
-        "org.iso.18013.5.1.mDL": {"org.iso.18013.5.1": ["document_number"]}
-    }
+    minimal_permitted = {"org.iso.18013.5.1.mDL": {"org.iso.18013.5.1": ["document_number"]}}
 
     unsigned_response = presentation_session.generate_response(minimal_permitted)
     signed_response = holder_key.sign(unsigned_response)
@@ -256,9 +244,9 @@ def test_minimal_disclosure(mdl):
     # Verify minimal response
     result = mdl.handle_response(reader_session.state, response)
 
-    assert (
-        result.device_authentication == mdl.AuthenticationStatus.VALID
-    ), "Device auth should be valid"
+    assert result.device_authentication == mdl.AuthenticationStatus.VALID, (
+        "Device auth should be valid"
+    )
 
     iso_response = result.verified_response["org.iso.18013.5.1"]
     assert len(iso_response) == 1, "Should only have one attribute in response"
@@ -308,17 +296,13 @@ def test_namespace_filtering(mdl):
     # Verify namespace response
     result = mdl.handle_response(reader_session.state, response)
 
-    assert (
-        result.device_authentication == mdl.AuthenticationStatus.VALID
-    ), "Device auth should be valid"
+    assert result.device_authentication == mdl.AuthenticationStatus.VALID, (
+        "Device auth should be valid"
+    )
 
     # Should only have the requested namespace in response
-    assert (
-        len(result.verified_response) == 1
-    ), "Should only have one namespace in response"
-    assert (
-        "org.iso.18013.5.1" in result.verified_response
-    ), "Should have ISO namespace in response"
+    assert len(result.verified_response) == 1, "Should only have one namespace in response"
+    assert "org.iso.18013.5.1" in result.verified_response, "Should have ISO namespace in response"
 
     print("      ✅ Namespace filtering works correctly")
     print("      ✅ Namespace filtering test passed")
@@ -382,9 +366,7 @@ if __name__ == "__main__":
     # This allows running the test file directly for debugging
     try:
         # Add the project root to the path to import the generated bindings
-        sys.path.insert(
-            0, os.path.join(os.path.dirname(__file__), "..", "rust", "out", "python")
-        )
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "rust", "out", "python"))
         import isomdl_uniffi as mdl_module
 
         success = run_tests(mdl_module)

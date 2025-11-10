@@ -3,8 +3,8 @@
 MDL document operations tests for isomdl-uniffi Python bindings.
 """
 
-import sys
 import os
+import sys
 
 
 def run_tests(mdl):
@@ -69,9 +69,7 @@ def run_tests(mdl):
         # Validate required namespaces exist
         assert "org.iso.18013.5.1" in details, "Missing ISO namespace"
         iso_elements = details["org.iso.18013.5.1"]
-        assert isinstance(
-            iso_elements, list
-        ), "ISO namespace should be a list of elements"
+        assert isinstance(iso_elements, list), "ISO namespace should be a list of elements"
         assert len(iso_elements) > 0, "ISO namespace should not be empty"
 
         # Convert to dict for easier validation
@@ -107,9 +105,7 @@ def run_tests(mdl):
 
         except (ValueError, TypeError, ImportError) as e:
             # If the format is different, let's try to understand it better
-            print(
-                f"   📝 CBOR format analysis: {type(cbor_str)}, length: {len(cbor_str)}"
-            )
+            print(f"   📝 CBOR format analysis: {type(cbor_str)}, length: {len(cbor_str)}")
             print(f"   📝 First 50 chars: {cbor_str[:50]}...")
 
             # This is acceptable - different encoding formats exist
@@ -154,9 +150,7 @@ if __name__ == "__main__":
     # This allows running the test file directly for debugging
     try:
         # Add the project root to the path to import the generated bindings
-        sys.path.insert(
-            0, os.path.join(os.path.dirname(__file__), "..", "rust", "out", "python")
-        )
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "rust", "out", "python"))
         import isomdl_uniffi as mdl_module
 
         success = run_tests(mdl_module)

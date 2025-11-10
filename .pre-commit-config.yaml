@@ -90,7 +90,9 @@ repos:
       - id: ruff
         name: ruff check
         files: ^python/.*\.py$
+        exclude: ^python/isomdl_uniffi/isomdl_uniffi\.py$  # Exclude auto-generated file
         args: [--fix]
       - id: ruff-format
         name: ruff format
         files: ^python/.*\.py$
+        exclude: ^python/isomdl_uniffi/isomdl_uniffi\.py$  # Exclude auto-generated file

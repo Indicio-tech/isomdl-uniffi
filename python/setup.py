@@ -57,13 +57,17 @@ class BuildRustCommand(build_py):
 
 
 if __name__ == "__main__":
+    # Read README for long description
+    with open("../README.md", encoding="utf-8") as f:
+        long_description = f.read()
+
     setup(
         name="isomdl-uniffi",
         version="0.1.0",
         author="Indicio",
         author_email="dev@indicio.tech",
         description="ISO 18013-5 mobile Driver License implementation with Python bindings",
-        long_description=open("../README.md", encoding="utf-8").read(),
+        long_description=long_description,
         long_description_content_type="text/markdown",
         url="https://github.com/Indicio-tech/isomdl-uniffi",
         packages=find_packages(),

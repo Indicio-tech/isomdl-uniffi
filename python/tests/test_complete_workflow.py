@@ -511,9 +511,9 @@ class TestMdocWorkflow:
         for namespace, attrs in result.verified_response.items():
             if namespace in requested_attributes:
                 disclosed_attrs = set(attrs.keys())
-                requested_attrs = set(
+                requested_attrs = {
                     attr for attr, required in requested_attributes[namespace].items() if required
-                )
+                }
                 assert disclosed_attrs == requested_attrs, (
                     f"Disclosed attributes {disclosed_attrs} should match "
                     f"requested {requested_attrs}"

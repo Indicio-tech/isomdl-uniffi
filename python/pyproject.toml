@@ -38,6 +38,10 @@ Repository = "https://github.com/Indicio-tech/isomdl-uniffi"
 # Enable the following rules
 line-length = 100
 target-version = "py38"
+# Exclude auto-generated files from linting
+exclude = [
+    "python/isomdl_uniffi/isomdl_uniffi.py",  # Auto-generated UniFFI bindings
+]
 
 [tool.ruff.lint]
 # Enable pycodestyle (`E`) and Pyflakes (`F`) codes by default
@@ -45,6 +49,20 @@ target-version = "py38"
 select = ["E", "F", "I", "W", "B", "C4", "UP", "SIM"]
 ignore = [
     "E203",  # whitespace before ':' (conflicts with Black/ruff format)
+    "F403",  # star imports in __init__.py are common for public APIs
+    "F405",  # may be undefined from star imports (related to F403)
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Allow star imports in __init__.py files (common pattern)
+"__init__.py" = ["F403", "F405"]
+# For test files, allow some additional patterns
+"python/tests/*.py" = [
+    "B904",  # raise from for test assertions is often unnecessary
+]
+# Also allow for files in tests directory without python/ prefix
+"tests/*.py" = [
+    "B904",  # raise from for test assertions is often unnecessary
 ]
 
 [tool.ruff.lint.isort]

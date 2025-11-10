@@ -114,7 +114,7 @@ def run_tests(mdl):
         iso_namespace = doc_request.namespaces["org.iso.18013.5.1"]
 
         # Verify all requested attributes are present
-        for attr_name in requested_items["org.iso.18013.5.1"].keys():
+        for attr_name in requested_items["org.iso.18013.5.1"]:
             assert attr_name in iso_namespace, f"Missing requested attribute: {attr_name}"
             assert iso_namespace[attr_name] is True, f"Attribute {attr_name} should be required"
 

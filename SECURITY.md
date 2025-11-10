@@ -49,6 +49,7 @@ This library handles sensitive cryptographic operations and personal identity da
 - Rust's memory safety guarantees
 - Foreign Function Interface (FFI) boundaries
 - Python memory management
+- Kotlin/JVM memory management and garbage collection
 
 ### Security Best Practices for Users
 
@@ -84,8 +85,7 @@ We follow responsible disclosure practices:
 
 1. **Acknowledgment:** Security researchers will be credited (unless they prefer anonymity)
 2. **Timeline:** We coordinate with reporters on disclosure timeline
-3. **CVE Assignment:** We work with MITRE for CVE assignment when appropriate
-4. **Advisory:** Security advisories published through GitHub Security Advisory
+3. **Advisory:** Security advisories published through GitHub Security Advisory
 
 ## Contact
 

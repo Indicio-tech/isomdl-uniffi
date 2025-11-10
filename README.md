@@ -347,35 +347,19 @@ Generated Python package has minimal dependencies, as most functionality is prov
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature-name`
-3. Make your changes
-4. Run tests: `cargo test`
-5. Build Python bindings: `./build-python.sh`
-6. Test Python integration
-7. **Sign your commits** with DCO (Developer Certificate of Origin):
-   ```bash
-   git commit -s -m "Your commit message"
-   ```
-   All commits must include a `Signed-off-by` line to comply with DCO requirements.
-   See [.github/DCO.md](.github/DCO.md) for more details.
-8. Submit a pull request
+We welcome contributions to this project! For detailed guidelines on how to contribute, including:
 
-### DCO (Developer Certificate of Origin)
+- Development environment setup
+- Code standards and formatting
+- Testing requirements  
+- Submission process
+- DCO (Developer Certificate of Origin) requirements
 
-This project requires all contributions to be signed with the Developer Certificate of Origin (DCO). 
-This certifies that you have the right to contribute the code and agree to the project's license terms.
-
-- **Required**: All commits must include a `Signed-off-by` line
-- **How to sign**: Use `git commit -s` for new commits
-- **Retroactive signing**: Use `git rebase --signoff` for existing commits
-- **Verification**: Our CI pipeline automatically checks DCO compliance
-
-For complete DCO requirements and procedures, see [.github/DCO.md](.github/DCO.md).
+Please see [CONTRIBUTING.md](CONTRIBUTING.md) for complete contribution guidelines.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+see the [LICENSE](LICENSE) file for details.
 
 ### Third-Party Dependencies
 

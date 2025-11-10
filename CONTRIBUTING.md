@@ -261,8 +261,41 @@ python -m pytest -v                       # Verbose output
 cd kotlin
 ./gradlew test                            # Run all tests
 ./gradlew testDebugUnitTest              # Run debug unit tests
+./gradlew testReleaseUnitTest            # Run release unit tests
 ./gradlew connectedAndroidTest           # Run Android instrumented tests
 ./gradlew build                          # Build and run all tests
+./gradlew check                          # Run tests and static analysis
+```
+
+#### Platform-specific Testing
+
+```bash
+# Test specific platforms
+./gradlew jvmTest                        # Run JVM-specific tests
+./gradlew macosX64Test                   # Run macOS x64 tests
+./gradlew macosArm64Test                 # Run macOS ARM64 tests
+./gradlew iosX64Test                     # Run iOS simulator tests
+./gradlew iosSimulatorArm64Test          # Run iOS ARM64 simulator tests
+./gradlew iosArm64Test                   # Run iOS device tests
+
+# Test with specific configurations
+./gradlew testDebug                      # Run debug configuration tests
+./gradlew testRelease                    # Run release configuration tests
+```
+
+#### Android Testing Requirements
+
+For Android instrumented tests:
+- Android device or emulator must be connected
+- USB debugging enabled on device
+- Minimum API level 24 supported
+
+```bash
+# Check connected devices
+adb devices
+
+# Install and run tests on connected device
+./gradlew connectedAndroidTest --info
 ```
 
 ### Integration Tests

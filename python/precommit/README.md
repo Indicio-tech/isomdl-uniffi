@@ -41,8 +41,9 @@ The pre-commit hooks will automatically run on each commit and check:
   - Automatically builds bindings first if they don't exist
 
 ### Python Code Quality (for test files)
-- **Black**: Auto-formats Python test files
-- **Flake8**: Checks Python code style and potential errors
+- **Ruff**: Formats Python test files and checks code style
+  - Combines formatting and linting in a single fast tool
+  - Replaces both Black and Flake8 functionality
 
 ### General Checks
 - Removes trailing whitespace

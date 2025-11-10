@@ -80,7 +80,7 @@ This project includes comprehensive GitHub Actions workflows:
 - Validates Rust formatting, compilation, and tests
 - Builds Python bindings and runs test suite
 - Verifies selective disclosure functionality
-- Checks Python code quality (black, flake8)
+- Checks Python code quality (ruff)
 
 #### **Full CI Pipeline** (`.github/workflows/ci.yml`)
 - Comprehensive testing across multiple platforms and Python versions

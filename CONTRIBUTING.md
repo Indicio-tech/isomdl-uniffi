@@ -204,15 +204,14 @@ pub fn new(mdoc: Mdoc, session_id: Uuid) -> Self {
 ### Python Code
 
 - Follow [PEP 8](https://pep8.org/) style guide
-- Use `black` for code formatting
-- Use `flake8` for linting
+- Use `ruff` for code formatting and linting
 - Add type hints where appropriate
 - Write docstrings for public functions
 
 ```python
 def create_presentation_session(
     mdoc: Mdoc, 
-    session_id: str
+    session_id: str,
 ) -> MdlPresentationSession:
     """Create a new mDL presentation session.
     

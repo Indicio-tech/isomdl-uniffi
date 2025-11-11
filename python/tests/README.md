@@ -23,27 +23,44 @@ Before running tests, you must build the Python bindings:
 
 ```bash
 # From repository root
-./build-python-bindings.sh
+./python/precommit/build-bindings.sh
 ```
 
-### Run All Tests
+### Run All Tests (Recommended)
 
-From the repository root:
-
+**Using pytest (recommended):**
 ```bash
-# Using the simple test runner
-../test-bindings.py
+# From python directory
+uv run pytest tests/ -v
 
-# Or using the test runner directly
-python3 run_tests.py
+# Or with coverage
+uv run pytest tests/ --cov=isomdl_uniffi --cov-report=html
+```
+
+**Using the test runner:**
+```bash
+# From python/tests directory - automatically uses pytest if available
+python run_tests.py
 ```
 
 ### Run Individual Test Modules
 
-You can also run individual test files directly for debugging:
-
+**With pytest:**
 ```bash
-# Run a specific test module
+# Run specific test files
+uv run pytest tests/test_basic_functionality.py -v
+uv run pytest tests/test_mdoc_operations.py -v
+
+# Run specific test classes
+uv run pytest tests/test_basic_functionality.py::TestKeyPairOperations -v
+
+# Run specific test methods
+uv run pytest tests/test_basic_functionality.py::TestKeyPairOperations::test_key_pair_creation -v
+```
+
+**Direct execution (for debugging):**
+```bash
+# Run a specific test module directly (legacy mode)
 python3 test_basic_functionality.py
 python3 test_mdoc_operations.py
 python3 test_presentation_session.py

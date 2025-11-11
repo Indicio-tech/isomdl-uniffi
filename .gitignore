@@ -46,3 +46,8 @@ Thumbs.db
 
 # Test environments
 test_env/
+
+# Test artifacts
+python/tests/cross_language_artifacts/
+python/.coverage
+htmlcov/

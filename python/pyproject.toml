@@ -30,6 +30,8 @@ dev = [
     "setuptools>=45",
     "wheel",
     "build",
+    "pytest>=7.0.0",
+    "pytest-cov",
 ]
 
 [project.urls]
@@ -76,3 +78,21 @@ known-first-party = ["isomdl_uniffi"]
 quote-style = "double"
 # Use 4 spaces for indentation
 indent-style = "space"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--tb=short",
+    "--strict-markers",
+    "--disable-warnings"
+]
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+    "workflow: End-to-end workflow tests",
+    "slow: Tests that take longer to run"
+]

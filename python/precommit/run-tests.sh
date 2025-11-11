@@ -22,8 +22,12 @@ if [ ! -d "rust/out/python" ]; then
 fi
 
 # Run the test suite
-# Try to find Python - prefer python3, fallback to python
-if command -v python3 >/dev/null 2>&1; then
+# Use UV if available, otherwise fallback to python
+if command -v uv >/dev/null 2>&1; then
+    cd python
+    uv run pytest tests/ -q --tb=short
+    cd ..
+elif command -v python3 >/dev/null 2>&1; then
     python3 python/tests/run_tests.py
 elif command -v python >/dev/null 2>&1; then
     python python/tests/run_tests.py

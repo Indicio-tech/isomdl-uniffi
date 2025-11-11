@@ -20,7 +20,7 @@ class BuildRustCommand(build_py):
     def build_rust_and_bindings(self):
         """Build Rust library and generate Python bindings"""
         build_script = Path(__file__).parent / "build.py"
-        
+
         print("🚀 Running build.py to build Rust library and generate bindings...")
         try:
             subprocess.run([sys.executable, str(build_script)], check=True)

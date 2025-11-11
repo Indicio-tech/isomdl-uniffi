@@ -109,15 +109,28 @@ All workflows ensure that:
 
 ### 4. Build Python Bindings
 
+**Using UV (recommended if you have UV installed):**
 ```bash
-# Build the Rust library and generate Python bindings
-./build-python-bindings.sh
+cd python
+uv sync --extra dev
+uv run python build.py
 ```
 
-This script will:
-- Build the Rust library in release mode
+**Using standard Python:**
+```bash
+cd python
+python3 build.py
+```
+
+**Direct build script:**
+```bash
+./python/precommit/build-bindings.sh
+```
+
+This will:
+- Build the Rust library in release mode with UniFFI symbol preservation
 - Generate Python bindings using UniFFI
-- Create a complete Python package in `rust/out/python/`
+- Copy the bindings to the Python package directory
 
 ### 3. Test the Bindings
 
@@ -273,7 +286,7 @@ python -c "import isomdl_uniffi; print('Import successful!')"
 
 ### Cross-Platform Building
 
-The `build-python-bindings.sh` script builds binaries for the current platform only. For production deployments requiring multiple platforms, you can:
+The build scripts build binaries for the current platform only. For production deployments requiring multiple platforms, you can:
 
 1. **Use GitHub Actions or CI/CD** to build on different runners
 2. **Use cross-compilation tools** like [cross-rs](https://github.com/cross-rs/cross):
@@ -398,7 +411,6 @@ See [THIRD_PARTY_LICENSES.md](./THIRD_PARTY_LICENSES.md) for complete license in
 ```
 isomdl-uniffi/
 ├── README.md                    # Main documentation
-├── build-python-bindings.sh    # Build script for Python bindings
 ├── rust/                       # Rust source code
 │   ├── src/                    # Rust library source
 │   ├── Cargo.toml             # Rust dependencies

@@ -10,12 +10,11 @@ authors = [
 ]
 description = "Python bindings for the ISO 18013-5 Mobile Driver's License (mDL) library using UniFFI"
 readme = "README.md"
-license = { file = "LICENSE" }
+license = "MIT"
 keywords = ["mdl", "iso18013", "digital-identity", "mobile-drivers-license", "verifiable-credentials"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
@@ -28,6 +27,13 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 requires-python = ">=3.8"
+
+[project.optional-dependencies]
+dev = [
+    "setuptools>=45",
+    "wheel",
+    "build",
+]
 
 [project.urls]
 Homepage = "https://github.com/Indicio-tech/isomdl-uniffi"

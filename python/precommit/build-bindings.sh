@@ -1,18 +1,40 @@
 #!/bin/bash
-# Pre-commit hook to build Python bindings
-# This script checks if Rust code or build files have changed and rebuilds bindings
+# Build script for isomdl-uniffi Python bindings
+# This script builds Rust library and generates Python bindings
+# Can be used standalone or called from other build scripts
 
 set -e
 
-echo "🔧 Building Rust crate..."
+# Parse command line arguments
+SKIP_RUST_BUILD=false
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --skip-rust-build)
+            SKIP_RUST_BUILD=true
+            shift
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Usage: $0 [--skip-rust-build]"
+            exit 1
+            ;;
+    esac
+done
+
 # Navigate to project root then to rust directory
 cd "$(dirname "$0")/../.."
 cd rust
 
-# Build the Rust library in release mode
-# Note: We need to preserve symbols for UniFFI, so build without stripping
-echo "🔧 Building library for UniFFI bindgen (preserving symbols)..."
-RUSTFLAGS="-C strip=none" cargo build --release
+# Build the Rust library if not skipped
+if [ "$SKIP_RUST_BUILD" = false ]; then
+    echo "🔧 Building Rust crate..."
+    # Build the Rust library in release mode
+    # Note: We need to preserve symbols for UniFFI, so build without stripping
+    echo "🔧 Building library for UniFFI bindgen (preserving symbols)..."
+    RUSTFLAGS="-C strip=none" cargo build --release
+else
+    echo "⏭️  Skipping Rust build (--skip-rust-build specified)"
+fi
 
 echo "🐍 Generating Python bindings..."
 # Determine the library extension based on OS

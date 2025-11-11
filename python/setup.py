@@ -21,23 +21,15 @@ class BuildRustCommand(build_py):
         """Build Rust library and generate Python bindings"""
         project_root = Path(__file__).parent.parent.absolute()  # Go up one level from python/
 
-        # Build Rust library
-        rust_dir = project_root / "rust"
-        print("🔧 Building Rust library...")
-        try:
-            subprocess.run(["cargo", "build", "--release"], cwd=rust_dir, check=True)
-        except (subprocess.CalledProcessError, FileNotFoundError) as e:
-            print(f"❌ Failed to build Rust library: {e}")
-            print("Make sure Rust is installed and available in PATH")
-            sys.exit(1)
-
-        # Generate Python bindings
-        print("🐍 Generating Python bindings...")
+        print("🚀 Building Rust library and generating Python bindings...")
+        # Use the consolidated build script that handles everything
         build_script = project_root / "python" / "precommit" / "build-bindings.sh"
         try:
             subprocess.run([str(build_script)], check=True)
         except (subprocess.CalledProcessError, FileNotFoundError) as e:
-            print(f"❌ Failed to generate bindings: {e}")
+            print(f"❌ Failed to build and generate bindings: {e}")
+            if "FileNotFoundError" in str(type(e)):
+                print("Make sure Rust is installed and available in PATH")
             sys.exit(1)
 
         # Copy bindings to package directory

@@ -5,6 +5,7 @@ This handles building the Rust library and generating Python bindings
 """
 
 import subprocess
+import sys
 from pathlib import Path
 
 
@@ -12,17 +13,20 @@ def build_rust_and_bindings():
     """Build Rust library and generate Python bindings"""
     project_root = Path(__file__).parent.parent.absolute()  # Go up from python/ to project root
 
-    # Build Rust library
-    rust_dir = project_root / "rust"
-    print("🔧 Building Rust library...")
-    subprocess.run(["cargo", "build", "--release"], cwd=rust_dir, check=True)
-
-    # Generate Python bindings
-    print("🐍 Generating Python bindings...")
+    print("🚀 Building Rust library and generating Python bindings...")
+    # Use the consolidated build script that handles everything
     build_script = (
         Path(__file__).parent / "precommit" / "build-bindings.sh"
     )  # Now in python/precommit/
-    subprocess.run([str(build_script)], check=True)
+
+    try:
+        subprocess.run([str(build_script)], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Build failed with exit code {e.returncode}")
+        sys.exit(e.returncode)
+    except FileNotFoundError:
+        print("❌ Build script not found. Make sure you're in the right directory.")
+        sys.exit(1)
 
     # Copy bindings to package directory
     bindings_dir = project_root / "rust" / "out" / "python"
@@ -38,6 +42,8 @@ def build_rust_and_bindings():
 
                 shutil.copy2(file, package_dir)
                 print(f"   Copied {file.name}")
+    else:
+        print("⚠️  Bindings directory not found, skipping copy step")
 
 
 if __name__ == "__main__":

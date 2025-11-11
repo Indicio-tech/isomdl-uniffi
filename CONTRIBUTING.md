@@ -80,7 +80,8 @@ isomdl-uniffi/
    
    # Build Python bindings
    cd ../python
-   ./build-python-bindings.sh
+   python3 build.py
+   # Or: ./precommit/build-bindings.sh
    
    # Test Python bindings
    ./test-bindings.py

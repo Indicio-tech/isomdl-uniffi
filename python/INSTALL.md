@@ -48,25 +48,26 @@ If you need to build from source:
 git clone https://github.com/Indicio-tech/isomdl-uniffi.git
 cd isomdl-uniffi/python
 
-# Build Rust library and generate bindings
+# Build using UV (recommended)
+uv sync --extra dev
+uv run python build.py
+
+# Or build using standard Python
 python3 build.py
 
-# Or use the shell script
-./build-python-bindings.sh
-
-# Or use the precommit script
+# Or use the core build script directly
 ./precommit/build-bindings.sh
 
 # Install the package
 pip install -e .
 ```
 
-## Build Scripts
+## Build System
 
-The project provides several build scripts:
+The project uses a consolidated build system with a single core script:
 
-- `python/build.py` - Python build script that handles everything
-- `python/build-python-bindings.sh` - Standalone shell script for building
-- `python/precommit/build-bindings.sh` - Pre-commit hook script
+- `python/precommit/build-bindings.sh` - Core build script (handles Rust compilation and Python binding generation)
+- `python/build.py` - Python wrapper that calls the core script and copies files
+- `python/setup.py` - Package setup with integrated build process
 
-All scripts will build the Rust library and generate Python bindings automatically.
+The build system supports both standard Python environments and UV package manager. When using UV, install dev dependencies with `uv sync --extra dev` to get setuptools and build tools.

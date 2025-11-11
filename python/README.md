@@ -7,16 +7,15 @@ This directory contains all Python-related components for the isomdl-uniffi proj
 ```
 python/
 ├── pyproject.toml              # Python package configuration
-├── setup.py                    # Legacy setup script
-├── build.py                    # Build configuration
-├── uv.lock                     # UV package manager lock file
+├── setup.py                    # Setup script with custom build integration
+├── build.py                    # Build wrapper script
+├── uv.lock                     # UV package manager lock file (if using UV)
 ├── INSTALL.md                  # Installation instructions
-├── build-python-bindings.sh    # Build Python bindings script
 ├── test-bindings.py            # Simple binding test script
 ├── isomdl_uniffi/              # Generated Python package
 ├── isomdl_uniffi.egg-info/     # Package metadata
 ├── precommit/                  # Pre-commit hooks and scripts
-│   ├── build-bindings.sh       # Build Python bindings script
+│   ├── build-bindings.sh       # Core build script for Rust library and Python bindings
 │   ├── run-tests.sh            # Run Python tests script
 │   └── README.md               # Pre-commit setup documentation
 └── tests/                      # Comprehensive test suite
@@ -30,11 +29,25 @@ python/
 
 ### 1. Build Python Bindings
 
-From the project root:
+**Using UV (recommended):**
+```bash
+# Install dependencies and build
+cd python
+uv sync --extra dev
+uv run python build.py
+```
 
+**Using standard Python:**
 ```bash
 # Build Rust library and generate Python bindings
-./build-python-bindings.sh
+cd python
+python3 build.py
+```
+
+**Direct build script:**
+```bash
+# Use the core build script directly
+./python/precommit/build-bindings.sh
 ```
 
 ### 2. Run Tests

@@ -12,40 +12,24 @@ class BuildRustCommand(build_py):
     """Custom build command that builds Rust library and generates bindings"""
 
     def run(self):
-        # Build Rust library and bindings
+        # Build Rust library and bindings using existing build.py
         self.build_rust_and_bindings()
         # Run the standard build
         super().run()
 
     def build_rust_and_bindings(self):
         """Build Rust library and generate Python bindings"""
-        project_root = Path(__file__).parent.parent.absolute()  # Go up one level from python/
-
-        print("🚀 Building Rust library and generating Python bindings...")
-        # Use the consolidated build script that handles everything
-        build_script = project_root / "python" / "precommit" / "build-bindings.sh"
+        build_script = Path(__file__).parent / "build.py"
+        
+        print("🚀 Running build.py to build Rust library and generate bindings...")
         try:
-            subprocess.run([str(build_script)], check=True)
-        except (subprocess.CalledProcessError, FileNotFoundError) as e:
-            print(f"❌ Failed to build and generate bindings: {e}")
-            if "FileNotFoundError" in str(type(e)):
-                print("Make sure Rust is installed and available in PATH")
+            subprocess.run([sys.executable, str(build_script)], check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"❌ Build failed with exit code {e.returncode}")
+            sys.exit(e.returncode)
+        except FileNotFoundError:
+            print("❌ build.py not found. Make sure you're in the right directory.")
             sys.exit(1)
-
-        # Copy bindings to package directory
-        bindings_dir = project_root / "rust" / "out" / "python"
-        package_dir = Path(__file__).parent / "isomdl_uniffi"  # Now in python/isomdl_uniffi
-
-        if bindings_dir.exists():
-            print("📦 Copying bindings to package directory...")
-            package_dir.mkdir(exist_ok=True)
-
-            import shutil
-
-            for file in bindings_dir.glob("*"):
-                if file.is_file():
-                    shutil.copy2(file, package_dir)
-                    print(f"   Copied {file.name}")
 
 
 if __name__ == "__main__":
@@ -72,7 +56,6 @@ if __name__ == "__main__":
             "Intended Audience :: Developers",
             "License :: OSI Approved :: Apache Software License",
             "Programming Language :: Python :: 3",
-            "Programming Language :: Python :: 3.9",
             "Programming Language :: Python :: 3.9",
             "Programming Language :: Python :: 3.10",
             "Programming Language :: Python :: 3.11",

@@ -102,6 +102,7 @@ def run_all_tests():
         "test_reader_functionality",
         "test_integration",
         "test_selective_disclosure",
+        "test_complete_workflow",
     ]
 
     failed_tests = []

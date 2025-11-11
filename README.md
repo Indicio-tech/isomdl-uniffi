@@ -28,7 +28,7 @@ This project uses [UniFFI](https://mozilla.github.io/uniffi-rs/) to generate Pyt
 ## Prerequisites
 
 - **Rust**: Latest stable version (install via [rustup](https://rustup.rs/))
-- **Python**: 3.8 or later
+- **Python**: 3.9 or later
 - **UV**: Python package manager (recommended, install via `pip install uv`)
 - **Cross-compilation tools** (for building binaries for multiple platforms)
 

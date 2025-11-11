@@ -14,7 +14,7 @@ pip install -e .
 
 **Requirements:**
 - Rust toolchain (install from https://rustup.rs/)
-- Python 3.8+
+- Python 3.9+
 
 ## Option 2: Install from PyPI (When published)
 

@@ -22,7 +22,7 @@ This project adheres to a code of conduct that we expect all contributors to fol
 ### Prerequisites
 
 - Rust (latest stable version)
-- Python 3.8+
+- Python 3.9+
 - Git
 - Basic familiarity with ISO 18013-5 mDL concepts
 

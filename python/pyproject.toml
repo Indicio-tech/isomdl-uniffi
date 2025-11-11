@@ -17,16 +17,13 @@ classifiers = [
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Rust",
-    "Topic :: Security :: Cryptography",
-    "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 
 [project.optional-dependencies]
 dev = [
@@ -43,7 +40,7 @@ Repository = "https://github.com/Indicio-tech/isomdl-uniffi"
 [tool.ruff]
 # Enable the following rules
 line-length = 100
-target-version = "py38"
+target-version = "py39"
 # Exclude auto-generated files from linting
 exclude = [
     "python/isomdl_uniffi/isomdl_uniffi.py",  # Auto-generated UniFFI bindings

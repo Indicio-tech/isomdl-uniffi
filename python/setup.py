@@ -72,7 +72,7 @@ if __name__ == "__main__":
             "Intended Audience :: Developers",
             "License :: OSI Approved :: Apache Software License",
             "Programming Language :: Python :: 3",
-            "Programming Language :: Python :: 3.8",
+            "Programming Language :: Python :: 3.9",
             "Programming Language :: Python :: 3.9",
             "Programming Language :: Python :: 3.10",
             "Programming Language :: Python :: 3.11",
@@ -81,7 +81,7 @@ if __name__ == "__main__":
             "Topic :: Security :: Cryptography",
             "Topic :: Software Development :: Libraries",
         ],
-        python_requires=">=3.8",
+        python_requires=">=3.9",
         cmdclass={
             "build_py": BuildRustCommand,
         },

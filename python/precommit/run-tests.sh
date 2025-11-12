@@ -25,6 +25,7 @@ fi
 # Use UV if available, otherwise fallback to python
 if command -v uv >/dev/null 2>&1; then
     cd python
+    uv sync --extra dev  # Install dev dependencies including pytest
     uv run pytest tests/ -q --tb=short
     cd ..
 elif command -v python3 >/dev/null 2>&1; then

@@ -19,7 +19,6 @@ venv/
 env/
 .env
 .venv/
-uv.lock
 # Generated Python bindings
 python/isomdl_uniffi/
 

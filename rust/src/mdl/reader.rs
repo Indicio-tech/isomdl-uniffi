@@ -6,7 +6,7 @@ use std::{
 use isomdl::{
     definitions::{
         device_request,
-        helpers::{non_empty_map, NonEmptyMap},
+        helpers::{NonEmptyMap, non_empty_map},
         x509::{
             self,
             trust_anchor::{PemTrustAnchor, TrustAnchorRegistry},
@@ -360,7 +360,9 @@ mod tests {
 
         // Log the current API structure for future reference
         println!("📋 Current UUID extraction API:");
-        println!("   manager.ble_central_client_options()  // Returns Iterator<Item = &CentralClientMode>");
+        println!(
+            "   manager.ble_central_client_options()  // Returns Iterator<Item = &CentralClientMode>"
+        );
         println!("   .next()                               // Gets first CentralClientMode");
         println!("   .map(|mode| mode.uuid)                // Accesses uuid field directly");
         println!("   Returns: Option<Uuid>                 // No dereferencing needed");

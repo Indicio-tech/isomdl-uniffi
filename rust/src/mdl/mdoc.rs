@@ -9,17 +9,17 @@ use std::{
 
 use anyhow::{Context, Result};
 use base64::prelude::*;
-use ciborium::{from_reader, Value};
+use ciborium::{Value, from_reader};
 use isomdl::{
     definitions::{
+        CoseKey, DeviceKeyInfo, DigestAlgorithm, EC2Curve, EC2Y, IssuerSigned, Mso, ValidityInfo,
         helpers::{NonEmptyMap, Tag24},
         x509::X5Chain,
-        CoseKey, DeviceKeyInfo, DigestAlgorithm, EC2Curve, IssuerSigned, Mso, ValidityInfo, EC2Y,
     },
     issuance::mdoc::Builder,
-    presentation::{device::Document, Stringify},
+    presentation::{Stringify, device::Document},
 };
-use p256::{elliptic_curve::sec1::ToEncodedPoint, PublicKey};
+use p256::{PublicKey, elliptic_curve::sec1::ToEncodedPoint};
 use serde::Deserialize;
 use serde::Serialize;
 use time::OffsetDateTime;

@@ -35,7 +35,7 @@ jobs:
 
       - name: Install Python linting tools
         run: |
-          pip install black flake8
+          pip install ruff
 
       - name: Cache Rust dependencies
         uses: actions/cache@v3
@@ -57,11 +57,11 @@ jobs:
 
       - name: Check Python formatting
         run: |
-          black --check python/tests/
+          ruff format --check python/tests/
 
       - name: Run Python linting
         run: |
-          flake8 python/tests/ --max-line-length=100 --ignore=E203,W503,F821
+          ruff check python/tests/
 
       - name: Check Kotlin formatting (detekt)
         run: |

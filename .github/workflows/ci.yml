@@ -255,17 +255,10 @@ jobs:
 
       - name: Verify selective disclosure tests
         run: |
-          cd python/tests
-          python3 -c "
-          import sys, os
-          sys.path.insert(0, '../../rust/out/python')
-          import isomdl_uniffi as mdl
-          sys.path.insert(0, '.')
-          import test_selective_disclosure
-          result = test_selective_disclosure.run_tests(mdl)
-          assert result == True, 'Selective disclosure tests failed'
-          print('✅ Selective disclosure tests verified')
-          "
+          cd python
+          # Install dev dependencies and run specific selective disclosure tests
+          uv sync --extra dev
+          uv run pytest tests/test_selective_disclosure.py -v --tb=short
 
   kotlin-build-and-test:
     name: Kotlin Build and Test

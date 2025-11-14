@@ -157,7 +157,7 @@ jobs:
           file rust/out/python/* 2>/dev/null || echo "No files to analyze"
 
       - name: Upload bindings artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: python-bindings-${{ matrix.os }}
           path: rust/out/python/
@@ -335,7 +335,7 @@ jobs:
           ./gradlew compileKotlinMetadata --no-daemon --stacktrace
 
       - name: Upload test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: always()
         with:
           name: kotlin-test-results
@@ -345,7 +345,7 @@ jobs:
           retention-days: 7
 
       - name: Upload build artifacts on failure
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: failure()
         with:
           name: kotlin-build-failure-logs

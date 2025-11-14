@@ -3,10 +3,9 @@
 use isomdl::definitions::x509::trust_anchor::TrustAnchorRegistry;
 use isomdl::{
     definitions::{
-        BleOptions, DeviceRetrievalMethod, SessionEstablishment,
         device_engagement::{CentralClientMode, DeviceRetrievalMethods},
         helpers::NonEmptyMap,
-        session,
+        session, BleOptions, DeviceRetrievalMethod, SessionEstablishment,
     },
     presentation::device::{self, SessionManagerInit},
 };
@@ -52,10 +51,14 @@ impl MdlPresentationSession {
     /// String containing the BLE ident.
     ///
     #[uniffi::constructor]
-    pub fn new(mdoc: Arc<Mdoc>, uuid: Uuid) -> Result<MdlPresentationSession, SessionError> {
+    pub fn new(mdoc: Arc<Mdoc>, uuid: String) -> Result<MdlPresentationSession, SessionError> {
+        let uuid_parsed = Uuid::parse_str(&uuid).map_err(|e| SessionError::Generic {
+            value: format!("Invalid UUID: {}", e),
+        })?;
+
         let drms = DeviceRetrievalMethods::new(DeviceRetrievalMethod::BLE(BleOptions {
             peripheral_server_mode: None,
-            central_client_mode: Some(CentralClientMode { uuid }),
+            central_client_mode: Some(CentralClientMode { uuid: uuid_parsed }),
         }));
         let session = SessionManagerInit::initialise(
             NonEmptyMap::new("org.iso.18013.5.1.mDL".into(), mdoc.document().clone()),

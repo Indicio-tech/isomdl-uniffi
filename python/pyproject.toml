@@ -1,0 +1,98 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "isomdl-uniffi"
+version = "0.1.0"
+authors = [
+    { name = "Indicio", email = "support@indicio.tech" },
+]
+description = "Python bindings for the ISO 18013-5 Mobile Driver's License (mDL) library using UniFFI"
+readme = "README.md"
+license = "MIT"
+keywords = ["mdl", "iso18013", "digital-identity", "mobile-drivers-license", "verifiable-credentials"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Rust",
+]
+requires-python = ">=3.9"
+
+[project.optional-dependencies]
+dev = [
+    "setuptools>=45",
+    "wheel",
+    "build",
+    "pytest>=7.0.0",
+    "pytest-cov",
+]
+
+[project.urls]
+Homepage = "https://github.com/Indicio-tech/isomdl-uniffi"
+Repository = "https://github.com/Indicio-tech/isomdl-uniffi"
+"Bug Tracker" = "https://github.com/Indicio-tech/isomdl-uniffi/issues"
+
+[tool.ruff]
+# Enable the following rules
+line-length = 100
+target-version = "py39"
+# Exclude auto-generated files from linting
+exclude = [
+    "python/isomdl_uniffi/isomdl_uniffi.py",  # Auto-generated UniFFI bindings
+]
+
+[tool.ruff.lint]
+# Enable pycodestyle (`E`) and Pyflakes (`F`) codes by default
+# Add isort (`I`) for import sorting, and other useful rules
+select = ["E", "F", "I", "W", "B", "C4", "UP", "SIM"]
+ignore = [
+    "E203",  # whitespace before ':' (conflicts with Black/ruff format)
+    "F403",  # star imports in __init__.py are common for public APIs
+    "F405",  # may be undefined from star imports (related to F403)
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Allow star imports in __init__.py files (common pattern)
+"__init__.py" = ["F403", "F405"]
+# For test files, allow some additional patterns
+"python/tests/*.py" = [
+    "B904",  # raise from for test assertions is often unnecessary
+]
+# Also allow for files in tests directory without python/ prefix
+"tests/*.py" = [
+    "B904",  # raise from for test assertions is often unnecessary
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["isomdl_uniffi"]
+
+[tool.ruff.format]
+# Use double quotes for strings
+quote-style = "double"
+# Use 4 spaces for indentation
+indent-style = "space"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--tb=short",
+    "--strict-markers",
+    "--disable-warnings"
+]
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+    "workflow: End-to-end workflow tests",
+    "slow: Tests that take longer to run"
+]

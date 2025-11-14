@@ -25,7 +25,6 @@ use p256::{
     elliptic_curve::sec1::ToEncodedPoint,
     pkcs8::{DecodePrivateKey, EncodePublicKey, ObjectIdentifier},
 };
-use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sha1::{Digest, Sha1};
 use signature::Keypair;
@@ -67,6 +66,12 @@ impl From<anyhow::Error> for MdlUtilError {
 pub struct P256KeyPair {
     secret_key: Vec<u8>,
     ver_key: Box<[u8]>,
+}
+
+impl Default for P256KeyPair {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl P256KeyPair {
@@ -176,14 +181,6 @@ pub fn generate_test_mdl(key_pair: Arc<P256KeyPair>) -> Result<Mdoc, MdlUtilErro
         document,
         KeyAlias(Uuid::new_v4().to_string()),
     ))
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct MinimalEcJwk {
-    kty: String,
-    crv: String,
-    x: String,
-    y: String,
 }
 
 fn prepare_mdoc(pub_key: PublicKey) -> Result<isomdl::issuance::mdoc::Builder> {

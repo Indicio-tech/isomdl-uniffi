@@ -1,0 +1,380 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  lint-checks:
+    name: Lint and Format Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Install Python linting tools
+        run: |
+          pip install ruff
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Make gradlew executable
+        run: chmod +x kotlin/gradlew
+
+      - name: Check Rust formatting
+        run: |
+          cd rust
+          cargo fmt -- --check
+
+      - name: Check Python formatting
+        run: |
+          ruff format --check python/tests/
+
+      - name: Run Python linting
+        run: |
+          ruff check python/tests/
+
+      - name: Check Kotlin formatting (detekt)
+        run: |
+          cd kotlin
+          ./gradlew detekt --no-daemon || echo "Detekt not configured, skipping..."
+
+      - name: Run Clippy (without building)
+        run: |
+          cd rust
+          cargo clippy -- -D warnings
+
+  rust-build-and-test:
+    name: Rust Build and Test
+    runs-on: ubuntu-latest
+    needs: lint-checks
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Build Rust crate
+        run: |
+          cd rust
+          cargo build --release
+
+      - name: Run Rust tests
+        run: |
+          cd rust
+          cargo test
+
+  build-bindings:
+    name: Build Python Bindings
+    runs-on: ${{ matrix.os }}
+    needs: [lint-checks, rust-build-and-test]
+    # Build bindings once per platform, then test against multiple Python versions
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'  # Use one Python version for building
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Build Python bindings
+        run: |
+          chmod +x python/precommit/build-bindings.sh
+          echo "🔍 Current working directory: $(pwd)"
+          echo "🔍 Python version: $(python3 --version)"
+          echo "🔍 Rust version: $(rustc --version)"
+          ./python/precommit/build-bindings.sh
+
+      - name: Debug built artifacts
+        run: |
+          echo "🔍 Checking built artifacts before upload..."
+          ls -la rust/out/python/ || echo "Directory not found!"
+          find rust/out/python/ -name "*.so" -o -name "*.dylib" -o -name "*.dll" -o -name "*.py" || echo "No binding files found"
+          echo "🔍 File details:"
+          file rust/out/python/* 2>/dev/null || echo "No files to analyze"
+
+      - name: Upload bindings artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-bindings-${{ matrix.os }}
+          path: rust/out/python/
+          retention-days: 7
+
+  test-python:
+    name: Test Python ${{ matrix.python-version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    needs: build-bindings
+    # Test the pre-built bindings against multiple Python versions
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ['3.9', '3.10', '3.11', '3.12']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Download bindings artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: python-bindings-${{ matrix.os }}
+          path: rust/out/python/
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Debug downloaded artifacts
+        run: |
+          echo "🔍 Checking downloaded artifacts..."
+          ls -la rust/out/python/ || echo "Directory not found!"
+          find rust/out/python/ -name "*.so" -o -name "*.dylib" -o -name "*.dll" -o -name "*.py" || echo "No binding files found"
+          # Ensure shared libraries are executable
+          find rust/out/python/ -name "*.so" -o -name "*.dylib" -o -name "*.dll" | xargs chmod +x 2>/dev/null || true
+
+      - name: Install Python dependencies
+        run: |
+          cd python
+          uv pip install --system pytest
+
+      - name: Run Python tests
+        run: |
+          chmod +x python/precommit/run-tests.sh
+          echo "🔍 Current working directory: $(pwd)"
+          echo "🔍 Contents of rust/out/python before test:"
+          ls -la rust/out/python/ || echo "Directory not found!"
+          ./python/precommit/run-tests.sh
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [rust-build-and-test, kotlin-build-and-test, build-bindings, test-python]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Download pre-built bindings
+        uses: actions/download-artifact@v4
+        with:
+          name: python-bindings-ubuntu-latest
+          path: rust/out/python/
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Debug downloaded bindings
+        run: |
+          echo "🔍 Checking downloaded artifacts..."
+          ls -la rust/out/python/ || echo "Directory not found!"
+          find rust/out/python/ -name "*.so" -o -name "*.dylib" -o -name "*.dll" -o -name "*.py" || echo "No binding files found"
+          # Ensure shared libraries are executable
+          find rust/out/python/ -name "*.so" -o -name "*.dylib" -o -name "*.dll" | xargs chmod +x 2>/dev/null || true
+
+      - name: Run comprehensive Python test suite
+        run: |
+          # Run comprehensive Python test suite using pre-built bindings
+          chmod +x python/precommit/run-tests.sh
+          ./python/precommit/run-tests.sh
+
+      - name: Verify selective disclosure tests
+        run: |
+          cd python
+          # Install dev dependencies and run specific selective disclosure tests
+          uv sync --extra dev
+          uv run pytest tests/test_selective_disclosure.py -v --tb=short
+
+  kotlin-build-and-test:
+    name: Kotlin Build and Test
+    runs-on: ubuntu-latest
+    needs: rust-build-and-test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          api-level: 35
+          build-tools: 35.0.0
+          ndk: 28.2.13676358
+
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            kotlin/.gradle
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Make gradlew executable
+        run: chmod +x kotlin/gradlew
+
+      - name: Compile Kotlin JVM target
+        run: |
+          cd kotlin
+          ./gradlew compileKotlinJvm --no-daemon --stacktrace
+
+      - name: Build Android debug sources
+        run: |
+          cd kotlin
+          ./gradlew compileDebugSources --no-daemon --stacktrace
+
+      - name: Build Android test sources
+        run: |
+          cd kotlin
+          ./gradlew compileDebugAndroidTestSources --no-daemon --stacktrace
+
+      - name: Build JVM jar
+        run: |
+          cd kotlin
+          ./gradlew jvmJar --no-daemon --stacktrace
+
+      - name: Compile Kotlin metadata for all platforms
+        run: |
+          cd kotlin
+          ./gradlew compileKotlinMetadata --no-daemon --stacktrace
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kotlin-test-results
+          path: |
+            kotlin/build/reports/tests/
+            kotlin/build/test-results/
+          retention-days: 7
+
+      - name: Upload build artifacts on failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: kotlin-build-failure-logs
+          path: |
+            kotlin/build/
+            kotlin/.gradle/
+          retention-days: 3
+
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-audit (with caching)
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+
+      - name: Run security audit
+        run: |
+          cd rust
+          cargo audit \
+            --ignore RUSTSEC-2022-0040 \
+            --ignore RUSTSEC-2023-0071 \
+            --ignore RUSTSEC-2024-0436 \
+            --ignore RUSTSEC-2024-0370

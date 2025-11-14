@@ -133,7 +133,11 @@ kotlin {
 android {
     namespace = "tech.indicio.isomdl_uniffi"
     compileSdk = 35
-    ndkVersion = "26.1.10909125"
+
+    // Use the specific NDK version recommended for this project
+    // This version will be automatically installed in CI environments
+    ndkVersion = "28.2.13676358"
+
     defaultConfig {
         minSdk = 24
     }

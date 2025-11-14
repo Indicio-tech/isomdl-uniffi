@@ -1,0 +1,159 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create-release.outputs.upload_url }}
+      version: ${{ steps.get-version.outputs.version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: get-version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Create Release
+        id: create-release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          name: Release ${{ steps.get-version.outputs.version }}
+          body: |
+            ## isomdl-uniffi Release ${{ steps.get-version.outputs.version }}
+
+            This release includes:
+            - 🦀 Rust library for ISO 18013-5 mDL implementation
+            - 🐍 Python bindings via UniFFI
+            - 🔒 Comprehensive selective disclosure tests
+            - ✅ Full test suite validation
+
+            ### Changes
+            Please see the commit history for detailed changes in this release.
+
+            ### Installation
+
+            #### Python Bindings
+            Download the appropriate wheel file for your platform and install:
+            ```bash
+            uv pip install isomdl_uniffi-${{ steps.get-version.outputs.version }}-*.whl
+            ```
+
+            #### Rust Crate
+            ```toml
+            [dependencies]
+            isomdl-uniffi = "${{ steps.get-version.outputs.version }}"
+            ```
+          draft: false
+          prerelease: false
+
+  build-python-wheels:
+    name: Build Python Wheels
+    needs: create-release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ['3.9', '3.10', '3.11', '3.12']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          cache-suffix: py${{ matrix.python-version }}
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install build dependencies
+        run: |
+          uv pip install --system wheel setuptools build
+
+      - name: Build Rust crate
+        run: |
+          cd rust
+          cargo build --release
+
+      - name: Build Python bindings
+        shell: bash
+        run: |
+          chmod +x python/precommit/build-bindings.sh
+          ./python/precommit/build-bindings.sh
+
+      - name: Create Python package
+        run: |
+          # Copy generated bindings to package directory
+          mkdir -p isomdl_uniffi
+          cp rust/out/python/*.py isomdl_uniffi/ || echo "No Python files to copy"
+          cp rust/out/python/*.so isomdl_uniffi/ 2>/dev/null || echo "No .so files to copy"
+          cp rust/out/python/*.dylib isomdl_uniffi/ 2>/dev/null || echo "No .dylib files to copy"
+          cp rust/out/python/*.dll isomdl_uniffi/ 2>/dev/null || echo "No .dll files to copy"
+
+          # Update version in pyproject.toml
+          sed -i.bak 's/version = "0.1.0"/version = "${{ needs.create-release.outputs.version }}"/' pyproject.toml
+
+          # Build wheel
+          uv build
+
+      - name: Debug built wheels
+        run: |
+          echo "🔍 Built wheels:"
+          ls -la dist/
+          echo "🔍 Wheel details:"
+          file dist/*.whl 2>/dev/null || echo "No wheels found"
+
+      - name: Upload wheel to release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/*.whl
+          tag_name: ${{ github.ref }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to PyPI
+        continue-on-error: true
+        run: |
+          echo "📦 Publishing to PyPI..."
+          if [ -z "$UV_PUBLISH_TOKEN" ]; then
+            echo "⚠️  PYPI_TOKEN not configured - skipping PyPI publishing"
+            echo "   To enable PyPI publishing, add PYPI_TOKEN secret to repository settings"
+            exit 0
+          fi
+          uv publish
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}

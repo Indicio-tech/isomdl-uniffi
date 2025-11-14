@@ -4,9 +4,6 @@ rust/target/
 # UniFFI generated bindings and build artifacts
 rust/out/
 
-# Kotlin build artifacts
-.kotlin
-
 # Python artifacts
 *.egg-info/
 build/
@@ -14,10 +11,42 @@ dist/
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
+*.so
+*.dylib
+*.dll
 venv/
 env/
 .env
+.venv/
+# Generated Python bindings
+python/isomdl_uniffi/
+
+# Kotlin build artifacts
+.kotlin
+.gradle/
+build/
+local.properties
 
 # System files
 .DS_Store
 Thumbs.db
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Cache directories
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Test environments
+test_env/
+
+# Test artifacts
+python/tests/cross_language_artifacts/
+python/.coverage
+htmlcov/

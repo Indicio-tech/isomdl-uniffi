@@ -10,6 +10,9 @@ The tests are organized into separate modules:
 - `test_mdoc_operations.py` - Tests for MDL serialization, deserialization, and document operations  
 - `test_presentation_session.py` - Tests for presentation session creation and operations
 - `test_reader_functionality.py` - Tests for reader session establishment and operations
+- `test_integration.py` - Integration tests between existing tests and new MDL functionality
+- `test_selective_disclosure.py` - Tests for selective disclosure and age verification scenarios
+- `test_complete_workflow.py` - Rigorous end-to-end mdoc workflow test using real test vectors
 - `run_tests.py` - Main test runner that imports bindings and runs all test modules
 
 ## Running Tests
@@ -20,31 +23,51 @@ Before running tests, you must build the Python bindings:
 
 ```bash
 # From repository root
-./build-python-bindings.sh
+./python/precommit/build-bindings.sh
 ```
 
-### Run All Tests
+### Run All Tests (Recommended)
 
-From the repository root:
-
+**Using pytest (recommended):**
 ```bash
-# Using the simple test runner
-./test-bindings.py
+# From python directory
+uv run pytest tests/ -v
 
-# Or using the test runner directly
-python3 tests/run_tests.py
+# Or with coverage
+uv run pytest tests/ --cov=isomdl_uniffi --cov-report=html
+```
+
+**Using the test runner:**
+```bash
+# From python/tests directory - automatically uses pytest if available
+python run_tests.py
 ```
 
 ### Run Individual Test Modules
 
-You can also run individual test files directly for debugging:
-
+**With pytest:**
 ```bash
-# Run a specific test module
-python3 tests/test_basic_functionality.py
-python3 tests/test_mdoc_operations.py
-python3 tests/test_presentation_session.py
-python3 tests/test_reader_functionality.py
+# Run specific test files
+uv run pytest tests/test_basic_functionality.py -v
+uv run pytest tests/test_mdoc_operations.py -v
+
+# Run specific test classes
+uv run pytest tests/test_basic_functionality.py::TestKeyPairOperations -v
+
+# Run specific test methods
+uv run pytest tests/test_basic_functionality.py::TestKeyPairOperations::test_key_pair_creation -v
+```
+
+**Direct execution (for debugging):**
+```bash
+# Run a specific test module directly (legacy mode)
+python3 test_basic_functionality.py
+python3 test_mdoc_operations.py
+python3 test_presentation_session.py
+python3 test_reader_functionality.py
+python3 test_integration.py
+python3 test_selective_disclosure.py
+python3 test_complete_workflow.py
 ```
 
 ## Test Coverage
@@ -72,6 +95,20 @@ The tests cover:
 - Session establishment (with mock data)
 - Request structure validation
 - Error handling for invalid URIs
+
+✅ **Integration Testing**
+- Cross-test validation and compatibility
+- Module interaction testing
+
+✅ **Selective Disclosure**
+- Attribute filtering and privacy protection
+- Age verification scenarios
+- Partial data sharing validation
+
+✅ **Complete Workflow**
+- End-to-end mdoc operations
+- Real test vector validation
+- Rigorous assertion testing
 
 ## Expected Behavior
 

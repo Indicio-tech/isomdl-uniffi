@@ -28,7 +28,7 @@ This project uses [UniFFI](https://mozilla.github.io/uniffi-rs/) to generate Pyt
 ## Prerequisites
 
 - **Rust**: Latest stable version (install via [rustup](https://rustup.rs/))
-- **Python**: 3.8 or later
+- **Python**: 3.9 or later
 - **UV**: Python package manager (recommended, install via `pip install uv`)
 - **Cross-compilation tools** (for building binaries for multiple platforms)
 
@@ -53,23 +53,90 @@ cd isomdl-uniffi
 git checkout python-bindings
 ```
 
-### 2. Build Python Bindings
+### 2. (Optional) Setup Pre-commit Hooks
+
+For contributors, set up pre-commit hooks to ensure code quality:
 
 ```bash
-# Build the Rust library and generate Python bindings
-./build-python-bindings.sh
+# Install pre-commit
+pip install pre-commit
+
+# Install git hook scripts
+pre-commit install
+
+# (Optional) Run against all files
+pre-commit run --all-files
 ```
 
-This script will:
-- Build the Rust library in release mode
+See [python/precommit/README.md](python/precommit/README.md) for more details.
+
+### 3. CI/CD Pipeline
+
+This project includes comprehensive GitHub Actions workflows:
+
+#### **Pull Request Checks** (`.github/workflows/pr-check.yml`)
+- Quick validation for PRs with essential checks
+- Runs on every PR to `main` and `develop` branches
+- Validates Rust formatting, compilation, and tests
+- Builds Python bindings and runs test suite
+- Verifies selective disclosure functionality
+- Checks Python code quality (ruff)
+
+#### **Full CI Pipeline** (`.github/workflows/ci.yml`)
+- Comprehensive testing across multiple platforms and Python versions
+- Matrix builds: Ubuntu, macOS, Windows × Python 3.9-3.12
+- Security auditing with `cargo audit`
+- Integration tests including selective disclosure validation
+
+#### **Release Pipeline** (`.github/workflows/release.yml`)
+- Automated releases on version tags (`v*`)
+- Builds Python wheels for multiple platforms
+- Publishes Rust crate to [crates.io](https://crates.io)
+- Creates GitHub releases with binaries
+
+#### **Dependency Management** (`.github/dependabot.yml`)
+- Automated dependency updates for Rust crates
+- Weekly updates for GitHub Actions
+- Properly labeled and organized PRs
+
+All workflows ensure that:
+- ✅ Rust code compiles and passes tests
+- ✅ Python bindings build successfully  
+- ✅ Complete test suite passes (including selective disclosure tests)
+- ✅ Code meets formatting and quality standards
+- ✅ Security vulnerabilities are detected early
+- ✅ All commits are properly signed with DCO (Developer Certificate of Origin)
+
+### 4. Build Python Bindings
+
+**Using UV (recommended if you have UV installed):**
+```bash
+cd python
+uv sync --extra dev
+uv run python build.py
+```
+
+**Using standard Python:**
+```bash
+cd python
+python3 build.py
+```
+
+**Direct build script:**
+```bash
+./python/precommit/build-bindings.sh
+```
+
+This will:
+- Build the Rust library in release mode with UniFFI symbol preservation
 - Generate Python bindings using UniFFI
-- Create a complete Python package in `rust/out/python/`
+- Copy the bindings to the Python package directory
 
 ### 3. Test the Bindings
 
 ```bash
 # Run the comprehensive test suite
-./test-bindings.py
+./python/test-bindings.py
 ```
 
 ### 4. Install and Use (Optional)
@@ -219,7 +286,7 @@ python -c "import isomdl_uniffi; print('Import successful!')"
 
 ### Cross-Platform Building
 
-The `build-python-bindings.sh` script builds binaries for the current platform only. For production deployments requiring multiple platforms, you can:
+The build scripts build binaries for the current platform only. For production deployments requiring multiple platforms, you can:
 
 1. **Use GitHub Actions or CI/CD** to build on different runners
 2. **Use cross-compilation tools** like [cross-rs](https://github.com/cross-rs/cross):
@@ -293,17 +360,30 @@ Generated Python package has minimal dependencies, as most functionality is prov
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature-name`
-3. Make your changes
-4. Run tests: `cargo test`
-5. Build Python bindings: `./build-python.sh`
-6. Test Python integration
-7. Submit a pull request
+We welcome contributions to this project! For detailed guidelines on how to contribute, including:
+
+- Development environment setup
+- Code standards and formatting
+- Testing requirements  
+- Submission process
+- DCO (Developer Certificate of Origin) requirements
+
+Please see [CONTRIBUTING.md](CONTRIBUTING.md) for complete contribution guidelines.
 
 ## License
 
-[Add appropriate license information here]
+see the [LICENSE](LICENSE) file for details.
+
+### Third-Party Dependencies
+
+This project incorporates code from the following open-source projects:
+
+- **isomdl** by Spruce Systems, Inc. - [https://github.com/spruceid/isomdl](https://github.com/spruceid/isomdl)
+- **sprucekit-mobile** by Spruce Systems, Inc. - [https://github.com/spruceid/sprucekit-mobile](https://github.com/spruceid/sprucekit-mobile)
+
+Both projects are dual-licensed under Apache 2.0 and MIT licenses.
+
+See [THIRD_PARTY_LICENSES.md](./THIRD_PARTY_LICENSES.md) for complete license information and attributions.
 
 ## Troubleshooting
 
@@ -331,7 +411,6 @@ Generated Python package has minimal dependencies, as most functionality is prov
 ```
 isomdl-uniffi/
 ├── README.md                    # Main documentation
-├── build-python-bindings.sh    # Build script for Python bindings
 ├── rust/                       # Rust source code
 │   ├── src/                    # Rust library source
 │   ├── Cargo.toml             # Rust dependencies

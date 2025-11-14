@@ -16,16 +16,16 @@ Usage:
     ./test-bindings.py
 """
 
-import sys
 import os
+import sys
 
 if __name__ == "__main__":
     # Add the tests directory to the path
     tests_path = os.path.join(os.path.dirname(__file__), "tests")
     sys.path.insert(0, os.path.abspath(tests_path))
-    
+
     # Import and run the main test runner
     from run_tests import run_all_tests
-    
+
     success = run_all_tests()
     sys.exit(0 if success else 1)

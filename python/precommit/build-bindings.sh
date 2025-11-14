@@ -1,4 +1,11 @@
 #!/bin/bash
+# Copyright (c) 2025 Indicio
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+#
+# This software may be modified and distributed under the terms
+# of either the Apache License, Version 2.0 or the MIT license.
+# See the LICENSE-APACHE and LICENSE-MIT files for details.
+
 # Build script for isomdl-uniffi Python bindings
 # This script builds Rust library and generates Python bindings
 # Can be used standalone or called from other build scripts

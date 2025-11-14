@@ -33,7 +33,7 @@ jobs:
           ndk: 28.2.13676358
 
       - name: Cache Gradle dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
@@ -44,7 +44,7 @@ jobs:
             ${{ runner.os }}-gradle-
 
       - name: Cache Rust dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
@@ -112,7 +112,7 @@ jobs:
           components: rustfmt, clippy
 
       - name: Cache Rust dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry

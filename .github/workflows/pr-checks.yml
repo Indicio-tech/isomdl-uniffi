@@ -89,7 +89,7 @@ jobs:
           ./gradlew ktlintCheck --no-daemon || echo "Ktlint not configured or failed"
 
       - name: Upload test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: always()
         with:
           name: kotlin-pr-test-results

@@ -13,10 +13,10 @@ keywords = ["mdl", "iso18013", "digital-identity", "mobile-drivers-license", "ve
 categories = ["cryptography", "api-bindings"]
 
 [build-dependencies]
-uniffi = { version = "0.28.3", features = [ "build" ] }
+uniffi = { version = "0.30.0", features = [ "build" ] }
 
 [dependencies]
-uniffi = { version = "0.28.3", features = [ "cli" ] }
+uniffi = { version = "0.30.0", features = [ "cli" ] }
 isomdl = { git = "https://github.com/spruceid/isomdl", rev = "fed574c"}
 anyhow = "1.0.98"
 base64 = "0.22.1"

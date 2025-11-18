@@ -16,25 +16,25 @@ use std::{
 };
 
 use super::mdoc::{KeyAlias, Mdoc};
-use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
+use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use isomdl::{
     definitions::{
-        CoseKey, DeviceKeyInfo, DigestAlgorithm, EC2Curve, EC2Y, ValidityInfo,
         helpers::NonEmptyMap,
         namespaces::{
             org_iso_18013_5_1::OrgIso1801351, org_iso_18013_5_1_aamva::OrgIso1801351Aamva,
         },
         traits::{FromJson, ToCbor, ToNamespaceMap},
         x509::X5Chain,
+        CoseKey, DeviceKeyInfo, DigestAlgorithm, EC2Curve, ValidityInfo, EC2Y,
     },
     presentation::device::Document,
 };
 use p256::pkcs8::EncodePrivateKey;
 use p256::{
-    PublicKey,
-    ecdsa::{SigningKey, VerifyingKey, signature::Signer},
+    ecdsa::{signature::Signer, SigningKey, VerifyingKey},
     elliptic_curve::sec1::ToEncodedPoint,
     pkcs8::{DecodePrivateKey, EncodePublicKey, ObjectIdentifier},
+    PublicKey,
 };
 use serde_json::json;
 use sha1::{Digest, Sha1};
@@ -45,20 +45,20 @@ use uuid::Uuid;
 use anyhow::{Context, Result};
 
 use x509_cert::{
-    Certificate,
     builder::{Builder, CertificateBuilder},
-    der::{DecodePem as _, asn1::OctetString},
+    der::{asn1::OctetString, DecodePem as _},
     ext::pkix::{
-        AuthorityKeyIdentifier, CrlDistributionPoints, ExtendedKeyUsage, IssuerAltName, KeyUsage,
-        KeyUsages, SubjectKeyIdentifier,
         crl::dp::DistributionPoint,
         name::{DistributionPointName, GeneralName},
+        AuthorityKeyIdentifier, CrlDistributionPoints, ExtendedKeyUsage, IssuerAltName, KeyUsage,
+        KeyUsages, SubjectKeyIdentifier,
     },
     name::Name,
     spki::{
         DynSignatureAlgorithmIdentifier, SignatureBitStringEncoding, SubjectPublicKeyInfoOwned,
     },
     time::Validity,
+    Certificate,
 };
 
 #[derive(Debug, uniffi::Error, thiserror::Error)]

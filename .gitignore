@@ -50,3 +50,4 @@ test_env/
 python/tests/cross_language_artifacts/
 python/.coverage
 htmlcov/
+*.patch

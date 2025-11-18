@@ -20,17 +20,17 @@ use std::{
 
 use anyhow::{Context, Result};
 use base64::prelude::*;
-use ciborium::{Value, from_reader};
+use ciborium::{from_reader, Value};
 use isomdl::{
     definitions::{
-        CoseKey, DeviceKeyInfo, DigestAlgorithm, EC2Curve, EC2Y, IssuerSigned, Mso, ValidityInfo,
         helpers::{NonEmptyMap, Tag24},
         x509::X5Chain,
+        CoseKey, DeviceKeyInfo, DigestAlgorithm, EC2Curve, IssuerSigned, Mso, ValidityInfo, EC2Y,
     },
     issuance::mdoc::Builder,
-    presentation::{Stringify, device::Document},
+    presentation::{device::Document, Stringify},
 };
-use p256::{PublicKey, elliptic_curve::sec1::ToEncodedPoint};
+use p256::{elliptic_curve::sec1::ToEncodedPoint, PublicKey};
 use serde::Deserialize;
 use serde::Serialize;
 use time::OffsetDateTime;
@@ -178,8 +178,8 @@ impl Mdoc {
     }
 
     /// The local ID of this credential.
-    pub fn id(&self) -> Uuid {
-        self.inner.id
+    pub fn id(&self) -> String {
+        self.inner.id.to_string()
     }
 
     /// The document type of this mdoc, for example `org.iso.18013.5.1.mDL`.

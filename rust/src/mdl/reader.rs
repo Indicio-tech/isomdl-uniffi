@@ -17,7 +17,7 @@ use std::{
 use isomdl::{
     definitions::{
         device_request,
-        helpers::{NonEmptyMap, non_empty_map},
+        helpers::{non_empty_map, NonEmptyMap},
         x509::{
             self,
             trust_anchor::{PemTrustAnchor, TrustAnchorRegistry},
@@ -25,7 +25,6 @@ use isomdl::{
     },
     presentation::{authentication::AuthenticationStatus as IsoMdlAuthenticationStatus, reader},
 };
-use uuid::Uuid;
 
 #[derive(thiserror::Error, uniffi::Error, Debug)]
 pub enum MDLReaderSessionError {
@@ -45,7 +44,7 @@ impl std::fmt::Debug for MDLSessionManager {
 #[derive(uniffi::Record)]
 pub struct MDLReaderSessionData {
     pub state: Arc<MDLSessionManager>,
-    uuid: Uuid,
+    uuid: String,
     pub request: Vec<u8>,
     ble_ident: Vec<u8>,
 }
@@ -110,7 +109,7 @@ pub fn establish_session(
         state: Arc::new(MDLSessionManager(manager)),
         request,
         ble_ident: ble_ident.to_vec(),
-        uuid,
+        uuid: uuid.to_string(),
     })
 }
 

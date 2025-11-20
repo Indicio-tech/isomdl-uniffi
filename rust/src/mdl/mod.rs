@@ -7,7 +7,7 @@
 // See the LICENSE-APACHE and LICENSE-MIT files for details.
 //
 // This project contains code from Spruce Systems, Inc.
-// https://github.com/spruceid/sprucekit-mobile/blob/main/rust/src/mdl/holder.rs
+// https://github.com/spruceid/sprucekit-mobile
 
 pub mod holder;
 pub mod mdoc;

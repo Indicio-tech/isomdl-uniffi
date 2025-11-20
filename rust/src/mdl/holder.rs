@@ -1,4 +1,5 @@
-// Copyright (c) 2025 Indicio
+// Copyright (c) 2022 Spruce Systems, Inc.
+// Portions Copyright (c) 2025 Indicio
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 //
 // This software may be modified and distributed under the terms
@@ -6,10 +7,7 @@
 // See the LICENSE-APACHE and LICENSE-MIT files for details.
 //
 // This project contains code from Spruce Systems, Inc.
-// (https://github.com/spruceid/isomdl)
-// Copyright (c) 2022 Spruce Systems, Inc.
-
-//https://github.com/spruceid/sprucekit-mobile/blob/main/rust/src/mdl/holder.rs
+// https://github.com/spruceid/sprucekit-mobile
 
 use isomdl::definitions::x509::trust_anchor::TrustAnchorRegistry;
 use isomdl::{
@@ -63,10 +61,14 @@ impl MdlPresentationSession {
     /// String containing the BLE ident.
     ///
     #[uniffi::constructor]
-    pub fn new(mdoc: Arc<Mdoc>, uuid: Uuid) -> Result<MdlPresentationSession, SessionError> {
+    pub fn new(mdoc: Arc<Mdoc>, uuid: String) -> Result<MdlPresentationSession, SessionError> {
+        let uuid_parsed = Uuid::parse_str(&uuid).map_err(|e| SessionError::Generic {
+            value: format!("Invalid UUID: {}", e),
+        })?;
+
         let drms = DeviceRetrievalMethods::new(DeviceRetrievalMethod::BLE(BleOptions {
             peripheral_server_mode: None,
-            central_client_mode: Some(CentralClientMode { uuid }),
+            central_client_mode: Some(CentralClientMode { uuid: uuid_parsed }),
         }));
         let session = SessionManagerInit::initialise(
             NonEmptyMap::new("org.iso.18013.5.1.mDL".into(), mdoc.document().clone()),

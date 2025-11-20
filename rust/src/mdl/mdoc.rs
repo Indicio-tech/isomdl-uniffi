@@ -1,4 +1,5 @@
-// Copyright (c) 2025 Indicio
+// Copyright (c) 2022 Spruce Systems, Inc.
+// Portions Copyright (c) 2025 Indicio
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 //
 // This software may be modified and distributed under the terms
@@ -6,10 +7,7 @@
 // See the LICENSE-APACHE and LICENSE-MIT files for details.
 //
 // This project contains code from Spruce Systems, Inc.
-// (https://github.com/spruceid/isomdl)
-// Copyright (c) 2022 Spruce Systems, Inc.
-
-// https://github.com/spruceid/sprucekit-mobile/blob/0.11.0/rust/src/credential/mdoc.rs
+// https://github.com/spruceid/sprucekit-mobile
 
 use std::{
     collections::{BTreeMap, HashMap},

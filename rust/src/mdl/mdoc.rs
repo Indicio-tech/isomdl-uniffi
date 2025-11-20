@@ -25,6 +25,10 @@ use isomdl::{
     definitions::{
         CoseKey, DeviceKeyInfo, DigestAlgorithm, EC2Curve, EC2Y, IssuerSigned, Mso, ValidityInfo,
         helpers::{NonEmptyMap, Tag24},
+        namespaces::{
+            org_iso_18013_5_1::OrgIso1801351, org_iso_18013_5_1_aamva::OrgIso1801351Aamva,
+        },
+        traits::{FromJson, ToNamespaceMap},
         x509::X5Chain,
     },
     issuance::mdoc::Builder,
@@ -129,6 +133,91 @@ impl Mdoc {
             .map_err(|_e| MdocInitError::GeneralConstructionError)?;
 
         let (certificate, signer) = setup_certificate_chain(iaca_cert_perm, iaca_key_perm)
+            .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+
+        let x5chain = X5Chain::builder()
+            .with_certificate(certificate)
+            .map_err(|_e| MdocInitError::GeneralConstructionError)?
+            .build()
+            .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+
+        let mdoc = builder
+            .issue::<p256::ecdsa::SigningKey, p256::ecdsa::Signature>(x5chain, signer)
+            .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+
+        let namespaces = NonEmptyMap::maybe_new(
+            mdoc.namespaces
+                .into_inner()
+                .into_iter()
+                .map(|(namespace, elements)| {
+                    (
+                        namespace,
+                        NonEmptyMap::maybe_new(
+                            elements
+                                .into_inner()
+                                .into_iter()
+                                .map(|element| {
+                                    (element.as_ref().element_identifier.clone(), element)
+                                })
+                                .collect(),
+                        )
+                        .unwrap(),
+                    )
+                })
+                .collect(),
+        )
+        .unwrap();
+
+        let doc = Document {
+            id: Default::default(),
+            issuer_auth: mdoc.issuer_auth,
+            mso: mdoc.mso,
+            namespaces,
+        };
+
+        Ok(Arc::new(super::mdoc::Mdoc::new_from_parts(
+            doc,
+            KeyAlias(Uuid::new_v4().to_string()),
+        )))
+    }
+
+    #[uniffi::constructor]
+    pub fn create_and_sign_mdl(
+        mdl_items: String,
+        aamva_items: Option<String>,
+        holder_jwk: String,
+        iaca_cert_pem: String,
+        iaca_key_pem: String,
+    ) -> Result<Arc<Self>, MdocInitError> {
+        let pub_key: PublicKey =
+            PublicKey::from_jwk_str(&holder_jwk).map_err(|_e| MdocInitError::InvalidJwk)?;
+
+        let mut namespaces = BTreeMap::new();
+
+        // Parse mDL items
+        let json_value: serde_json::Value = serde_json::from_str(&mdl_items)
+            .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+        let mdl_data = OrgIso1801351::from_json(&json_value)
+            .map_err(|_e| MdocInitError::GeneralConstructionError)?
+            .to_ns_map();
+        namespaces.insert("org.iso.18013.5.1".to_string(), mdl_data);
+
+        // Parse AAMVA items if present
+        if let Some(aamva_json) = aamva_items {
+            let json_value: serde_json::Value = serde_json::from_str(&aamva_json)
+                .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+            let aamva_data = OrgIso1801351Aamva::from_json(&json_value)
+                .map_err(|_e| MdocInitError::GeneralConstructionError)?
+                .to_ns_map();
+            namespaces.insert("org.iso.18013.5.1.aamva".to_string(), aamva_data);
+        }
+
+        let doc_type = "org.iso.18013.5.1.mDL".to_string();
+
+        let builder = prepare_builder(pub_key, namespaces, doc_type)
+            .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+
+        let (certificate, signer) = setup_certificate_chain(iaca_cert_pem, iaca_key_pem)
             .map_err(|_e| MdocInitError::GeneralConstructionError)?;
 
         let x5chain = X5Chain::builder()
@@ -377,4 +466,124 @@ fn convert_namespaces(
     }
 
     Ok(outer)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use base64::Engine;
+    use p256::elliptic_curve::rand_core::OsRng;
+    use p256::{
+        ecdsa::SigningKey,
+        pkcs8::{EncodePrivateKey, LineEnding},
+    };
+    use std::time::Duration;
+    use x509_cert::{
+        builder::{Builder, CertificateBuilder, Profile},
+        der::EncodePem,
+        name::Name,
+        serial_number::SerialNumber,
+        spki::SubjectPublicKeyInfoOwned,
+        time::Validity,
+    };
+
+    #[test]
+    fn test_create_and_sign_mdl() {
+        // 1. Generate Issuer Key
+        let issuer_key = SigningKey::random(&mut OsRng);
+        let issuer_key_pem = issuer_key.to_pkcs8_pem(LineEnding::LF).unwrap().to_string();
+
+        // 2. Generate Issuer Certificate (Self-signed for simplicity)
+        let subject_name: Name = "CN=Test Issuer".parse().unwrap();
+        let serial_number = SerialNumber::from(1u64);
+        let validity = Validity::from_now(Duration::from_secs(3600)).unwrap();
+
+        // Use clone() to ensure we have the value, not a reference, as expected by from_key
+        let spki = SubjectPublicKeyInfoOwned::from_key(issuer_key.verifying_key().clone()).unwrap();
+
+        let builder = CertificateBuilder::new(
+            Profile::Root,
+            serial_number,
+            validity,
+            subject_name,
+            spki,
+            &issuer_key,
+        )
+        .unwrap();
+
+        let cert = builder.build::<p256::ecdsa::DerSignature>().unwrap();
+        let cert_pem = cert.to_pem(LineEnding::LF).unwrap();
+
+        // 3. Generate Holder Key (JWK)
+        let holder_key = SigningKey::random(&mut OsRng);
+        let point = holder_key.verifying_key().to_encoded_point(false);
+        let x = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(point.x().unwrap());
+        let y = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(point.y().unwrap());
+
+        let holder_jwk = serde_json::json!({
+            "kty": "EC",
+            "crv": "P-256",
+            "x": x,
+            "y": y
+        })
+        .to_string();
+
+        // 4. Sample Data
+        let mdl_items = serde_json::json!({
+            "family_name": "Doe",
+            "given_name": "John",
+            "birth_date": "1990-01-01",
+            "issue_date": "2023-01-01",
+            "expiry_date": "2028-01-01",
+            "issuing_country": "US",
+            "issuing_authority": "DMV",
+            "document_number": "123456789",
+            "portrait": "SGVsbG8gV29ybGQ=",
+            "driving_privileges": [
+                {
+                    "vehicle_category_code": "B",
+                    "issue_date": "2023-01-01",
+                    "expiry_date": "2028-01-01"
+                }
+            ],
+            "un_distinguishing_sign": "USA"
+        })
+        .to_string();
+
+        // 5. Call function
+        let result =
+            Mdoc::create_and_sign_mdl(mdl_items, None, holder_jwk, cert_pem, issuer_key_pem);
+
+        if let Err(e) = &result {
+            println!("Error creating mdoc: {:?}", e);
+        }
+        let mdoc = result.unwrap();
+
+        // 6. Verify Output
+        assert_eq!(mdoc.doctype(), "org.iso.18013.5.1.mDL");
+
+        let details = mdoc.details();
+        let mdl_namespace = Namespace("org.iso.18013.5.1".to_string());
+        let elements = details
+            .get(&mdl_namespace)
+            .expect("mDL namespace not found");
+
+        let family_name = elements
+            .iter()
+            .find(|e| e.identifier == "family_name")
+            .expect("family_name not found");
+        assert!(family_name.value.as_ref().unwrap().contains("Doe"));
+
+        let given_name = elements
+            .iter()
+            .find(|e| e.identifier == "given_name")
+            .expect("given_name not found");
+        assert!(given_name.value.as_ref().unwrap().contains("John"));
+
+        let doc_num = elements
+            .iter()
+            .find(|e| e.identifier == "document_number")
+            .expect("document_number not found");
+        assert!(doc_num.value.as_ref().unwrap().contains("123456789"));
+    }
 }

@@ -9,6 +9,7 @@
 // (https://github.com/spruceid/isomdl)
 // Copyright (c) 2022 Spruce Systems, Inc.
 
+use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, HashMap},
     sync::Arc,
@@ -26,6 +27,14 @@ use isomdl::{
     presentation::{authentication::AuthenticationStatus as IsoMdlAuthenticationStatus, reader},
 };
 use uuid::Uuid;
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct OID4VPSessionTranscript(pub Option<Vec<u8>>, pub Option<Vec<u8>>, pub OID4VPHandover);
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct OID4VPHandover(pub Vec<u8>, pub Vec<u8>, pub String);
+
+impl isomdl::definitions::session::SessionTranscript for OID4VPSessionTranscript {}
 
 #[derive(thiserror::Error, uniffi::Error, Debug)]
 pub enum MDLReaderSessionError {
@@ -293,6 +302,128 @@ pub fn handle_response(
     })
 }
 
+#[derive(uniffi::Record, Debug)]
+pub struct MDLReaderVerifiedData {
+    pub verified_response: HashMap<String, HashMap<String, MDocItem>>,
+    pub issuer_authentication: AuthenticationStatus,
+    pub device_authentication: AuthenticationStatus,
+    pub errors: Option<String>,
+}
+
+impl MDLReaderVerifiedData {
+    pub fn verified_response_as_json(
+        &self,
+    ) -> Result<serde_json::Value, MDLReaderResponseSerializeError> {
+        serde_json::to_value(
+            self.verified_response
+                .iter()
+                .map(|(k, v)| {
+                    (
+                        k.clone(),
+                        v.iter().map(|(k, v)| (k.clone(), v.into())).collect(),
+                    )
+                })
+                .collect::<HashMap<String, HashMap<String, serde_json::Value>>>(),
+        )
+        .map_err(|e| MDLReaderResponseSerializeError::Generic {
+            value: format!("Serialization error: {}", e),
+        })
+    }
+}
+
+#[uniffi::export]
+pub fn verify_oid4vp_response(
+    response: Vec<u8>,
+    nonce: String,
+    client_id: String,
+    response_uri: String,
+    trust_anchor_registry: Option<Vec<String>>,
+) -> Result<MDLReaderVerifiedData, MDLReaderSessionError> {
+    // 1. Parse DeviceResponse
+    let device_response: isomdl::definitions::DeviceResponse = isomdl::cbor::from_slice(&response)
+        .map_err(|e| MDLReaderSessionError::Generic {
+            value: format!("Unable to parse DeviceResponse: {}", e),
+        })?;
+
+    // 2. Construct OID4VP SessionTranscript
+    // [null, null, [clientIdHash, responseUriHash, nonce]]
+    use sha2::{Digest, Sha256};
+    let client_id_hash = Sha256::digest(client_id.as_bytes()).to_vec();
+    let response_uri_hash = Sha256::digest(response_uri.as_bytes()).to_vec();
+
+    let transcript = OID4VPSessionTranscript(
+        None,
+        None,
+        OID4VPHandover(client_id_hash, response_uri_hash, nonce),
+    );
+
+    let registry = if let Some(anchors) = trust_anchor_registry {
+        let mut certs = Vec::new();
+        for anchor in anchors {
+            let anchor: PemTrustAnchor =
+                serde_json::from_str(&anchor).map_err(|e| MDLReaderSessionError::Generic {
+                    value: format!("Invalid trust anchor JSON: {}", e),
+                })?;
+            certs.push(anchor);
+        }
+        TrustAnchorRegistry::from_pem_certificates(certs).map_err(|e| {
+            MDLReaderSessionError::Generic {
+                value: format!("Failed to create trust registry: {}", e),
+            }
+        })?
+    } else {
+        TrustAnchorRegistry::from_pem_certificates(vec![]).map_err(|e| {
+            MDLReaderSessionError::Generic {
+                value: format!("Failed to create empty trust registry: {}", e),
+            }
+        })?
+    };
+
+    // 3. Parse and Validate
+    match isomdl::presentation::reader::parse(&device_response) {
+        Ok((doc, x5chain, namespaces)) => {
+            let validation_result = isomdl::presentation::reader_utils::validate_response(
+                transcript,
+                registry,
+                x5chain,
+                doc.clone(),
+                namespaces,
+            );
+
+            // Convert namespaces to HashMap<String, HashMap<String, MDocItem>>
+            let mut verified_response = HashMap::new();
+            for (ns, val) in validation_result.response {
+                // val is serde_json::Value (likely Object or Map)
+                // We need to convert it to HashMap<String, MDocItem>
+                if let serde_json::Value::Object(map) = val {
+                    let mut ns_map = HashMap::new();
+                    for (k, v) in map {
+                        ns_map.insert(k, MDocItem::from(v));
+                    }
+                    verified_response.insert(ns, ns_map);
+                }
+            }
+
+            // Convert errors
+            let errors = if validation_result.errors.is_empty() {
+                None
+            } else {
+                Some(serde_json::to_string(&validation_result.errors).unwrap_or_default())
+            };
+
+            Ok(MDLReaderVerifiedData {
+                verified_response,
+                issuer_authentication: validation_result.issuer_authentication.into(),
+                device_authentication: validation_result.device_authentication.into(),
+                errors,
+            })
+        }
+        Err(e) => Err(MDLReaderSessionError::Generic {
+            value: format!("Failed to parse device response: {}", e),
+        }),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -377,5 +508,25 @@ mod tests {
         println!("   .next()                               // Gets first CentralClientMode");
         println!("   .map(|mode| mode.uuid)                // Accesses uuid field directly");
         println!("   Returns: Option<Uuid>                 // No dereferencing needed");
+    }
+
+    #[test]
+    fn test_verify_oid4vp_response_invalid_input() {
+        let response = vec![0u8, 1, 2, 3]; // Invalid CBOR
+        let nonce = "nonce".to_string();
+        let client_id = "client_id".to_string();
+        let response_uri = "response_uri".to_string();
+        let trust_anchors = None;
+
+        let result =
+            verify_oid4vp_response(response, nonce, client_id, response_uri, trust_anchors);
+
+        assert!(result.is_err());
+        match result {
+            Err(MDLReaderSessionError::Generic { value }) => {
+                assert!(value.contains("Unable to parse DeviceResponse"));
+            }
+            _ => panic!("Expected Generic error"),
+        }
     }
 }

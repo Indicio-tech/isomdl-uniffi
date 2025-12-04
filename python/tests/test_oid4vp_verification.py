@@ -118,9 +118,7 @@ class TestOID4VPVerification:
         minimal_cbor = b"\xa0"  # Empty CBOR map
 
         try:
-            mdl_module.verify_oid4vp_response(
-                minimal_cbor, nonce, client_id, response_uri, None
-            )
+            mdl_module.verify_oid4vp_response(minimal_cbor, nonce, client_id, response_uri, None)
             # If this succeeds, great! If not, we expect a specific error
         except Exception as e:
             error_msg = str(e)
@@ -159,7 +157,7 @@ class TestOID4VPVerification:
         """Test that AuthenticationStatus enum values are accessible."""
         # Verify the AuthenticationStatus enum is available and has expected values
         assert hasattr(mdl_module, "AuthenticationStatus")
-        
+
         auth_status = mdl_module.AuthenticationStatus
         assert hasattr(auth_status, "VALID")
         assert hasattr(auth_status, "INVALID")
@@ -184,9 +182,7 @@ class TestOID4VPVerification:
 
         # Test with empty trust anchor list
         try:
-            mdl_module.verify_oid4vp_response(
-                invalid_response, nonce, client_id, response_uri, []
-            )
+            mdl_module.verify_oid4vp_response(invalid_response, nonce, client_id, response_uri, [])
         except Exception as e:
             assert "Unable to parse DeviceResponse" in str(e)
 

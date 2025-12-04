@@ -159,9 +159,7 @@ impl Mdoc {
                         elements
                             .into_inner()
                             .into_iter()
-                            .map(|element| {
-                                (element.as_ref().element_identifier.clone(), element)
-                            })
+                            .map(|element| (element.as_ref().element_identifier.clone(), element))
                             .collect(),
                     )
                     .ok_or(MdocInitError::GeneralConstructionError)?;
@@ -242,9 +240,7 @@ impl Mdoc {
                         elements
                             .into_inner()
                             .into_iter()
-                            .map(|element| {
-                                (element.as_ref().element_identifier.clone(), element)
-                            })
+                            .map(|element| (element.as_ref().element_identifier.clone(), element))
                             .collect(),
                     )
                     .ok_or(MdocInitError::GeneralConstructionError)?;
@@ -371,15 +367,16 @@ impl Mdoc {
                     })
                     .collect();
 
-                let registry = TrustAnchorRegistry::from_pem_certificates(pem_anchors)
-                    .map_err(|e| {
+                let registry =
+                    TrustAnchorRegistry::from_pem_certificates(pem_anchors).map_err(|e| {
                         MdocVerificationError::TrustAnchorRegistryError(format!("{:?}", e))
                     })?;
 
                 // Validate X5Chain against trust anchors using mDL validation rules
-                let validation_errors = isomdl::definitions::x509::validation::ValidationRuleset::Mdl
-                    .validate(&x5chain, &registry)
-                    .errors;
+                let validation_errors =
+                    isomdl::definitions::x509::validation::ValidationRuleset::Mdl
+                        .validate(&x5chain, &registry)
+                        .errors;
 
                 if !validation_errors.is_empty() {
                     return Err(MdocVerificationError::X5ChainValidationFailed(
@@ -492,8 +489,6 @@ impl Mdoc {
             },
         }))
     }
-
-
 }
 
 #[derive(Debug, uniffi::Error, thiserror::Error)]
@@ -904,9 +899,8 @@ mod tests {
         .to_string();
 
         // 5. Create mdoc with original issuer
-        let mdoc =
-            Mdoc::create_and_sign_mdl(mdl_items, None, holder_jwk, cert_pem, issuer_key_pem)
-                .expect("Failed to create mdoc");
+        let mdoc = Mdoc::create_and_sign_mdl(mdl_items, None, holder_jwk, cert_pem, issuer_key_pem)
+            .expect("Failed to create mdoc");
 
         // 6. Try to verify with WRONG trust anchor - should fail validation
         let result = mdoc.verify_issuer_signature(Some(vec![other_cert_pem]));

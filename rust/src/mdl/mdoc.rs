@@ -366,16 +366,13 @@ impl Mdoc {
                 })
                 .collect();
 
-            let registry =
-                TrustAnchorRegistry::from_pem_certificates(pem_anchors).map_err(|e| {
-                    MdocVerificationError::TrustAnchorRegistryError(format!("{:?}", e))
-                })?;
+            let registry = TrustAnchorRegistry::from_pem_certificates(pem_anchors)
+                .map_err(|e| MdocVerificationError::TrustAnchorRegistryError(format!("{:?}", e)))?;
 
             // Validate X5Chain against trust anchors using mDL validation rules
-            let validation_errors =
-                isomdl::definitions::x509::validation::ValidationRuleset::Mdl
-                    .validate(&x5chain, &registry)
-                    .errors;
+            let validation_errors = isomdl::definitions::x509::validation::ValidationRuleset::Mdl
+                .validate(&x5chain, &registry)
+                .errors;
 
             if !validation_errors.is_empty() {
                 return Err(MdocVerificationError::X5ChainValidationFailed(

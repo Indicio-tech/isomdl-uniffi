@@ -146,7 +146,10 @@ pub fn generate_test_mdl(key_pair: Arc<P256KeyPair>) -> Result<Mdoc, MdlUtilErro
     // need to manually extract the minimal JWK.
     // let jwk: MinimalEcJwk = serde_json::from_str(&key.jwk().context("failed to get jwk")?)
     //     .context("failed to parse minimal jwk")?;
-    let pk: PublicKey = key_pair.ver_key().expect("Error getting verkey").into();
+    let pk: PublicKey = key_pair
+        .ver_key()
+        .map_err(|_| MdlUtilError::General("Error getting verkey".to_string()))?
+        .into();
 
     let mdoc_builder = prepare_mdoc(pk).context("failed to prepare mdoc")?;
 
@@ -165,21 +168,23 @@ pub fn generate_test_mdl(key_pair: Arc<P256KeyPair>) -> Result<Mdoc, MdlUtilErro
             .into_inner()
             .into_iter()
             .map(|(namespace, elements)| {
-                (
-                    namespace,
-                    NonEmptyMap::maybe_new(
-                        elements
-                            .into_inner()
-                            .into_iter()
-                            .map(|element| (element.as_ref().element_identifier.clone(), element))
-                            .collect(),
-                    )
-                    .unwrap(),
+                let inner_map = NonEmptyMap::maybe_new(
+                    elements
+                        .into_inner()
+                        .into_iter()
+                        .map(|element| (element.as_ref().element_identifier.clone(), element))
+                        .collect(),
                 )
+                .ok_or(MdlUtilError::General(
+                    "Internal error: Empty inner namespace elements".to_string(),
+                ))?;
+                Ok((namespace, inner_map))
             })
-            .collect(),
+            .collect::<Result<_, MdlUtilError>>()?,
     )
-    .unwrap();
+    .ok_or(MdlUtilError::General(
+        "Internal error: Empty namespaces map".to_string(),
+    ))?;
 
     let document = Document {
         id: Default::default(),

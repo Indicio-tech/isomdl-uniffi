@@ -33,6 +33,7 @@ anyhow = "1.0.98"
 base64 = "0.22.1"
 chrono = { version = "0.4", features = ["serde"] }
 ciborium = "0.2.2"
+coset = "0.3"
 p256 = { version = "0.13.2", features = ["jwk", "pkcs8"] }
 pem = "3.0.4"
 rand = "0.9.1"

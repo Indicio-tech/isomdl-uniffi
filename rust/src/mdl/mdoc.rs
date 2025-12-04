@@ -357,36 +357,34 @@ impl Mdoc {
         let common_name = Some(x5chain.end_entity_common_name().to_string());
 
         // 3. If trust anchors are provided, validate the X5Chain against them
-        if let Some(anchors) = trust_anchors {
-            if !anchors.is_empty() {
-                let pem_anchors: Vec<PemTrustAnchor> = anchors
-                    .into_iter()
-                    .map(|cert_pem| PemTrustAnchor {
-                        certificate_pem: cert_pem,
-                        purpose: TrustPurpose::Iaca,
-                    })
-                    .collect();
+        if let Some(anchors) = trust_anchors.filter(|a| !a.is_empty()) {
+            let pem_anchors: Vec<PemTrustAnchor> = anchors
+                .into_iter()
+                .map(|cert_pem| PemTrustAnchor {
+                    certificate_pem: cert_pem,
+                    purpose: TrustPurpose::Iaca,
+                })
+                .collect();
 
-                let registry =
-                    TrustAnchorRegistry::from_pem_certificates(pem_anchors).map_err(|e| {
-                        MdocVerificationError::TrustAnchorRegistryError(format!("{:?}", e))
-                    })?;
+            let registry =
+                TrustAnchorRegistry::from_pem_certificates(pem_anchors).map_err(|e| {
+                    MdocVerificationError::TrustAnchorRegistryError(format!("{:?}", e))
+                })?;
 
-                // Validate X5Chain against trust anchors using mDL validation rules
-                let validation_errors =
-                    isomdl::definitions::x509::validation::ValidationRuleset::Mdl
-                        .validate(&x5chain, &registry)
-                        .errors;
+            // Validate X5Chain against trust anchors using mDL validation rules
+            let validation_errors =
+                isomdl::definitions::x509::validation::ValidationRuleset::Mdl
+                    .validate(&x5chain, &registry)
+                    .errors;
 
-                if !validation_errors.is_empty() {
-                    return Err(MdocVerificationError::X5ChainValidationFailed(
-                        validation_errors
-                            .iter()
-                            .map(|e| format!("{:?}", e))
-                            .collect::<Vec<_>>()
-                            .join(", "),
-                    ));
-                }
+            if !validation_errors.is_empty() {
+                return Err(MdocVerificationError::X5ChainValidationFailed(
+                    validation_errors
+                        .iter()
+                        .map(|e| format!("{:?}", e))
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                ));
             }
         }
 

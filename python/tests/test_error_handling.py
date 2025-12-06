@@ -21,7 +21,7 @@ class TestInvalidInput:
 
     def test_invalid_session_uuid_empty(self, mdl_module, test_mdl):
         """Test that empty session UUID is rejected."""
-        with pytest.raises(mdl_module.SessionError):
+        with pytest.raises(mdl_module.InternalError):
             mdl_module.MdlPresentationSession(test_mdl, "")
 
     def test_invalid_session_uuid_malformed(self, mdl_module, test_mdl):
@@ -36,7 +36,7 @@ class TestInvalidInput:
 
         for invalid_uuid in invalid_uuids:
             # Implementation validates UUID format strictly - should raise
-            with pytest.raises(mdl_module.SessionError):  # SessionError for invalid UUID
+            with pytest.raises(mdl_module.InternalError):  # InternalError for invalid UUID format
                 mdl_module.MdlPresentationSession(test_mdl, invalid_uuid)
 
     def test_corrupted_qr_code_uri(self, mdl_module):

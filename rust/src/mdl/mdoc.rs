@@ -1,4 +1,5 @@
-// Copyright (c) 2025 Indicio
+// Copyright (c) 2022 Spruce Systems, Inc.
+// Portions Copyright (c) 2025 Indicio
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 //
 // This software may be modified and distributed under the terms
@@ -6,10 +7,7 @@
 // See the LICENSE-APACHE and LICENSE-MIT files for details.
 //
 // This project contains code from Spruce Systems, Inc.
-// (https://github.com/spruceid/isomdl)
-// Copyright (c) 2022 Spruce Systems, Inc.
-
-// https://github.com/spruceid/sprucekit-mobile/blob/0.11.0/rust/src/credential/mdoc.rs
+// https://github.com/spruceid/sprucekit-mobile
 
 use std::{
     collections::{BTreeMap, HashMap},
@@ -40,7 +38,6 @@ use isomdl::{
     presentation::{Stringify, authentication::mdoc::issuer_authentication, device::Document},
 };
 use p256::ecdsa::{Signature, VerifyingKey};
-use p256::pkcs8::DecodePublicKey;
 use p256::{PublicKey, elliptic_curve::sec1::ToEncodedPoint};
 use serde::Deserialize;
 use serde::Serialize;
@@ -408,7 +405,6 @@ impl Mdoc {
             .map_err(|e| MdocVerificationError::X5ChainParsing(format!("{:?}", e)))?;
 
         println!("DEBUG: X5Chain: {:?}", x5chain);
-
         // 2. Get the common name from the end-entity certificate
         let common_name = Some(x5chain.end_entity_common_name().to_string());
 
@@ -1128,7 +1124,6 @@ mod tests {
 
     #[test]
     fn test_verify_issuer_signature_chaining() {
-        use x509_cert::ext::AsExtension;
         use x509_cert::ext::pkix::{
             CrlDistributionPoints, IssuerAltName,
             crl::dp::DistributionPoint,

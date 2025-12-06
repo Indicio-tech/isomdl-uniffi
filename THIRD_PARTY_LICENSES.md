@@ -11,30 +11,34 @@ This project incorporates code and concepts from the following open-source proje
 The `isomdl` library provides the core ISO/IEC DIS 18013-5 Mobile Driver's License (mDL) implementation in Rust. This project uses and extends functionality from this library to provide Python bindings through UniFFI.
 
 **License Files:**
-- Apache 2.0: [LICENSE-APACHE](./LICENSE-APACHE)
-- MIT: [LICENSE-MIT](./LICENSE-MIT)
+- Apache 2.0: [rust/LICENSE-SPRUCE-APACHE](./rust/LICENSE-SPRUCE-APACHE)
+- MIT: [rust/LICENSE-SPRUCE-MIT](./rust/LICENSE-SPRUCE-MIT)
 
 ## sprucekit-mobile
 
 **Repository:** https://github.com/spruceid/sprucekit-mobile  
 **License:** Apache-2.0 and MIT  
-**Copyright:** Copyright (c) 2024 Spruce Systems, Inc.
+**Copyright:** Copyright (c) 2022 Spruce Systems, Inc.
 
-SpruceKit Mobile provides libraries and examples for integrating verifiable credentials (VC) and mobile driver's licenses (mDL) into mobile applications. Concepts and patterns from this project have influenced the design of the mobile integration aspects of this library.
+SpruceKit Mobile provides libraries and examples for integrating verifiable credentials (VC) and mobile driver's licenses (mDL) into mobile applications. Code from this project, particularly the holder implementation, has been incorporated into the Rust components of this library.
 
 **License Files:**
-- Apache 2.0: [LICENSE-APACHE](./LICENSE-APACHE)
-- MIT: [LICENSE-MIT](./LICENSE-MIT)
+- Apache 2.0: [rust/LICENSE-SPRUCE-APACHE](./rust/LICENSE-SPRUCE-APACHE)
+- MIT: [rust/LICENSE-SPRUCE-MIT](./rust/LICENSE-SPRUCE-MIT)
 
 ## License Terms
 
-Both projects use dual licensing under Apache 2.0 and MIT licenses. You may choose to use this software under the terms of either license.
+Both projects use dual licensing under Apache 2.0 and MIT licenses. The Rust components of this project, which incorporate Spruce Systems code, are licensed under the same dual license terms.
 
-### Apache License 2.0
-The full text of the Apache License 2.0 can be found in [LICENSE-APACHE](./LICENSE-APACHE).
+### For Rust Components (incorporating Spruce Systems code)
+- Apache 2.0: [rust/LICENSE-SPRUCE-APACHE](./rust/LICENSE-SPRUCE-APACHE)
+- MIT: [rust/LICENSE-SPRUCE-MIT](./rust/LICENSE-SPRUCE-MIT)
 
-### MIT License
-The full text of the MIT License can be found in [LICENSE-MIT](./LICENSE-MIT).
+### For Other Project Components (Indicio contributions)
+- Apache 2.0: [LICENSE-APACHE](./LICENSE-APACHE)
+- MIT: [LICENSE-MIT](./LICENSE-MIT)
+
+You may choose to use this software under the terms of either license.
 
 ## Acknowledgments
 

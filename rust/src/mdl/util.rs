@@ -47,10 +47,10 @@ use anyhow::{Context, Result};
 use x509_cert::{
     Certificate,
     builder::{Builder, CertificateBuilder},
-    der::{DecodePem as _, asn1::OctetString},
+    der::{Decode, DecodePem as _, asn1::OctetString},
     ext::pkix::{
-        AuthorityKeyIdentifier, CrlDistributionPoints, ExtendedKeyUsage, IssuerAltName, KeyUsage,
-        KeyUsages, SubjectKeyIdentifier,
+        AuthorityKeyIdentifier, CrlDistributionPoints, ExtendedKeyUsage,
+        ID_CE_SUBJECT_KEY_IDENTIFIER, IssuerAltName, KeyUsage, KeyUsages, SubjectKeyIdentifier,
         crl::dp::DistributionPoint,
         name::{DistributionPointName, GeneralName},
     },
@@ -137,7 +137,7 @@ impl P256KeyPair {
 #[uniffi::export]
 /// Generate a new test mDL with hardcoded values, using the supplied key as the DeviceKey.
 pub fn generate_test_mdl(key_pair: Arc<P256KeyPair>) -> Result<Mdoc, MdlUtilError> {
-    let (certificate, signer) = setup_certificate_chain(
+    let (certificate, certs, signer) = setup_certificate_chain(
         include_str!("../../tests/res/mdl/utrecht-certificate.pem").to_string(),
         include_str!("../../tests/res/mdl/utrecht-key.pem").to_string(),
     )
@@ -153,11 +153,17 @@ pub fn generate_test_mdl(key_pair: Arc<P256KeyPair>) -> Result<Mdoc, MdlUtilErro
 
     let mdoc_builder = prepare_mdoc(pk).context("failed to prepare mdoc")?;
 
-    let x5chain = X5Chain::builder()
+    let mut x5chain_builder = X5Chain::builder()
         .with_certificate(certificate)
-        .context("failed to add certificate to x5chain")?
-        .build()
-        .context("failed to build x5chain")?;
+        .context("failed to add certificate to x5chain")?;
+
+    for cert in certs {
+        x5chain_builder = x5chain_builder
+            .with_certificate(cert)
+            .context("failed to add cert to x5chain")?;
+    }
+
+    let x5chain = x5chain_builder.build().context("failed to build x5chain")?;
 
     let mdoc = mdoc_builder
         .issue::<p256::ecdsa::SigningKey, p256::ecdsa::Signature>(x5chain, signer)
@@ -337,25 +343,85 @@ fn prepare_mdoc(pub_key: PublicKey) -> Result<isomdl::issuance::mdoc::Builder> {
 pub fn setup_certificate_chain(
     iaca_cert_pem: String,
     iaca_key_pem: String,
-) -> Result<(Certificate, p256::ecdsa::SigningKey)> {
-    let iaca_cert = Certificate::from_pem(&iaca_cert_pem)?;
-    let iaca_name: Name = iaca_cert.tbs_certificate.subject;
+) -> Result<(Certificate, Vec<Certificate>, p256::ecdsa::SigningKey)> {
+    let parts: Vec<&str> = iaca_cert_pem.split("-----BEGIN CERTIFICATE-----").collect();
+    let mut iaca_certs = Vec::new();
+
+    for part in parts.iter().skip(1) {
+        if part.trim().is_empty() {
+            continue;
+        }
+        let full_pem = format!("-----BEGIN CERTIFICATE-----\n{}", part.trim_start());
+        match Certificate::from_pem(&full_pem) {
+            Ok(cert) => iaca_certs.push(cert),
+            Err(_) => {
+                // Try parsing with pem crate as fallback
+                if let Ok(p) = pem::parse(&full_pem) {
+                    if let Ok(cert) = Certificate::from_der(p.contents()) {
+                        iaca_certs.push(cert);
+                    }
+                }
+            }
+        }
+    }
+
+    if iaca_certs.is_empty() {
+        let cert = Certificate::from_pem(&iaca_cert_pem)?;
+        iaca_certs.push(cert);
+    }
+
     let iaca_key = p256::ecdsa::SigningKey::from_pkcs8_pem(&iaca_key_pem)?;
+
+    // Check if the first certificate is a CA
+    let is_ca = iaca_certs[0]
+        .tbs_certificate
+        .extensions
+        .as_ref()
+        .and_then(|exts| {
+            let bc_oid: x509_cert::der::oid::ObjectIdentifier = "2.5.29.19".parse().unwrap();
+            exts.iter().find(|e| e.extn_id == bc_oid)
+        })
+        .and_then(|e| {
+            use x509_cert::ext::pkix::BasicConstraints;
+            BasicConstraints::from_der(e.extn_value.as_bytes()).ok()
+        })
+        .map(|bc| bc.ca)
+        .unwrap_or(false);
+
+    if !is_ca {
+        let certificate = iaca_certs.remove(0);
+        return Ok((certificate, iaca_certs, iaca_key));
+    }
+
+    let iaca_cert = &iaca_certs[0];
+    let iaca_name: Name = iaca_cert.tbs_certificate.subject.clone();
+
+    let issuer_ski = iaca_cert
+        .tbs_certificate
+        .extensions
+        .as_ref()
+        .and_then(|exts| {
+            exts.iter()
+                .find(|e| e.extn_id == ID_CE_SUBJECT_KEY_IDENTIFIER)
+        })
+        .and_then(|e| SubjectKeyIdentifier::from_der(e.extn_value.as_bytes()).ok())
+        .map(|ski| ski.0.as_bytes().to_vec());
 
     let ds_key = p256::ecdsa::SigningKey::random(&mut signature::rand_core::OsRng);
     let mut prepared_ds_certificate =
-        prepare_signer_certificate(&ds_key, &iaca_key, iaca_name.clone())?;
+        prepare_signer_certificate(&ds_key, &iaca_key, iaca_name.clone(), issuer_ski)?;
     let signature: p256::ecdsa::Signature = iaca_key.sign(&prepared_ds_certificate.finalize()?);
     let ds_certificate: Certificate =
         prepared_ds_certificate.assemble(signature.to_der().to_bitstring()?)?;
 
-    Ok((ds_certificate, ds_key))
+    Ok((ds_certificate, iaca_certs, ds_key))
 }
 
 fn prepare_signer_certificate<'s, S>(
     signer_key: &'s S,
     iaca_key: &'s S,
     iaca_name: Name,
+    issuer_ski: Option<Vec<u8>>,
 ) -> Result<CertificateBuilder<'s, S>>
 where
     S: signature::KeypairRef + DynSignatureAlgorithmIdentifier,
@@ -365,9 +431,13 @@ where
     let ski_digest = Sha1::digest(spki.subject_public_key.raw_bytes());
     let ski_digest_octet = OctetString::new(ski_digest.to_vec())?;
 
-    let apki = SubjectPublicKeyInfoOwned::from_key(iaca_key.verifying_key())?;
-    let aki_digest = Sha1::digest(apki.subject_public_key.raw_bytes());
-    let aki_digest_octet = OctetString::new(aki_digest.to_vec())?;
+    let aki_digest_octet = if let Some(ski) = issuer_ski {
+        OctetString::new(ski)?
+    } else {
+        let apki = SubjectPublicKeyInfoOwned::from_key(iaca_key.verifying_key())?;
+        let aki_digest = Sha1::digest(apki.subject_public_key.raw_bytes());
+        OctetString::new(aki_digest.to_vec())?
+    };
 
     let mut builder = CertificateBuilder::new(
         x509_cert::builder::Profile::Manual {

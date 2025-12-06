@@ -39,6 +39,7 @@ dev = [
     "build",
     "pytest>=7.0.0",
     "pytest-cov",
+    "cryptography>=39.0.0",
 ]
 
 [project.urls]

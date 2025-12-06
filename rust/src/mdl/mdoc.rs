@@ -431,10 +431,10 @@ impl Mdoc {
                 if let ciborium::Value::Array(certs_vals) = &x5chain_cbor {
                     let mut candidates: Vec<(usize, Certificate)> = Vec::new();
                     for (idx, cert_val) in certs_vals.iter().enumerate() {
-                        if let ciborium::Value::Bytes(cert_bytes) = cert_val {
-                            if let Ok(cert) = Certificate::from_der(cert_bytes) {
-                                candidates.push((idx, cert));
-                            }
+                        if let ciborium::Value::Bytes(cert_bytes) = cert_val
+                            && let Ok(cert) = Certificate::from_der(cert_bytes)
+                        {
+                            candidates.push((idx, cert));
                         }
                     }
 
@@ -445,13 +445,12 @@ impl Mdoc {
 
                         for (i, (_idx, cert)) in candidates.iter().enumerate() {
                             let mut is_signed_by_trusted = false;
-                            for (_trust_idx, trust_cert) in trusted_certs.iter().enumerate() {
+                            for trust_cert in trusted_certs.iter() {
                                 if cert.tbs_certificate.issuer == trust_cert.tbs_certificate.subject
+                                    && verify_signature(cert, trust_cert).is_ok()
                                 {
-                                    if verify_signature(cert, trust_cert).is_ok() {
-                                        is_signed_by_trusted = true;
-                                        break;
-                                    }
+                                    is_signed_by_trusted = true;
+                                    break;
                                 }
                             }
 
@@ -485,13 +484,13 @@ impl Mdoc {
                                 .map(|bc| bc.ca)
                                 .unwrap_or(false);
 
-                            if is_ca {
-                                if let Ok(pem) = cert.to_pem(x509_cert::der::pem::LineEnding::LF) {
-                                    pem_anchors.push(PemTrustAnchor {
-                                        certificate_pem: pem,
-                                        purpose: TrustPurpose::Iaca,
-                                    });
-                                }
+                            if is_ca
+                                && let Ok(pem) = cert.to_pem(x509_cert::der::pem::LineEnding::LF)
+                            {
+                                pem_anchors.push(PemTrustAnchor {
+                                    certificate_pem: pem,
+                                    purpose: TrustPurpose::Iaca,
+                                });
                             }
 
                             trusted_certs.push(cert);

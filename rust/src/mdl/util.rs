@@ -356,10 +356,10 @@ pub fn setup_certificate_chain(
             Ok(cert) => iaca_certs.push(cert),
             Err(_) => {
                 // Try parsing with pem crate as fallback
-                if let Ok(p) = pem::parse(&full_pem) {
-                    if let Ok(cert) = Certificate::from_der(p.contents()) {
-                        iaca_certs.push(cert);
-                    }
+                if let Ok(p) = pem::parse(&full_pem)
+                    && let Ok(cert) = Certificate::from_der(p.contents())
+                {
+                    iaca_certs.push(cert);
                 }
             }
         }

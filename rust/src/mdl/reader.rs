@@ -9,10 +9,19 @@
 // This project contains code from Spruce Systems, Inc.
 // https://github.com/spruceid/sprucekit-mobile
 
+use ciborium;
+use coset::Label;
+use isomdl::definitions::x509::x5chain::X5CHAIN_COSE_HEADER_LABEL;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, HashMap},
     sync::Arc,
+};
+use x509_cert::der::{Decode, Encode};
+use x509_cert::ext::pkix::BasicConstraints;
+use x509_cert::{
+    Certificate,
+    der::{DecodePem, EncodePem},
 };
 
 use isomdl::{
@@ -21,18 +30,56 @@ use isomdl::{
         helpers::{NonEmptyMap, non_empty_map},
         x509::{
             self,
-            trust_anchor::{PemTrustAnchor, TrustAnchorRegistry},
+            trust_anchor::{PemTrustAnchor, TrustAnchorRegistry, TrustPurpose},
         },
     },
     presentation::{authentication::AuthenticationStatus as IsoMdlAuthenticationStatus, reader},
 };
 use uuid::Uuid;
 
-#[derive(Serialize, Deserialize, Clone)]
-pub struct OID4VPSessionTranscript(pub Option<Vec<u8>>, pub Option<Vec<u8>>, pub OID4VPHandover);
+fn verify_signature(subject: &Certificate, issuer: &Certificate) -> Result<(), String> {
+    let signature = subject.signature.as_bytes().ok_or("Missing signature")?;
+    let signature = p256::ecdsa::Signature::from_der(signature)
+        .map_err(|e| format!("Invalid signature: {:?}", e))?;
 
+    let spki = issuer
+        .tbs_certificate
+        .subject_public_key_info
+        .subject_public_key
+        .as_bytes()
+        .ok_or("Missing subject public key")?;
+    let verifying_key = p256::ecdsa::VerifyingKey::from_sec1_bytes(spki)
+        .map_err(|e| format!("Invalid verifying key: {:?}", e))?;
+
+    use signature::Verifier;
+    verifying_key
+        .verify(
+            &subject
+                .tbs_certificate
+                .to_der()
+                .map_err(|e| format!("Der encoding error: {:?}", e))?,
+            &signature,
+        )
+        .map_err(|e| format!("Signature verification failed: {:?}", e))
+}
+
+/// OID4VP SessionTranscript per OpenID4VP over ISO 18013-5 spec:
+/// SessionTranscript = [null, null, OID4VPHandover]
 #[derive(Serialize, Deserialize, Clone)]
-pub struct OID4VPHandover(pub Vec<u8>, pub Vec<u8>, pub String);
+pub struct OID4VPSessionTranscript(
+    pub Option<()>, // DeviceEngagementBytes - null for OID4VP
+    pub Option<()>, // EReaderKeyBytes - null for OID4VP
+    pub OID4VPHandover,
+);
+
+/// OID4VP Handover per OpenID4VP over ISO 18013-5 spec:
+/// OID4VPHandover = [clientIdHash: bstr, responseUriHash: bstr, nonce: tstr]
+#[derive(Serialize, Deserialize, Clone)]
+pub struct OID4VPHandover(
+    #[serde(with = "serde_bytes")] pub Vec<u8>, // clientIdHash (SHA-256)
+    #[serde(with = "serde_bytes")] pub Vec<u8>, // responseUriHash (SHA-256)
+    pub String,                                 // nonce (text string per spec)
+);
 
 impl isomdl::definitions::session::SessionTranscript for OID4VPSessionTranscript {}
 
@@ -338,11 +385,19 @@ pub fn verify_oid4vp_response(
     client_id: String,
     response_uri: String,
     trust_anchor_registry: Option<Vec<String>>,
+    use_intermediate_chaining: bool,
 ) -> Result<MDLReaderVerifiedData, MDLReaderSessionError> {
     // 1. Parse DeviceResponse
     let device_response: isomdl::definitions::DeviceResponse = isomdl::cbor::from_slice(&response)
-        .map_err(|e| MDLReaderSessionError::Generic {
-            value: format!("Unable to parse DeviceResponse: {}", e),
+        .map_err(|e| {
+            let debug_info = match ciborium::from_reader::<ciborium::Value, _>(response.as_slice())
+            {
+                Ok(v) => format!("Generic CBOR structure: {:?}", v),
+                Err(e2) => format!("Failed to parse as generic CBOR: {}", e2),
+            };
+            MDLReaderSessionError::Generic {
+                value: format!("Unable to parse DeviceResponse: {}. {}", e, debug_info),
+            }
         })?;
 
     // 2. Construct OID4VP SessionTranscript
@@ -352,36 +407,137 @@ pub fn verify_oid4vp_response(
     let response_uri_hash = Sha256::digest(response_uri.as_bytes()).to_vec();
 
     let transcript = OID4VPSessionTranscript(
-        None,
-        None,
-        OID4VPHandover(client_id_hash, response_uri_hash, nonce),
+        None, // null per OID4VP spec
+        None, // null per OID4VP spec
+        OID4VPHandover(
+            client_id_hash.clone(),
+            response_uri_hash.clone(),
+            nonce.clone(),
+        ),
     );
-
-    let registry = if let Some(anchors) = trust_anchor_registry {
-        let mut certs = Vec::new();
-        for anchor in anchors {
-            let anchor: PemTrustAnchor =
-                serde_json::from_str(&anchor).map_err(|e| MDLReaderSessionError::Generic {
-                    value: format!("Invalid trust anchor JSON: {}", e),
-                })?;
-            certs.push(anchor);
-        }
-        TrustAnchorRegistry::from_pem_certificates(certs).map_err(|e| {
-            MDLReaderSessionError::Generic {
-                value: format!("Failed to create trust registry: {}", e),
-            }
-        })?
-    } else {
-        TrustAnchorRegistry::from_pem_certificates(vec![]).map_err(|e| {
-            MDLReaderSessionError::Generic {
-                value: format!("Failed to create empty trust registry: {}", e),
-            }
-        })?
-    };
 
     // 3. Parse and Validate
     match isomdl::presentation::reader::parse(&device_response) {
         Ok((doc, x5chain, namespaces)) => {
+            let registry = if let Some(anchors) = trust_anchor_registry {
+                let mut pem_anchors = Vec::new();
+                for anchor in anchors {
+                    let anchor: PemTrustAnchor = serde_json::from_str(&anchor).map_err(|e| {
+                        MDLReaderSessionError::Generic {
+                            value: format!("Invalid trust anchor JSON: {}", e),
+                        }
+                    })?;
+                    pem_anchors.push(anchor);
+                }
+
+                if use_intermediate_chaining {
+                    // Logic to find intermediates
+                    // Extract X5Chain CBOR from doc
+                    if let Some(x5chain_cbor) = doc
+                        .issuer_signed
+                        .issuer_auth
+                        .inner
+                        .unprotected
+                        .rest
+                        .iter()
+                        .find(|(label, _)| label == &Label::Int(X5CHAIN_COSE_HEADER_LABEL))
+                        .map(|(_, value)| value.to_owned())
+                    {
+                        // Parse roots from provided anchors
+                        let mut trusted_certs: Vec<Certificate> = pem_anchors
+                            .iter()
+                            .filter_map(|pem| Certificate::from_pem(&pem.certificate_pem).ok())
+                            .collect();
+
+                        // Iterate over certs in the chain
+                        // x5chain_cbor is ciborium::Value
+                        if let ciborium::Value::Array(certs_vals) = &x5chain_cbor {
+                            let mut candidates: Vec<(usize, Certificate)> = Vec::new();
+                            for (idx, cert_val) in certs_vals.iter().enumerate() {
+                                if let ciborium::Value::Bytes(cert_bytes) = cert_val
+                                    && let Ok(cert) = Certificate::from_der(cert_bytes)
+                                {
+                                    candidates.push((idx, cert));
+                                }
+                            }
+
+                            let mut progress = true;
+                            while progress {
+                                progress = false;
+                                let mut new_trusted_indices = Vec::new();
+
+                                for (i, (_idx, cert)) in candidates.iter().enumerate() {
+                                    let mut is_signed_by_trusted = false;
+                                    for trust_cert in trusted_certs.iter() {
+                                        if cert.tbs_certificate.issuer
+                                            == trust_cert.tbs_certificate.subject
+                                            && verify_signature(cert, trust_cert).is_ok()
+                                        {
+                                            is_signed_by_trusted = true;
+                                            break;
+                                        }
+                                    }
+
+                                    if is_signed_by_trusted {
+                                        new_trusted_indices.push(i);
+                                    }
+                                }
+
+                                // Sort indices in reverse to remove safely
+                                new_trusted_indices.sort_by(|a, b| b.cmp(a));
+                                new_trusted_indices.dedup();
+
+                                for i in new_trusted_indices {
+                                    let (_idx, cert) = candidates.remove(i);
+
+                                    // Check if CA before adding
+                                    let is_ca = cert
+                                        .tbs_certificate
+                                        .extensions
+                                        .as_ref()
+                                        .and_then(|exts| {
+                                            let bc_oid: x509_cert::der::oid::ObjectIdentifier =
+                                                "2.5.29.19".parse().ok()?;
+                                            exts.iter().find(|e| e.extn_id == bc_oid)
+                                        })
+                                        .and_then(|e| {
+                                            use x509_cert::der::Decode;
+                                            let bc =
+                                                BasicConstraints::from_der(e.extn_value.as_bytes())
+                                                    .ok()?;
+                                            Some(bc.ca)
+                                        })
+                                        .unwrap_or(false);
+
+                                    if is_ca {
+                                        if let Ok(pem) = cert.to_pem(Default::default()) {
+                                            pem_anchors.push(PemTrustAnchor {
+                                                certificate_pem: pem,
+                                                purpose: TrustPurpose::Iaca,
+                                            });
+                                            trusted_certs.push(cert);
+                                            progress = true;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                TrustAnchorRegistry::from_pem_certificates(pem_anchors).map_err(|e| {
+                    MDLReaderSessionError::Generic {
+                        value: format!("Failed to create trust registry: {}", e),
+                    }
+                })?
+            } else {
+                TrustAnchorRegistry::from_pem_certificates(vec![]).map_err(|e| {
+                    MDLReaderSessionError::Generic {
+                        value: format!("Failed to create empty trust registry: {}", e),
+                    }
+                })?
+            };
+
             let validation_result = isomdl::presentation::reader_utils::validate_response(
                 transcript,
                 registry,
@@ -518,8 +674,14 @@ mod tests {
         let response_uri = "response_uri".to_string();
         let trust_anchors = None;
 
-        let result =
-            verify_oid4vp_response(response, nonce, client_id, response_uri, trust_anchors);
+        let result = verify_oid4vp_response(
+            response,
+            nonce,
+            client_id,
+            response_uri,
+            trust_anchors,
+            false,
+        );
 
         assert!(result.is_err());
         match result {

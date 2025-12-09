@@ -4,8 +4,8 @@ import * as path from 'path';
 import * as cbor from 'cbor';
 import { Key, SigAlgs, KeyAlgs } from '@hyperledger/aries-askar-nodejs';
 import * as crypto from 'crypto';
-import { 
-    X509CertificateGenerator, 
+import {
+    X509CertificateGenerator,
     BasicConstraintsExtension,
     KeyUsagesExtension,
     ExtendedKeyUsageExtension,
@@ -22,7 +22,7 @@ const webcrypto = crypto.webcrypto;
 const ARTIFACTS_DIR = path.join(__dirname, '../../python/tests/cross_language_artifacts');
 
 describe('Credo OID4VP Compatibility Tests', () => {
-    
+
     beforeAll(() => {
         if (!fs.existsSync(ARTIFACTS_DIR)) {
             fs.mkdirSync(ARTIFACTS_DIR, { recursive: true });
@@ -70,7 +70,7 @@ describe('Credo OID4VP Compatibility Tests', () => {
                 new IssuerAlternativeNameExtension([{ type: "url", value: "http://example.com" }], false)
             ]
         });
-        
+
         const dsCertDer = Buffer.from(dsCert.rawData);
         const issuerPrivateKey = dsKeyPair.privateKey;
 
@@ -118,7 +118,7 @@ describe('Credo OID4VP Compatibility Tests', () => {
         const msoHeader = new Map();
         msoHeader.set(1, -7); // alg: ES256
         const protectedHeader = cbor.encodeCanonical(msoHeader);
-        
+
         const unprotectedHeader = new Map();
         unprotectedHeader.set(33, [Buffer.from(dsCert.rawData)]); // x5chain (array of bytes)
 
@@ -134,19 +134,19 @@ describe('Credo OID4VP Compatibility Tests', () => {
             issuerPrivateKey,
             toBeSigned
         );
-        
+
         let issuerSignature = Buffer.from(signature);
         // Normalize S (Low S) for Issuer Signature
         const n = Buffer.from("ffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551", "hex");
         const halfN = Buffer.from("7fffffff800000007fffffffffffffffde737d56d38bcf4279dce5617e3192a8", "hex");
-        
+
         const rIssuer = issuerSignature.subarray(0, 32);
         let sIssuer = issuerSignature.subarray(32, 64);
-        
+
         let sIssuerBig = BigInt("0x" + sIssuer.toString('hex'));
         let nBig = BigInt("0x" + n.toString('hex'));
         let halfNBig = BigInt("0x" + halfN.toString('hex'));
-        
+
         if (sIssuerBig > halfNBig) {
             sIssuerBig = nBig - sIssuerBig;
             sIssuer = Buffer.from(sIssuerBig.toString(16).padStart(64, '0'), 'hex');
@@ -164,14 +164,14 @@ describe('Credo OID4VP Compatibility Tests', () => {
         const nonce = "test_nonce_oid4vp";
         const clientId = "client_id_oid4vp";
         const responseUri = "response_uri_oid4vp";
-        
+
         const clientIdHash = crypto.createHash('sha256').update(clientId).digest();
         const responseUriHash = crypto.createHash('sha256').update(responseUri).digest();
-        
+
         // OID4VP Handover: [clientIdHash, responseUriHash, nonce]
         // Nonce must be a text string (tstr) per OID4VP spec
         const handover = [clientIdHash, responseUriHash, nonce];
-        
+
         // SessionTranscript: [null, null, Handover] per OID4VP spec
         const sessionTranscript = [
             null,
@@ -184,7 +184,7 @@ describe('Credo OID4VP Compatibility Tests', () => {
         const deviceNameSpaces = {};
         const deviceNameSpacesBytes = cbor.encodeCanonical(deviceNameSpaces);
         const deviceNameSpacesTagged = new cbor.Tagged(24, deviceNameSpacesBytes);
-        
+
         const deviceAuthStructure = [
             "DeviceAuthentication",
             sessionTranscript,
@@ -192,7 +192,7 @@ describe('Credo OID4VP Compatibility Tests', () => {
             deviceNameSpacesTagged
         ];
         const deviceAuthBytes = cbor.encodeCanonical(deviceAuthStructure);
-        
+
         // Wrap in Tag24 for detached payload (Critical for OID4VP/ISO 18013-5)
         const deviceAuthTag24 = new cbor.Tagged(24, deviceAuthBytes);
         const deviceAuthTag24Bytes = cbor.encodeCanonical(deviceAuthTag24);
@@ -211,16 +211,16 @@ describe('Credo OID4VP Compatibility Tests', () => {
         const deviceToBeSigned = cbor.encodeCanonical(deviceSigStructure);
 
         let deviceSignature = Buffer.from(deviceKey.signMessage({ message: deviceToBeSigned, sigType: SigAlgs.ES256 }));
-        
+
         // Normalize S (Low S)
         // Reuse n and halfN from above
-        
+
         const r = deviceSignature.subarray(0, 32);
         let s = deviceSignature.subarray(32, 64);
-        
+
         // Compare s with halfN
         let sBig = BigInt("0x" + s.toString('hex'));
-        
+
         if (sBig > halfNBig) {
             sBig = nBig - sBig;
             s = Buffer.from(sBig.toString(16).padStart(64, '0'), 'hex');
@@ -228,10 +228,10 @@ describe('Credo OID4VP Compatibility Tests', () => {
         }
 
         // 8. Verify with Askar (Credo)
-        const isValidAskar = deviceKey.verifySignature({ 
-            message: deviceToBeSigned, 
-            signature: deviceSignature, 
-            sigType: SigAlgs.ES256 
+        const isValidAskar = deviceKey.verifySignature({
+            message: deviceToBeSigned,
+            signature: deviceSignature,
+            sigType: SigAlgs.ES256
         });
         expect(isValidAskar).toBe(true);
 
@@ -271,12 +271,12 @@ describe('Credo OID4VP Compatibility Tests', () => {
         };
 
         const deviceResponseBytes = cbor.encodeCanonical(deviceResponse);
-        
+
         // Save artifacts for Python verification
         fs.writeFileSync(path.join(ARTIFACTS_DIR, 'credo_oid4vp_device_response.cbor'), deviceResponseBytes);
         fs.writeFileSync(path.join(ARTIFACTS_DIR, 'credo_oid4vp_session_transcript.cbor'), sessionTranscriptBytes);
         fs.writeFileSync(path.join(ARTIFACTS_DIR, 'credo_oid4vp_issuer_cert.pem'), rootCertPem);
-        
+
         // Save params for Python test
         const params = {
             nonce,
@@ -294,13 +294,13 @@ async function coseKeyFromAskarKey(key: Key): Promise<Map<number, any>> {
     }
     const x = Buffer.from(jwk.x, 'base64');
     const y = Buffer.from(jwk.y, 'base64');
-    
+
     const coseKey = new Map();
     coseKey.set(1, 2); // kty: EC2
     coseKey.set(3, -7); // alg: ES256
     coseKey.set(-1, 1); // crv: P-256
     coseKey.set(-2, x); // x
     coseKey.set(-3, y); // y
-    
+
     return coseKey;
 }

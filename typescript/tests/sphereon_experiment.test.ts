@@ -8,7 +8,7 @@ describe('Sphereon Experiment', () => {
         console.log('com.sphereon.mdoc:', com.sphereon.mdoc);
         console.log('com.sphereon.mdoc.data:', com.sphereon.mdoc.data);
         console.log('com.sphereon.mdoc.data.device:', com.sphereon.mdoc.data.device);
-        
+
         expect(com).toBeDefined();
         expect(com.sphereon).toBeDefined();
         expect(com.sphereon.mdoc).toBeDefined();

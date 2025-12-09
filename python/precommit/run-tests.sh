@@ -33,7 +33,7 @@ fi
 if command -v uv >/dev/null 2>&1; then
     cd python
     uv sync --extra dev  # Install dev dependencies including pytest
-    uv run pytest tests/ -q --tb=short
+    uv run pytest tests/ -q --tb=short -m "not cross_language"
     cd ..
 elif command -v python3 >/dev/null 2>&1; then
     python3 python/tests/run_tests.py

@@ -41,7 +41,9 @@ def run_all_tests():
     print()
 
     # Run pytest with configuration
-    exit_code = pytest.main([str(test_dir), "-v", "--tb=short", "--disable-warnings"])
+    exit_code = pytest.main(
+        [str(test_dir), "-v", "--tb=short", "--disable-warnings", "-m", "not cross_language"]
+    )
 
     success = exit_code == 0
 

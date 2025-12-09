@@ -1,0 +1,10 @@
+include build.py
+include README.md
+include INSTALL.md
+include isomdl_uniffi/libisomdl_uniffi.dylib
+include isomdl_uniffi/libisomdl_uniffi.so
+include isomdl_uniffi/libisomdl_uniffi.dll
+include isomdl_uniffi/isomdl_uniffi.py
+include test-bindings.py
+recursive-include precommit *
+recursive-include tests *

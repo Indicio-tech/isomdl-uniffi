@@ -9,6 +9,16 @@ class TestCrossLanguageVerification:
     def test_verify_credo_generated_device_response(self, mdl_module, project_root):
         artifacts_dir = project_root / "python" / "tests" / "cross_language_artifacts"
 
+        if not artifacts_dir.exists():
+            pytest.skip(f"Artifacts directory not found: {artifacts_dir}")
+
+        required_files = ["device_response.cbor", "issuer_cert.pem", "oid4vp_params.json"]
+        missing_files = [f for f in required_files if not (artifacts_dir / f).exists()]
+        if missing_files:
+            pytest.skip(
+                f"Missing artifacts: {missing_files}. Run TypeScript tests to generate them."
+            )
+
         # Load artifacts
         with open(artifacts_dir / "device_response.cbor", "rb") as f:
             device_response_bytes = f.read()
@@ -67,6 +77,20 @@ class TestCrossLanguageVerification:
     # @pytest.mark.skip(reason="Fails in pre-commit environment (Python 3.14) with signature error")
     def test_verify_credo_oid4vp_compatibility(self, mdl_module, project_root):
         artifacts_dir = project_root / "python" / "tests" / "cross_language_artifacts"
+
+        if not artifacts_dir.exists():
+            pytest.skip(f"Artifacts directory not found: {artifacts_dir}")
+
+        required_files = [
+            "credo_oid4vp_device_response.cbor",
+            "credo_oid4vp_issuer_cert.pem",
+            "credo_oid4vp_params.json",
+        ]
+        missing_files = [f for f in required_files if not (artifacts_dir / f).exists()]
+        if missing_files:
+            pytest.skip(
+                f"Missing artifacts: {missing_files}. Run TypeScript tests to generate them."
+            )
 
         # Load artifacts
         with open(artifacts_dir / "credo_oid4vp_device_response.cbor", "rb") as f:

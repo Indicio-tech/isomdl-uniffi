@@ -84,7 +84,7 @@ describe('Generate Device Response for Python Verification', () => {
         // 4. Create IssuerSignedItem
         const item = {
             "digestID": 0,
-            "random": crypto.randomBytes(16),
+            "random": Buffer.from("000102030405060708090a0b0c0d0e0f", "hex"),
             "elementIdentifier": "family_name",
             "elementValue": "Doe"
         };
@@ -92,8 +92,8 @@ describe('Generate Device Response for Python Verification', () => {
         // Calculate digest
         const itemDigest = crypto.createHash('sha256').update(itemBytes).digest();
 
-        const now = new Date();
-        const validUntil = new Date(now.getTime() + 1000 * 60 * 60 * 24 * 365);
+        const now = new Date("2024-01-01T00:00:00Z");
+        const validUntil = new Date("2050-01-01T00:00:00Z");
 
         const toTag0 = (date: Date) => {
             return new cbor.Tagged(0, date.toISOString());

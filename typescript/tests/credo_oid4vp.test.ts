@@ -81,15 +81,15 @@ describe('Credo OID4VP Compatibility Tests', () => {
         // 3. Create MSO (Mobile Security Object)
         const item = {
             "digestID": 0,
-            "random": crypto.randomBytes(16),
+            "random": Buffer.from("000102030405060708090a0b0c0d0e0f", "hex"),
             "elementIdentifier": "family_name",
             "elementValue": "Doe"
         };
         const itemBytes = cbor.encodeCanonical(item);
         const itemDigest = crypto.createHash('sha256').update(itemBytes).digest();
 
-        const now = new Date();
-        const validUntil = new Date(now.getTime() + 1000 * 60 * 60 * 24 * 365); // 1 year
+        const now = new Date("2024-01-01T00:00:00Z");
+        const validUntil = new Date("2050-01-01T00:00:00Z");
 
         const mso = {
             "version": "1.0",
@@ -292,8 +292,8 @@ async function coseKeyFromAskarKey(key: Key): Promise<Map<number, any>> {
     if (!jwk.x || !jwk.y) {
         throw new Error("Invalid JWK from Askar key");
     }
-    const x = Buffer.from(jwk.x, 'base64');
-    const y = Buffer.from(jwk.y, 'base64');
+    const x = Buffer.from(jwk.x, 'base64url');
+    const y = Buffer.from(jwk.y, 'base64url');
 
     const coseKey = new Map();
     coseKey.set(1, 2); // kty: EC2

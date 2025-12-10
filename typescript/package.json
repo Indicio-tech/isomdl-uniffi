@@ -10,9 +10,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@credo-ts/askar": "^0.5.3",
-    "@credo-ts/core": "^0.5.3",
-    "@credo-ts/node": "^0.6.0",
+    "@credo-ts/askar": "^0.6.1",
+    "@credo-ts/core": "^0.6.1",
+    "@credo-ts/node": "^0.6.1",
     "@hyperledger/aries-askar-nodejs": "^0.2.3",
     "cbor": "^9.0.2",
     "class-transformer": "^0.5.1",

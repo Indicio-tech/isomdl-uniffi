@@ -159,18 +159,22 @@ describe('Generate Device Response for Python Verification', () => {
         ];
 
         // 7. Create DeviceSigned
-        // SessionTranscript = [DeviceEngagementBytes, ServerRetrievalBytes, Handover]
-        // OID4VP Handover = [clientIdHash, responseUriHash, nonce]
+        // SessionTranscript = [DeviceEngagementBytes, EReaderKeyBytes, Handover]
+        // OID4VP Handover per OpenID4VP spec Appendix B.2.6.1 (updated 2024):
+        // OID4VPHandover = ["OpenID4VPHandover", sha256(cbor([clientId, nonce, jwkThumbprint, responseUri]))]
 
         const nonce = "test_nonce_12345";
         const clientId = "https://verifier.example.com";
         const responseUri = "https://verifier.example.com/response/123";
 
-        const clientIdHash = crypto.createHash('sha256').update(clientId).digest();
-        const responseUriHash = crypto.createHash('sha256').update(responseUri).digest();
+        // OpenID4VPHandoverInfo = [clientId, nonce, jwkThumbprint, responseUri]
+        // jwkThumbprint is null for non-encrypted responses
+        const handoverInfo = [clientId, nonce, null, responseUri];
+        const handoverInfoBytes = cbor.encodeCanonical(handoverInfo);
+        const handoverInfoHash = crypto.createHash('sha256').update(handoverInfoBytes).digest();
 
-        // OID4VPHandover = [clientIdHash: bstr, responseUriHash: bstr, nonce: tstr]
-        const handover = [clientIdHash, responseUriHash, nonce];  // nonce as text string per spec
+        // OID4VPHandover = ["OpenID4VPHandover", handoverInfoHash]
+        const handover = ["OpenID4VPHandover", handoverInfoHash];
 
         // SessionTranscript = [null, null, OID4VPHandover] per OID4VP spec
         const sessionTranscript = [

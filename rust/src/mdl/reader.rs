@@ -63,7 +63,7 @@ fn verify_signature(subject: &Certificate, issuer: &Certificate) -> Result<(), S
         .map_err(|e| format!("Signature verification failed: {:?}", e))
 }
 
-/// OID4VP SessionTranscript per OpenID4VP over ISO 18013-5 spec:
+/// OID4VP SessionTranscript per OpenID4VP over ISO 18013-5 spec (updated 2024):
 /// SessionTranscript = [null, null, OID4VPHandover]
 #[derive(Serialize, Deserialize, Clone)]
 pub struct OID4VPSessionTranscript(
@@ -72,13 +72,24 @@ pub struct OID4VPSessionTranscript(
     pub OID4VPHandover,
 );
 
-/// OID4VP Handover per OpenID4VP over ISO 18013-5 spec:
-/// OID4VPHandover = [clientIdHash: bstr, responseUriHash: bstr, nonce: tstr]
+/// OID4VP Handover per OpenID4VP spec Appendix B.2.6.1 (updated 2024):
+/// OID4VPHandover = ["OpenID4VPHandover", OpenID4VPHandoverInfoHash]
+/// Where OpenID4VPHandoverInfoHash = sha256(cbor(OpenID4VPHandoverInfo))
+/// And OpenID4VPHandoverInfo = [clientId, nonce, jwkThumbprint, responseUri]
 #[derive(Serialize, Deserialize, Clone)]
 pub struct OID4VPHandover(
-    #[serde(with = "serde_bytes")] pub Vec<u8>, // clientIdHash (SHA-256)
-    #[serde(with = "serde_bytes")] pub Vec<u8>, // responseUriHash (SHA-256)
-    pub String,                                 // nonce (text string per spec)
+    pub String, // Fixed identifier "OpenID4VPHandover"
+    #[serde(with = "serde_bytes")] pub Vec<u8>, // SHA-256 hash of CBOR-encoded OpenID4VPHandoverInfo
+);
+
+/// OpenID4VPHandoverInfo = [clientId, nonce, jwkThumbprint, responseUri]
+/// Used to compute the hash for OID4VPHandover
+#[derive(Serialize, Clone)]
+pub struct OID4VPHandoverInfo(
+    pub String,             // clientId
+    pub String,             // nonce
+    pub Option<Vec<u8>>,    // jwkThumbprint (null if no encryption)
+    pub String,             // responseUri
 );
 
 impl isomdl::definitions::session::SessionTranscript for OID4VPSessionTranscript {}
@@ -400,19 +411,37 @@ pub fn verify_oid4vp_response(
             }
         })?;
 
-    // 2. Construct OID4VP SessionTranscript
-    // [null, null, [clientIdHash, responseUriHash, nonce]]
+    // 2. Construct OID4VP SessionTranscript per updated spec (Appendix B.2.6.1)
+    // SessionTranscript = [null, null, ["OpenID4VPHandover", sha256(cbor([clientId, nonce, jwkThumbprint, responseUri]))]]
     use sha2::{Digest, Sha256};
-    let client_id_hash = Sha256::digest(client_id.as_bytes()).to_vec();
-    let response_uri_hash = Sha256::digest(response_uri.as_bytes()).to_vec();
-
+    
+    // Build OpenID4VPHandoverInfo = [clientId, nonce, jwkThumbprint, responseUri]
+    // jwkThumbprint is null for non-encrypted responses
+    let handover_info = OID4VPHandoverInfo(
+        client_id.clone(),
+        nonce.clone(),
+        None, // jwkThumbprint - null for non-encrypted responses
+        response_uri.clone(),
+    );
+    
+    // CBOR-encode the handover info
+    let mut handover_info_bytes = Vec::new();
+    ciborium::into_writer(&handover_info, &mut handover_info_bytes).map_err(|e| {
+        MDLReaderSessionError::Generic {
+            value: format!("Failed to CBOR-encode handover info: {}", e),
+        }
+    })?;
+    
+    // Hash the CBOR-encoded handover info
+    let handover_info_hash = Sha256::digest(&handover_info_bytes).to_vec();
+    
+    // Build the handover structure: ["OpenID4VPHandover", hash]
     let transcript = OID4VPSessionTranscript(
-        None, // null per OID4VP spec
-        None, // null per OID4VP spec
+        None, // DeviceEngagementBytes - null for OID4VP
+        None, // EReaderKeyBytes - null for OID4VP
         OID4VPHandover(
-            client_id_hash.clone(),
-            response_uri_hash.clone(),
-            nonce.clone(),
+            "OpenID4VPHandover".to_string(),
+            handover_info_hash,
         ),
     );
 

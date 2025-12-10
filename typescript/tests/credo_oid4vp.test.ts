@@ -161,16 +161,20 @@ describe('Credo OID4VP Compatibility Tests', () => {
         ];
 
         // 5. Construct DeviceResponse with OID4VP SessionTranscript
+        // OID4VP Handover per OpenID4VP spec Appendix B.2.6.1 (updated 2024):
+        // OID4VPHandover = ["OpenID4VPHandover", sha256(cbor([clientId, nonce, jwkThumbprint, responseUri]))]
         const nonce = "test_nonce_oid4vp";
         const clientId = "client_id_oid4vp";
         const responseUri = "response_uri_oid4vp";
 
-        const clientIdHash = crypto.createHash('sha256').update(clientId).digest();
-        const responseUriHash = crypto.createHash('sha256').update(responseUri).digest();
+        // OpenID4VPHandoverInfo = [clientId, nonce, jwkThumbprint, responseUri]
+        // jwkThumbprint is null for non-encrypted responses
+        const handoverInfo = [clientId, nonce, null, responseUri];
+        const handoverInfoBytes = cbor.encodeCanonical(handoverInfo);
+        const handoverInfoHash = crypto.createHash('sha256').update(handoverInfoBytes).digest();
 
-        // OID4VP Handover: [clientIdHash, responseUriHash, nonce]
-        // Nonce must be a text string (tstr) per OID4VP spec
-        const handover = [clientIdHash, responseUriHash, nonce];
+        // OID4VP Handover: ["OpenID4VPHandover", handoverInfoHash]
+        const handover = ["OpenID4VPHandover", handoverInfoHash];
 
         // SessionTranscript: [null, null, Handover] per OID4VP spec
         const sessionTranscript = [

@@ -78,7 +78,7 @@ pub struct OID4VPSessionTranscript(
 /// And OpenID4VPHandoverInfo = [clientId, nonce, jwkThumbprint, responseUri]
 #[derive(Serialize, Deserialize, Clone)]
 pub struct OID4VPHandover(
-    pub String, // Fixed identifier "OpenID4VPHandover"
+    pub String,                                 // Fixed identifier "OpenID4VPHandover"
     #[serde(with = "serde_bytes")] pub Vec<u8>, // SHA-256 hash of CBOR-encoded OpenID4VPHandoverInfo
 );
 
@@ -86,13 +86,41 @@ pub struct OID4VPHandover(
 /// Used to compute the hash for OID4VPHandover
 #[derive(Serialize, Clone)]
 pub struct OID4VPHandoverInfo(
-    pub String,             // clientId
-    pub String,             // nonce
-    pub Option<Vec<u8>>,    // jwkThumbprint (null if no encryption)
-    pub String,             // responseUri
+    pub String,          // clientId
+    pub String,          // nonce
+    pub Option<Vec<u8>>, // jwkThumbprint (null if no encryption)
+    pub String,          // responseUri
 );
 
 impl isomdl::definitions::session::SessionTranscript for OID4VPSessionTranscript {}
+
+// ============================================================================
+// Legacy 2023 Format Support (for backwards compatibility with older wallets)
+// ============================================================================
+// The 2023/early-2024 OID4VP draft used a different SessionTranscript format:
+// SessionTranscript = [null, null, [clientIdHash, responseUriHash, nonce]]
+// Where clientIdHash and responseUriHash are SHA-256 hashes of the raw strings.
+// This format was used by early implementations (e.g., Credo) before the spec was finalized.
+
+/// Legacy OID4VP SessionTranscript (2023 draft format)
+/// SessionTranscript = [null, null, LegacyOID4VPHandover]
+#[derive(Serialize, Deserialize, Clone)]
+pub struct LegacyOID4VPSessionTranscript(
+    pub Option<()>, // DeviceEngagementBytes - null for OID4VP
+    pub Option<()>, // EReaderKeyBytes - null for OID4VP
+    pub LegacyOID4VPHandover,
+);
+
+/// Legacy OID4VP Handover (2023 draft format)
+/// LegacyOID4VPHandover = [clientIdHash, responseUriHash, nonce]
+#[derive(Serialize, Deserialize, Clone)]
+pub struct LegacyOID4VPHandover(
+    #[serde(with = "serde_bytes")] pub Vec<u8>, // SHA-256 hash of client_id
+    #[serde(with = "serde_bytes")] pub Vec<u8>, // SHA-256 hash of response_uri
+    pub String,                                 // nonce (raw string per spec)
+);
+
+impl isomdl::definitions::session::SessionTranscript for LegacyOID4VPSessionTranscript {}
 
 #[derive(thiserror::Error, uniffi::Error, Debug)]
 pub enum MDLReaderSessionError {
@@ -414,7 +442,7 @@ pub fn verify_oid4vp_response(
     // 2. Construct OID4VP SessionTranscript per updated spec (Appendix B.2.6.1)
     // SessionTranscript = [null, null, ["OpenID4VPHandover", sha256(cbor([clientId, nonce, jwkThumbprint, responseUri]))]]
     use sha2::{Digest, Sha256};
-    
+
     // Build OpenID4VPHandoverInfo = [clientId, nonce, jwkThumbprint, responseUri]
     // jwkThumbprint is null for non-encrypted responses
     let handover_info = OID4VPHandoverInfo(
@@ -423,7 +451,7 @@ pub fn verify_oid4vp_response(
         None, // jwkThumbprint - null for non-encrypted responses
         response_uri.clone(),
     );
-    
+
     // CBOR-encode the handover info
     let mut handover_info_bytes = Vec::new();
     ciborium::into_writer(&handover_info, &mut handover_info_bytes).map_err(|e| {
@@ -431,18 +459,15 @@ pub fn verify_oid4vp_response(
             value: format!("Failed to CBOR-encode handover info: {}", e),
         }
     })?;
-    
+
     // Hash the CBOR-encoded handover info
     let handover_info_hash = Sha256::digest(&handover_info_bytes).to_vec();
-    
+
     // Build the handover structure: ["OpenID4VPHandover", hash]
     let transcript = OID4VPSessionTranscript(
         None, // DeviceEngagementBytes - null for OID4VP
         None, // EReaderKeyBytes - null for OID4VP
-        OID4VPHandover(
-            "OpenID4VPHandover".to_string(),
-            handover_info_hash,
-        ),
+        OID4VPHandover("OpenID4VPHandover".to_string(), handover_info_hash),
     );
 
     // 3. Parse and Validate
@@ -609,6 +634,206 @@ pub fn verify_oid4vp_response(
     }
 }
 
+/// Verify OID4VP response using the LEGACY 2023 draft SessionTranscript format.
+///
+/// This function is for backwards compatibility with older wallets (e.g., Credo)
+/// that use the 2023 draft format:
+/// SessionTranscript = [null, null, [sha256(client_id), sha256(response_uri), nonce]]
+///
+/// The newer spec-compliant format (verify_oid4vp_response) should be preferred.
+#[uniffi::export]
+pub fn verify_oid4vp_response_legacy(
+    response: Vec<u8>,
+    nonce: String,
+    client_id: String,
+    response_uri: String,
+    trust_anchor_registry: Option<Vec<String>>,
+    use_intermediate_chaining: bool,
+) -> Result<MDLReaderVerifiedData, MDLReaderSessionError> {
+    // 1. Parse DeviceResponse
+    let device_response: isomdl::definitions::DeviceResponse = isomdl::cbor::from_slice(&response)
+        .map_err(|e| {
+            let debug_info = match ciborium::from_reader::<ciborium::Value, _>(response.as_slice())
+            {
+                Ok(v) => format!("Generic CBOR structure: {:?}", v),
+                Err(e2) => format!("Failed to parse as generic CBOR: {}", e2),
+            };
+            MDLReaderSessionError::Generic {
+                value: format!("Unable to parse DeviceResponse: {}. {}", e, debug_info),
+            }
+        })?;
+
+    // 2. Construct LEGACY OID4VP SessionTranscript (2023 draft format)
+    // SessionTranscript = [null, null, [sha256(client_id), sha256(response_uri), nonce]]
+    use sha2::{Digest, Sha256};
+
+    // Hash the raw client_id and response_uri strings
+    let client_id_hash = Sha256::digest(client_id.as_bytes()).to_vec();
+    let response_uri_hash = Sha256::digest(response_uri.as_bytes()).to_vec();
+
+    // Build the legacy handover structure: [clientIdHash, responseUriHash, nonce]
+    let transcript = LegacyOID4VPSessionTranscript(
+        None, // DeviceEngagementBytes - null for OID4VP
+        None, // EReaderKeyBytes - null for OID4VP
+        LegacyOID4VPHandover(client_id_hash, response_uri_hash, nonce.clone()),
+    );
+
+    // 3. Parse and Validate (same logic as spec-compliant version)
+    match isomdl::presentation::reader::parse(&device_response) {
+        Ok((doc, x5chain, namespaces)) => {
+            let registry = if let Some(anchors) = trust_anchor_registry {
+                let mut pem_anchors = Vec::new();
+                for anchor in anchors {
+                    let anchor: PemTrustAnchor = serde_json::from_str(&anchor).map_err(|e| {
+                        MDLReaderSessionError::Generic {
+                            value: format!("Invalid trust anchor JSON: {}", e),
+                        }
+                    })?;
+                    pem_anchors.push(anchor);
+                }
+
+                if use_intermediate_chaining {
+                    // Logic to find intermediates (same as spec-compliant version)
+                    if let Some(x5chain_cbor) = doc
+                        .issuer_signed
+                        .issuer_auth
+                        .inner
+                        .unprotected
+                        .rest
+                        .iter()
+                        .find(|(label, _)| label == &Label::Int(X5CHAIN_COSE_HEADER_LABEL))
+                        .map(|(_, value)| value.to_owned())
+                    {
+                        let mut trusted_certs: Vec<Certificate> = pem_anchors
+                            .iter()
+                            .filter_map(|pem| Certificate::from_pem(&pem.certificate_pem).ok())
+                            .collect();
+
+                        if let ciborium::Value::Array(certs_vals) = &x5chain_cbor {
+                            let mut candidates: Vec<(usize, Certificate)> = Vec::new();
+                            for (idx, cert_val) in certs_vals.iter().enumerate() {
+                                if let ciborium::Value::Bytes(cert_bytes) = cert_val {
+                                    if let Ok(cert) = Certificate::from_der(cert_bytes) {
+                                        candidates.push((idx, cert));
+                                    }
+                                }
+                            }
+
+                            let mut progress = true;
+                            while progress {
+                                progress = false;
+                                let mut new_trusted_indices = Vec::new();
+
+                                for (i, (_idx, cert)) in candidates.iter().enumerate() {
+                                    let mut is_signed_by_trusted = false;
+                                    for trust_cert in trusted_certs.iter() {
+                                        if cert.tbs_certificate.issuer
+                                            == trust_cert.tbs_certificate.subject
+                                            && verify_signature(cert, trust_cert).is_ok()
+                                        {
+                                            is_signed_by_trusted = true;
+                                            break;
+                                        }
+                                    }
+
+                                    if is_signed_by_trusted {
+                                        new_trusted_indices.push(i);
+                                    }
+                                }
+
+                                new_trusted_indices.sort_by(|a, b| b.cmp(a));
+                                new_trusted_indices.dedup();
+
+                                for i in new_trusted_indices {
+                                    let (_idx, cert) = candidates.remove(i);
+
+                                    let is_ca = cert
+                                        .tbs_certificate
+                                        .extensions
+                                        .as_ref()
+                                        .and_then(|exts| {
+                                            let bc_oid: x509_cert::der::oid::ObjectIdentifier =
+                                                "2.5.29.19".parse().ok()?;
+                                            exts.iter().find(|e| e.extn_id == bc_oid)
+                                        })
+                                        .and_then(|e| {
+                                            use x509_cert::der::Decode;
+                                            let bc =
+                                                BasicConstraints::from_der(e.extn_value.as_bytes())
+                                                    .ok()?;
+                                            Some(bc.ca)
+                                        })
+                                        .unwrap_or(false);
+
+                                    if is_ca {
+                                        if let Ok(pem) = cert.to_pem(Default::default()) {
+                                            pem_anchors.push(PemTrustAnchor {
+                                                certificate_pem: pem,
+                                                purpose: TrustPurpose::Iaca,
+                                            });
+                                            trusted_certs.push(cert);
+                                            progress = true;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                TrustAnchorRegistry::from_pem_certificates(pem_anchors).map_err(|e| {
+                    MDLReaderSessionError::Generic {
+                        value: format!("Failed to create trust registry: {}", e),
+                    }
+                })?
+            } else {
+                TrustAnchorRegistry::from_pem_certificates(vec![]).map_err(|e| {
+                    MDLReaderSessionError::Generic {
+                        value: format!("Failed to create empty trust registry: {}", e),
+                    }
+                })?
+            };
+
+            let validation_result = isomdl::presentation::reader_utils::validate_response(
+                transcript,
+                registry,
+                x5chain,
+                doc.clone(),
+                namespaces,
+            );
+
+            // Convert namespaces to HashMap<String, HashMap<String, MDocItem>>
+            let mut verified_response = HashMap::new();
+            for (ns, val) in validation_result.response {
+                if let serde_json::Value::Object(map) = val {
+                    let mut ns_map = HashMap::new();
+                    for (k, v) in map {
+                        ns_map.insert(k, MDocItem::from(v));
+                    }
+                    verified_response.insert(ns, ns_map);
+                }
+            }
+
+            // Convert errors
+            let errors = if validation_result.errors.is_empty() {
+                None
+            } else {
+                Some(serde_json::to_string(&validation_result.errors).unwrap_or_default())
+            };
+
+            Ok(MDLReaderVerifiedData {
+                verified_response,
+                issuer_authentication: validation_result.issuer_authentication.into(),
+                device_authentication: validation_result.device_authentication.into(),
+                errors,
+            })
+        }
+        Err(e) => Err(MDLReaderSessionError::Generic {
+            value: format!("Failed to parse device response: {}", e),
+        }),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -719,5 +944,315 @@ mod tests {
             }
             _ => panic!("Expected Generic error"),
         }
+    }
+
+    #[test]
+    fn test_verify_oid4vp_response_legacy_invalid_input() {
+        // Test that the legacy function also rejects invalid CBOR
+        let response = vec![0u8, 1, 2, 3]; // Invalid CBOR
+        let nonce = "nonce".to_string();
+        let client_id = "client_id".to_string();
+        let response_uri = "response_uri".to_string();
+        let trust_anchors = None;
+
+        let result = verify_oid4vp_response_legacy(
+            response,
+            nonce,
+            client_id,
+            response_uri,
+            trust_anchors,
+            false,
+        );
+
+        assert!(result.is_err());
+        match result {
+            Err(MDLReaderSessionError::Generic { value }) => {
+                assert!(value.contains("Unable to parse DeviceResponse"));
+            }
+            _ => panic!("Expected Generic error"),
+        }
+    }
+
+    #[test]
+    fn test_oid4vp_session_transcript_serialization() {
+        // Test that the spec-compliant OID4VP SessionTranscript serializes correctly
+        use sha2::{Digest, Sha256};
+
+        let client_id = "https://example.com/client".to_string();
+        let nonce = "test-nonce-12345".to_string();
+        let response_uri = "https://example.com/response".to_string();
+
+        // Build OpenID4VPHandoverInfo = [clientId, nonce, jwkThumbprint, responseUri]
+        let handover_info = OID4VPHandoverInfo(
+            client_id.clone(),
+            nonce.clone(),
+            None, // jwkThumbprint - null for non-encrypted responses
+            response_uri.clone(),
+        );
+
+        // CBOR-encode the handover info
+        let mut handover_info_bytes = Vec::new();
+        ciborium::into_writer(&handover_info, &mut handover_info_bytes)
+            .expect("Failed to CBOR-encode handover info");
+
+        // Hash the CBOR-encoded handover info
+        let handover_info_hash = Sha256::digest(&handover_info_bytes).to_vec();
+
+        // Build the session transcript
+        let transcript = OID4VPSessionTranscript(
+            None,
+            None,
+            OID4VPHandover("OpenID4VPHandover".to_string(), handover_info_hash.clone()),
+        );
+
+        // Serialize to CBOR
+        let mut transcript_bytes = Vec::new();
+        ciborium::into_writer(&transcript, &mut transcript_bytes)
+            .expect("Failed to serialize session transcript");
+
+        // Verify the structure is correct by deserializing
+        let parsed: OID4VPSessionTranscript = ciborium::from_reader(&transcript_bytes[..])
+            .expect("Failed to deserialize session transcript");
+
+        assert!(parsed.0.is_none(), "DeviceEngagementBytes should be null");
+        assert!(parsed.1.is_none(), "EReaderKeyBytes should be null");
+        assert_eq!(
+            parsed.2.0, "OpenID4VPHandover",
+            "Handover identifier should match"
+        );
+        assert_eq!(parsed.2.1, handover_info_hash, "Handover hash should match");
+    }
+
+    #[test]
+    fn test_legacy_oid4vp_session_transcript_serialization() {
+        // Test that the legacy 2023 OID4VP SessionTranscript serializes correctly
+        use sha2::{Digest, Sha256};
+
+        let client_id = "https://example.com/client".to_string();
+        let nonce = "test-nonce-12345".to_string();
+        let response_uri = "https://example.com/response".to_string();
+
+        // Hash the raw strings (legacy format)
+        let client_id_hash = Sha256::digest(client_id.as_bytes()).to_vec();
+        let response_uri_hash = Sha256::digest(response_uri.as_bytes()).to_vec();
+
+        // Build the legacy session transcript
+        let transcript = LegacyOID4VPSessionTranscript(
+            None,
+            None,
+            LegacyOID4VPHandover(
+                client_id_hash.clone(),
+                response_uri_hash.clone(),
+                nonce.clone(),
+            ),
+        );
+
+        // Serialize to CBOR
+        let mut transcript_bytes = Vec::new();
+        ciborium::into_writer(&transcript, &mut transcript_bytes)
+            .expect("Failed to serialize legacy session transcript");
+
+        // Verify the structure is correct by deserializing
+        let parsed: LegacyOID4VPSessionTranscript = ciborium::from_reader(&transcript_bytes[..])
+            .expect("Failed to deserialize legacy session transcript");
+
+        assert!(parsed.0.is_none(), "DeviceEngagementBytes should be null");
+        assert!(parsed.1.is_none(), "EReaderKeyBytes should be null");
+        assert_eq!(parsed.2.0, client_id_hash, "Client ID hash should match");
+        assert_eq!(
+            parsed.2.1, response_uri_hash,
+            "Response URI hash should match"
+        );
+        assert_eq!(parsed.2.2, nonce, "Nonce should match");
+    }
+
+    #[test]
+    fn test_session_transcript_format_difference() {
+        // Verify that the spec-compliant and legacy formats produce different outputs
+        use sha2::{Digest, Sha256};
+
+        let client_id = "https://example.com/client".to_string();
+        let nonce = "test-nonce".to_string();
+        let response_uri = "https://example.com/response".to_string();
+
+        // Build spec-compliant transcript
+        let handover_info =
+            OID4VPHandoverInfo(client_id.clone(), nonce.clone(), None, response_uri.clone());
+        let mut handover_info_bytes = Vec::new();
+        ciborium::into_writer(&handover_info, &mut handover_info_bytes).unwrap();
+        let handover_info_hash = Sha256::digest(&handover_info_bytes).to_vec();
+
+        let spec_transcript = OID4VPSessionTranscript(
+            None,
+            None,
+            OID4VPHandover("OpenID4VPHandover".to_string(), handover_info_hash),
+        );
+
+        // Build legacy transcript
+        let client_id_hash = Sha256::digest(client_id.as_bytes()).to_vec();
+        let response_uri_hash = Sha256::digest(response_uri.as_bytes()).to_vec();
+
+        let legacy_transcript = LegacyOID4VPSessionTranscript(
+            None,
+            None,
+            LegacyOID4VPHandover(client_id_hash, response_uri_hash, nonce.clone()),
+        );
+
+        // Serialize both
+        let mut spec_bytes = Vec::new();
+        ciborium::into_writer(&spec_transcript, &mut spec_bytes).unwrap();
+
+        let mut legacy_bytes = Vec::new();
+        ciborium::into_writer(&legacy_transcript, &mut legacy_bytes).unwrap();
+
+        // They should be different
+        assert_ne!(
+            spec_bytes, legacy_bytes,
+            "Spec-compliant and legacy transcripts should produce different CBOR"
+        );
+
+        println!(
+            "Spec-compliant transcript bytes: {} bytes",
+            spec_bytes.len()
+        );
+        println!("Legacy transcript bytes: {} bytes", legacy_bytes.len());
+    }
+
+    #[test]
+    fn test_handover_info_structure() {
+        // Test that OID4VPHandoverInfo serializes as expected [clientId, nonce, jwkThumbprint, responseUri]
+        let handover_info = OID4VPHandoverInfo(
+            "client123".to_string(),
+            "nonce456".to_string(),
+            None, // null jwkThumbprint
+            "https://response.uri".to_string(),
+        );
+
+        let mut bytes = Vec::new();
+        ciborium::into_writer(&handover_info, &mut bytes).unwrap();
+
+        // Parse as generic CBOR to verify structure
+        let value: ciborium::Value = ciborium::from_reader(&bytes[..]).unwrap();
+
+        if let ciborium::Value::Array(arr) = value {
+            assert_eq!(arr.len(), 4, "HandoverInfo should be a 4-element array");
+
+            // Check clientId
+            if let ciborium::Value::Text(s) = &arr[0] {
+                assert_eq!(s, "client123");
+            } else {
+                panic!("First element should be text (clientId)");
+            }
+
+            // Check nonce
+            if let ciborium::Value::Text(s) = &arr[1] {
+                assert_eq!(s, "nonce456");
+            } else {
+                panic!("Second element should be text (nonce)");
+            }
+
+            // Check jwkThumbprint is null
+            assert!(
+                matches!(arr[2], ciborium::Value::Null),
+                "Third element should be null (jwkThumbprint)"
+            );
+
+            // Check responseUri
+            if let ciborium::Value::Text(s) = &arr[3] {
+                assert_eq!(s, "https://response.uri");
+            } else {
+                panic!("Fourth element should be text (responseUri)");
+            }
+        } else {
+            panic!("HandoverInfo should serialize as an array");
+        }
+    }
+
+    #[test]
+    fn test_legacy_handover_structure() {
+        // Test that LegacyOID4VPHandover serializes as expected [clientIdHash, responseUriHash, nonce]
+        use sha2::{Digest, Sha256};
+
+        let client_id_hash = Sha256::digest(b"client123").to_vec();
+        let response_uri_hash = Sha256::digest(b"https://response.uri").to_vec();
+        let nonce = "nonce456".to_string();
+
+        let handover = LegacyOID4VPHandover(
+            client_id_hash.clone(),
+            response_uri_hash.clone(),
+            nonce.clone(),
+        );
+
+        let mut bytes = Vec::new();
+        ciborium::into_writer(&handover, &mut bytes).unwrap();
+
+        // Parse as generic CBOR to verify structure
+        let value: ciborium::Value = ciborium::from_reader(&bytes[..]).unwrap();
+
+        if let ciborium::Value::Array(arr) = value {
+            assert_eq!(arr.len(), 3, "LegacyHandover should be a 3-element array");
+
+            // Check clientIdHash
+            if let ciborium::Value::Bytes(b) = &arr[0] {
+                assert_eq!(b, &client_id_hash, "First element should be clientId hash");
+            } else {
+                panic!("First element should be bytes (clientIdHash)");
+            }
+
+            // Check responseUriHash
+            if let ciborium::Value::Bytes(b) = &arr[1] {
+                assert_eq!(
+                    b, &response_uri_hash,
+                    "Second element should be responseUri hash"
+                );
+            } else {
+                panic!("Second element should be bytes (responseUriHash)");
+            }
+
+            // Check nonce
+            if let ciborium::Value::Text(s) = &arr[2] {
+                assert_eq!(s, &nonce, "Third element should be nonce string");
+            } else {
+                panic!("Third element should be text (nonce)");
+            }
+        } else {
+            panic!("LegacyHandover should serialize as an array");
+        }
+    }
+
+    #[test]
+    fn test_verify_functions_exist_and_have_same_signature() {
+        // This test verifies that both verify functions exist and accept the same parameters
+        // It doesn't test actual verification (that requires valid device responses)
+        // but ensures the API is consistent
+
+        let response = vec![0xA0]; // Empty CBOR map - still invalid but different error
+        let nonce = "test-nonce".to_string();
+        let client_id = "https://client.example.com".to_string();
+        let response_uri = "https://response.example.com".to_string();
+        let trust_anchors: Option<Vec<String>> = None;
+        let use_intermediate_chaining = false;
+
+        // Both functions should accept the same parameters
+        let _ = verify_oid4vp_response(
+            response.clone(),
+            nonce.clone(),
+            client_id.clone(),
+            response_uri.clone(),
+            trust_anchors.clone(),
+            use_intermediate_chaining,
+        );
+
+        let _ = verify_oid4vp_response_legacy(
+            response,
+            nonce,
+            client_id,
+            response_uri,
+            trust_anchors,
+            use_intermediate_chaining,
+        );
+
+        // If we get here, the API is consistent
+        println!("✅ Both verify functions have consistent signatures");
     }
 }

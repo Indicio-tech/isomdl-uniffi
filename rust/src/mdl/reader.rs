@@ -480,10 +480,10 @@ pub fn verify_oid4vp_response(
                         if let ciborium::Value::Array(certs_vals) = &x5chain_cbor {
                             let mut candidates: Vec<(usize, Certificate)> = Vec::new();
                             for (idx, cert_val) in certs_vals.iter().enumerate() {
-                                if let ciborium::Value::Bytes(cert_bytes) = cert_val {
-                                    if let Ok(cert) = Certificate::from_der(cert_bytes) {
-                                        candidates.push((idx, cert));
-                                    }
+                                if let ciborium::Value::Bytes(cert_bytes) = cert_val
+                                    && let Ok(cert) = Certificate::from_der(cert_bytes)
+                                {
+                                    candidates.push((idx, cert));
                                 }
                             }
 
@@ -535,15 +535,15 @@ pub fn verify_oid4vp_response(
                                         })
                                         .unwrap_or(false);
 
-                                    if is_ca {
-                                        if let Ok(pem) = cert.to_pem(Default::default()) {
-                                            pem_anchors.push(PemTrustAnchor {
-                                                certificate_pem: pem,
-                                                purpose: TrustPurpose::Iaca,
-                                            });
-                                            trusted_certs.push(cert);
-                                            progress = true;
-                                        }
+                                    if is_ca
+                                        && let Ok(pem) = cert.to_pem(Default::default())
+                                    {
+                                        pem_anchors.push(PemTrustAnchor {
+                                            certificate_pem: pem,
+                                            purpose: TrustPurpose::Iaca,
+                                        });
+                                        trusted_certs.push(cert);
+                                        progress = true;
                                     }
                                 }
                             }

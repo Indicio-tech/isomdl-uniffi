@@ -535,9 +535,7 @@ pub fn verify_oid4vp_response(
                                         })
                                         .unwrap_or(false);
 
-                                    if is_ca
-                                        && let Ok(pem) = cert.to_pem(Default::default())
-                                    {
+                                    if is_ca && let Ok(pem) = cert.to_pem(Default::default()) {
                                         pem_anchors.push(PemTrustAnchor {
                                             certificate_pem: pem,
                                             purpose: TrustPurpose::Iaca,

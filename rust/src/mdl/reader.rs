@@ -362,6 +362,8 @@ pub fn handle_response(
 
 #[derive(uniffi::Record, Debug)]
 pub struct MDLReaderVerifiedData {
+    /// The document type (e.g., "org.iso.18013.5.1.mDL")
+    pub doc_type: String,
     pub verified_response: HashMap<String, HashMap<String, MDocItem>>,
     pub issuer_authentication: AuthenticationStatus,
     pub device_authentication: AuthenticationStatus,
@@ -570,6 +572,9 @@ pub fn verify_oid4vp_response(
                 namespaces,
             );
 
+            // Extract doc_type from the parsed document
+            let doc_type = doc.doc_type.clone();
+
             // Convert namespaces to HashMap<String, HashMap<String, MDocItem>>
             let mut verified_response = HashMap::new();
             for (ns, val) in validation_result.response {
@@ -592,6 +597,7 @@ pub fn verify_oid4vp_response(
             };
 
             Ok(MDLReaderVerifiedData {
+                doc_type,
                 verified_response,
                 issuer_authentication: validation_result.issuer_authentication.into(),
                 device_authentication: validation_result.device_authentication.into(),
@@ -814,5 +820,53 @@ mod tests {
         } else {
             panic!("HandoverInfo should serialize as an array");
         }
+    }
+
+    #[test]
+    fn test_mdl_reader_verified_data_has_doc_type() {
+        // Test that MDLReaderVerifiedData struct includes doc_type field
+        // This is a structural test to ensure the field exists and can be set
+        
+        let verified_data = MDLReaderVerifiedData {
+            doc_type: "org.iso.18013.5.1.mDL".to_string(),
+            verified_response: HashMap::new(),
+            issuer_authentication: AuthenticationStatus::Unchecked,
+            device_authentication: AuthenticationStatus::Unchecked,
+            errors: None,
+        };
+
+        assert_eq!(verified_data.doc_type, "org.iso.18013.5.1.mDL");
+        assert!(verified_data.verified_response.is_empty());
+    }
+
+    #[test]
+    fn test_mdl_reader_verified_data_doc_type_with_namespace() {
+        // Test that doc_type and namespace are independent but related
+        // doc_type is "org.iso.18013.5.1.mDL" and namespace is "org.iso.18013.5.1"
+        
+        let mut verified_response = HashMap::new();
+        let mut namespace_claims = HashMap::new();
+        namespace_claims.insert("family_name".to_string(), MDocItem::Text("Smith".to_string()));
+        namespace_claims.insert("given_name".to_string(), MDocItem::Text("Alice".to_string()));
+        verified_response.insert("org.iso.18013.5.1".to_string(), namespace_claims);
+
+        let verified_data = MDLReaderVerifiedData {
+            doc_type: "org.iso.18013.5.1.mDL".to_string(),
+            verified_response,
+            issuer_authentication: AuthenticationStatus::Valid,
+            device_authentication: AuthenticationStatus::Valid,
+            errors: None,
+        };
+
+        // Verify doc_type
+        assert_eq!(verified_data.doc_type, "org.iso.18013.5.1.mDL");
+        
+        // Verify namespace exists (note: different from doc_type)
+        assert!(verified_data.verified_response.contains_key("org.iso.18013.5.1"));
+        
+        // Verify claims within namespace
+        let claims = verified_data.verified_response.get("org.iso.18013.5.1").unwrap();
+        assert!(matches!(claims.get("family_name"), Some(MDocItem::Text(s)) if s == "Smith"));
+        assert!(matches!(claims.get("given_name"), Some(MDocItem::Text(s)) if s == "Alice"));
     }
 }

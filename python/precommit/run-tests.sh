@@ -28,6 +28,9 @@ if [ ! -d "rust/out/python" ]; then
     fi
 fi
 
+# Ensure built bindings are discoverable by Python
+export PYTHONPATH="$(pwd)/rust/out/python:${PYTHONPATH:-}"
+
 # Run the test suite
 # Use UV if available, otherwise fallback to python
 if command -v uv >/dev/null 2>&1; then

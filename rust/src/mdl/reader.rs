@@ -826,7 +826,7 @@ mod tests {
     fn test_mdl_reader_verified_data_has_doc_type() {
         // Test that MDLReaderVerifiedData struct includes doc_type field
         // This is a structural test to ensure the field exists and can be set
-        
+
         let verified_data = MDLReaderVerifiedData {
             doc_type: "org.iso.18013.5.1.mDL".to_string(),
             verified_response: HashMap::new(),
@@ -843,11 +843,17 @@ mod tests {
     fn test_mdl_reader_verified_data_doc_type_with_namespace() {
         // Test that doc_type and namespace are independent but related
         // doc_type is "org.iso.18013.5.1.mDL" and namespace is "org.iso.18013.5.1"
-        
+
         let mut verified_response = HashMap::new();
         let mut namespace_claims = HashMap::new();
-        namespace_claims.insert("family_name".to_string(), MDocItem::Text("Smith".to_string()));
-        namespace_claims.insert("given_name".to_string(), MDocItem::Text("Alice".to_string()));
+        namespace_claims.insert(
+            "family_name".to_string(),
+            MDocItem::Text("Smith".to_string()),
+        );
+        namespace_claims.insert(
+            "given_name".to_string(),
+            MDocItem::Text("Alice".to_string()),
+        );
         verified_response.insert("org.iso.18013.5.1".to_string(), namespace_claims);
 
         let verified_data = MDLReaderVerifiedData {
@@ -860,12 +866,19 @@ mod tests {
 
         // Verify doc_type
         assert_eq!(verified_data.doc_type, "org.iso.18013.5.1.mDL");
-        
+
         // Verify namespace exists (note: different from doc_type)
-        assert!(verified_data.verified_response.contains_key("org.iso.18013.5.1"));
-        
+        assert!(
+            verified_data
+                .verified_response
+                .contains_key("org.iso.18013.5.1")
+        );
+
         // Verify claims within namespace
-        let claims = verified_data.verified_response.get("org.iso.18013.5.1").unwrap();
+        let claims = verified_data
+            .verified_response
+            .get("org.iso.18013.5.1")
+            .unwrap();
         assert!(matches!(claims.get("family_name"), Some(MDocItem::Text(s)) if s == "Smith"));
         assert!(matches!(claims.get("given_name"), Some(MDocItem::Text(s)) if s == "Alice"));
     }

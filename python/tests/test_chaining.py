@@ -31,9 +31,9 @@ def generate_cert(subject_key, issuer_key, subject_name, issuer_name, is_ca=Fals
     builder = x509.CertificateBuilder()
     builder = builder.subject_name(subject_name)
     builder = builder.issuer_name(issuer_name)
-    builder = builder.not_valid_before(datetime.datetime.now(datetime.UTC))
+    builder = builder.not_valid_before(datetime.datetime.now(datetime.timezone.utc))
     builder = builder.not_valid_after(
-        datetime.datetime.now(datetime.UTC) + datetime.timedelta(days=30)
+        datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=30)
     )
     builder = builder.serial_number(x509.random_serial_number())
     builder = builder.public_key(subject_key.public_key())

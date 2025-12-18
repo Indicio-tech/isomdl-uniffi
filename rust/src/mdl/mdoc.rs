@@ -58,7 +58,6 @@ fn verify_signature(subject: &Certificate, issuer: &Certificate) -> Result<(), S
         .map_err(|e| format!("Failed to parse public key from SEC1 bytes: {:?}", e))?;
 
     let signature_bytes = subject.signature.as_bytes().ok_or("Missing signature")?;
-    // println!("DEBUG: Signature bytes len: {}", signature_bytes.len());
     let signature = Signature::from_der(signature_bytes)
         .map_err(|e| format!("Failed to parse signature: {:?}", e))?;
 
@@ -404,14 +403,11 @@ impl Mdoc {
         let x5chain = X5Chain::from_cbor(x5chain_cbor.clone())
             .map_err(|e| MdocVerificationError::X5ChainParsing(format!("{:?}", e)))?;
 
-        println!("DEBUG: X5Chain: {:?}", x5chain);
         // 2. Get the common name from the end-entity certificate
         let common_name = Some(x5chain.end_entity_common_name().to_string());
 
         // 3. If trust anchors are provided, validate the X5Chain against them
         if let Some(anchors) = trust_anchors.filter(|a| !a.is_empty()) {
-            println!("DEBUG: Verifying against {} trust anchors", anchors.len());
-
             let mut pem_anchors: Vec<PemTrustAnchor> = anchors
                 .iter()
                 .map(|cert_pem| PemTrustAnchor {
@@ -819,9 +815,6 @@ mod tests {
         let result =
             Mdoc::create_and_sign_mdl(mdl_items, None, holder_jwk, cert_pem, issuer_key_pem);
 
-        if let Err(e) = &result {
-            println!("Error creating mdoc: {:?}", e);
-        }
         let mdoc = result.unwrap();
 
         // 6. Verify Output

@@ -640,11 +640,9 @@ mod tests {
         match result {
             Ok(_) => {
                 // If it somehow succeeds, that's great - the UUID extraction worked
-                println!("✅ Session established successfully - UUID extraction works!");
             }
             Err(e) => {
                 let error_msg = e.to_string();
-                println!("Error received: {}", error_msg);
 
                 // The error should NOT be about UUID extraction if our fix is correct
                 // It should be about session establishment, QR code construction, etc.
@@ -663,8 +661,6 @@ mod tests {
                     "Expected session establishment error, got: {}",
                     error_msg
                 );
-
-                println!("✅ Expected error (not UUID related): {}", error_msg);
             }
         }
     }
@@ -685,15 +681,6 @@ mod tests {
 
         // This test verifies our understanding is correct
         assert!(true, "✅ UUID extraction API documentation test passed");
-
-        // Log the current API structure for future reference
-        println!("📋 Current UUID extraction API:");
-        println!(
-            "   manager.ble_central_client_options()  // Returns Iterator<Item = &CentralClientMode>"
-        );
-        println!("   .next()                               // Gets first CentralClientMode");
-        println!("   .map(|mode| mode.uuid)                // Accesses uuid field directly");
-        println!("   Returns: Option<Uuid>                 // No dereferencing needed");
     }
 
     #[test]

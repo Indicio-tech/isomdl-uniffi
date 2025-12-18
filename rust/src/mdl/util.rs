@@ -43,13 +43,15 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use anyhow::{Context, Result};
+use p256::pkcs8::AssociatedOid;
 
+use isomdl::definitions::x509::trust_anchor::{PemTrustAnchor, TrustPurpose};
 use x509_cert::{
     Certificate,
     builder::{Builder, CertificateBuilder},
-    der::{Decode, DecodePem as _, asn1::OctetString},
+    der::{Decode, DecodePem as _, Encode, EncodePem as _, asn1::OctetString},
     ext::pkix::{
-        AuthorityKeyIdentifier, CrlDistributionPoints, ExtendedKeyUsage,
+        AuthorityKeyIdentifier, BasicConstraints, CrlDistributionPoints, ExtendedKeyUsage,
         ID_CE_SUBJECT_KEY_IDENTIFIER, IssuerAltName, KeyUsage, KeyUsages, SubjectKeyIdentifier,
         crl::dp::DistributionPoint,
         name::{DistributionPointName, GeneralName},
@@ -60,6 +62,151 @@ use x509_cert::{
     },
     time::Validity,
 };
+
+// ============================================================================
+// Shared Certificate Utilities
+// ============================================================================
+
+/// Verifies that the `subject` certificate's signature was created by the `issuer`'s private key.
+///
+/// This function checks that the subject certificate was properly signed by the issuer
+/// using ECDSA P-256 signature verification.
+///
+/// # Arguments
+/// * `subject` - The certificate whose signature should be verified
+/// * `issuer` - The certificate containing the public key that should have signed the subject
+///
+/// # Returns
+/// * `Ok(())` if the signature is valid
+/// * `Err(String)` with a description if verification fails
+pub fn verify_certificate_signature(
+    subject: &Certificate,
+    issuer: &Certificate,
+) -> Result<(), String> {
+    let spki = &issuer.tbs_certificate.subject_public_key_info;
+    let key_bytes = spki
+        .subject_public_key
+        .as_bytes()
+        .ok_or("Invalid public key bytes")?;
+
+    let verifying_key = p256::ecdsa::VerifyingKey::from_sec1_bytes(key_bytes)
+        .map_err(|e| format!("Failed to parse public key from SEC1 bytes: {:?}", e))?;
+
+    let signature_bytes = subject.signature.as_bytes().ok_or("Missing signature")?;
+    let signature = p256::ecdsa::Signature::from_der(signature_bytes)
+        .map_err(|e| format!("Failed to parse signature: {:?}", e))?;
+
+    let tbs_der = subject
+        .tbs_certificate
+        .to_der()
+        .map_err(|e| format!("Failed to encode TBS: {:?}", e))?;
+
+    use signature::Verifier;
+    verifying_key
+        .verify(&tbs_der, &signature)
+        .map_err(|e| format!("Signature verification failed: {:?}", e))?;
+
+    Ok(())
+}
+
+/// Checks if a certificate is a Certificate Authority (CA) based on the BasicConstraints extension.
+///
+/// # Arguments
+/// * `cert` - The certificate to check
+///
+/// # Returns
+/// * `true` if the certificate has BasicConstraints with CA=true
+/// * `false` otherwise (including if the extension is missing)
+pub fn is_ca_certificate(cert: &Certificate) -> bool {
+    cert.tbs_certificate
+        .extensions
+        .as_ref()
+        .and_then(|exts| exts.iter().find(|e| e.extn_id == BasicConstraints::OID))
+        .and_then(|e| BasicConstraints::from_der(e.extn_value.as_bytes()).ok())
+        .map(|bc| bc.ca)
+        .unwrap_or(false)
+}
+
+/// Builds an extended trust chain by discovering intermediate CA certificates from the X5Chain
+/// that are signed by already-trusted certificates.
+///
+/// This function iteratively finds certificates in the X5Chain that:
+/// 1. Are signed by a certificate already in the trusted set
+/// 2. Have the BasicConstraints CA=true extension
+///
+/// These intermediate CAs are then added to the trust anchors, allowing verification
+/// of certificate chains that include intermediate CAs not explicitly provided as trust anchors.
+///
+/// # Arguments
+/// * `initial_trusted_certs` - Certificates already trusted (typically root CAs)
+/// * `x5chain_cbor` - The X5Chain as a CBOR Value (expected to be an Array of Bytes)
+///
+/// # Returns
+/// A tuple containing:
+/// * `Vec<Certificate>` - All trusted certificates (initial + discovered intermediates)
+/// * `Vec<PemTrustAnchor>` - PEM-encoded trust anchors for the discovered intermediate CAs
+pub fn build_intermediate_trust_chain(
+    initial_trusted_certs: Vec<Certificate>,
+    x5chain_cbor: &ciborium::Value,
+) -> (Vec<Certificate>, Vec<PemTrustAnchor>) {
+    let mut trusted_certs = initial_trusted_certs;
+    let mut additional_anchors: Vec<PemTrustAnchor> = Vec::new();
+
+    // Extract candidate certificates from the X5Chain CBOR
+    let ciborium::Value::Array(certs_vals) = x5chain_cbor else {
+        return (trusted_certs, additional_anchors);
+    };
+
+    let mut candidates: Vec<(usize, Certificate)> = Vec::new();
+    for (idx, cert_val) in certs_vals.iter().enumerate() {
+        if let ciborium::Value::Bytes(cert_bytes) = cert_val
+            && let Ok(cert) = Certificate::from_der(cert_bytes)
+        {
+            candidates.push((idx, cert));
+        }
+    }
+
+    // Iteratively find certificates signed by trusted certs
+    let mut progress = true;
+    while progress {
+        progress = false;
+        let mut new_trusted_indices = Vec::new();
+
+        for (i, (_idx, cert)) in candidates.iter().enumerate() {
+            let is_signed_by_trusted = trusted_certs.iter().any(|trust_cert| {
+                cert.tbs_certificate.issuer == trust_cert.tbs_certificate.subject
+                    && verify_certificate_signature(cert, trust_cert).is_ok()
+            });
+
+            if is_signed_by_trusted {
+                new_trusted_indices.push(i);
+            }
+        }
+
+        // Sort indices in reverse to remove safely
+        new_trusted_indices.sort_by(|a, b| b.cmp(a));
+        new_trusted_indices.dedup();
+
+        for i in new_trusted_indices {
+            let (_idx, cert) = candidates.remove(i);
+
+            // Only add CA certificates as trust anchors
+            if is_ca_certificate(&cert)
+                && let Ok(pem) = cert.to_pem(x509_cert::der::pem::LineEnding::LF)
+            {
+                additional_anchors.push(PemTrustAnchor {
+                    certificate_pem: pem,
+                    purpose: TrustPurpose::Iaca,
+                });
+            }
+
+            trusted_certs.push(cert);
+            progress = true;
+        }
+    }
+
+    (trusted_certs, additional_anchors)
+}
 
 #[derive(Debug, uniffi::Error, thiserror::Error)]
 pub enum MdlUtilError {

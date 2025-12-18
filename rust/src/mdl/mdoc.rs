@@ -37,43 +37,15 @@ use isomdl::{
     issuance::mdoc::Builder,
     presentation::{Stringify, authentication::mdoc::issuer_authentication, device::Document},
 };
-use p256::ecdsa::{Signature, VerifyingKey};
 use p256::{PublicKey, elliptic_curve::sec1::ToEncodedPoint};
 use serde::Deserialize;
 use serde::Serialize;
-use signature::Verifier;
 use time::OffsetDateTime;
 use uuid::Uuid;
-use x509_cert::der::{Decode, Encode, EncodePem};
-use x509_cert::{Certificate, der::DecodePem};
+use x509_cert::Certificate;
+use x509_cert::der::DecodePem;
 
-fn verify_signature(subject: &Certificate, issuer: &Certificate) -> Result<(), String> {
-    let spki = &issuer.tbs_certificate.subject_public_key_info;
-    let key_bytes = spki
-        .subject_public_key
-        .as_bytes()
-        .ok_or("Invalid public key bytes")?;
-
-    let verifying_key = VerifyingKey::from_sec1_bytes(key_bytes)
-        .map_err(|e| format!("Failed to parse public key from SEC1 bytes: {:?}", e))?;
-
-    let signature_bytes = subject.signature.as_bytes().ok_or("Missing signature")?;
-    let signature = Signature::from_der(signature_bytes)
-        .map_err(|e| format!("Failed to parse signature: {:?}", e))?;
-
-    let tbs_der = subject
-        .tbs_certificate
-        .to_der()
-        .map_err(|e| format!("Failed to encode TBS: {:?}", e))?;
-
-    verifying_key
-        .verify(&tbs_der, &signature)
-        .map_err(|e| format!("Signature verification failed: {:?}", e))?;
-
-    Ok(())
-}
-
-use super::util::setup_certificate_chain;
+use super::util::{build_intermediate_trust_chain, setup_certificate_chain};
 
 uniffi::custom_newtype!(Namespace, String);
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -418,82 +390,15 @@ impl Mdoc {
 
             if use_intermediate_chaining {
                 // Parse roots from provided anchors
-                let mut trusted_certs: Vec<Certificate> = anchors
+                let trusted_certs: Vec<Certificate> = anchors
                     .iter()
                     .filter_map(|pem| Certificate::from_pem(pem).ok())
                     .collect();
 
-                // Iterate over certs in the chain to find intermediates signed by trusted certs
-                if let ciborium::Value::Array(certs_vals) = &x5chain_cbor {
-                    let mut candidates: Vec<(usize, Certificate)> = Vec::new();
-                    for (idx, cert_val) in certs_vals.iter().enumerate() {
-                        if let ciborium::Value::Bytes(cert_bytes) = cert_val
-                            && let Ok(cert) = Certificate::from_der(cert_bytes)
-                        {
-                            candidates.push((idx, cert));
-                        }
-                    }
-
-                    let mut progress = true;
-                    while progress {
-                        progress = false;
-                        let mut new_trusted_indices = Vec::new();
-
-                        for (i, (_idx, cert)) in candidates.iter().enumerate() {
-                            let mut is_signed_by_trusted = false;
-                            for trust_cert in trusted_certs.iter() {
-                                if cert.tbs_certificate.issuer == trust_cert.tbs_certificate.subject
-                                    && verify_signature(cert, trust_cert).is_ok()
-                                {
-                                    is_signed_by_trusted = true;
-                                    break;
-                                }
-                            }
-
-                            if is_signed_by_trusted {
-                                new_trusted_indices.push(i);
-                            }
-                        }
-
-                        // Sort indices in reverse to remove safely
-                        new_trusted_indices.sort_by(|a, b| b.cmp(a));
-                        new_trusted_indices.dedup();
-
-                        for i in new_trusted_indices {
-                            let (_idx, cert) = candidates.remove(i);
-
-                            // Check if CA before adding to pem_anchors
-                            let is_ca = cert
-                                .tbs_certificate
-                                .extensions
-                                .as_ref()
-                                .and_then(|exts| {
-                                    let bc_oid: x509_cert::der::oid::ObjectIdentifier =
-                                        "2.5.29.19".parse().ok()?;
-                                    exts.iter().find(|e| e.extn_id == bc_oid)
-                                })
-                                .and_then(|e| {
-                                    use x509_cert::der::Decode;
-                                    use x509_cert::ext::pkix::BasicConstraints;
-                                    BasicConstraints::from_der(e.extn_value.as_bytes()).ok()
-                                })
-                                .map(|bc| bc.ca)
-                                .unwrap_or(false);
-
-                            if is_ca
-                                && let Ok(pem) = cert.to_pem(x509_cert::der::pem::LineEnding::LF)
-                            {
-                                pem_anchors.push(PemTrustAnchor {
-                                    certificate_pem: pem,
-                                    purpose: TrustPurpose::Iaca,
-                                });
-                            }
-
-                            trusted_certs.push(cert);
-                            progress = true;
-                        }
-                    }
-                }
+                // Build trust chain by discovering intermediate CAs
+                let (_all_trusted, additional_anchors) =
+                    build_intermediate_trust_chain(trusted_certs, &x5chain_cbor);
+                pem_anchors.extend(additional_anchors);
             }
 
             let registry = TrustAnchorRegistry::from_pem_certificates(pem_anchors)

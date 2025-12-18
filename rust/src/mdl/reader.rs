@@ -17,12 +17,8 @@ use std::{
     collections::{BTreeMap, HashMap},
     sync::Arc,
 };
-use x509_cert::der::{Decode, Encode};
-use x509_cert::ext::pkix::BasicConstraints;
-use x509_cert::{
-    Certificate,
-    der::{DecodePem, EncodePem},
-};
+use x509_cert::Certificate;
+use x509_cert::der::DecodePem;
 
 use isomdl::{
     definitions::{
@@ -30,38 +26,14 @@ use isomdl::{
         helpers::{NonEmptyMap, non_empty_map},
         x509::{
             self,
-            trust_anchor::{PemTrustAnchor, TrustAnchorRegistry, TrustPurpose},
+            trust_anchor::{PemTrustAnchor, TrustAnchorRegistry},
         },
     },
     presentation::{authentication::AuthenticationStatus as IsoMdlAuthenticationStatus, reader},
 };
 use uuid::Uuid;
 
-fn verify_signature(subject: &Certificate, issuer: &Certificate) -> Result<(), String> {
-    let signature = subject.signature.as_bytes().ok_or("Missing signature")?;
-    let signature = p256::ecdsa::Signature::from_der(signature)
-        .map_err(|e| format!("Invalid signature: {:?}", e))?;
-
-    let spki = issuer
-        .tbs_certificate
-        .subject_public_key_info
-        .subject_public_key
-        .as_bytes()
-        .ok_or("Missing subject public key")?;
-    let verifying_key = p256::ecdsa::VerifyingKey::from_sec1_bytes(spki)
-        .map_err(|e| format!("Invalid verifying key: {:?}", e))?;
-
-    use signature::Verifier;
-    verifying_key
-        .verify(
-            &subject
-                .tbs_certificate
-                .to_der()
-                .map_err(|e| format!("Der encoding error: {:?}", e))?,
-            &signature,
-        )
-        .map_err(|e| format!("Signature verification failed: {:?}", e))
-}
+use super::util::build_intermediate_trust_chain;
 
 /// OID4VP SessionTranscript per OpenID4VP over ISO 18013-5 spec (updated 2024):
 /// SessionTranscript = [null, null, OID4VPHandover]
@@ -459,7 +431,6 @@ pub fn verify_oid4vp_response(
                 }
 
                 if use_intermediate_chaining {
-                    // Logic to find intermediates
                     // Extract X5Chain CBOR from doc
                     if let Some(x5chain_cbor) = doc
                         .issuer_signed
@@ -472,82 +443,15 @@ pub fn verify_oid4vp_response(
                         .map(|(_, value)| value.to_owned())
                     {
                         // Parse roots from provided anchors
-                        let mut trusted_certs: Vec<Certificate> = pem_anchors
+                        let trusted_certs: Vec<Certificate> = pem_anchors
                             .iter()
                             .filter_map(|pem| Certificate::from_pem(&pem.certificate_pem).ok())
                             .collect();
 
-                        // Iterate over certs in the chain
-                        // x5chain_cbor is ciborium::Value
-                        if let ciborium::Value::Array(certs_vals) = &x5chain_cbor {
-                            let mut candidates: Vec<(usize, Certificate)> = Vec::new();
-                            for (idx, cert_val) in certs_vals.iter().enumerate() {
-                                if let ciborium::Value::Bytes(cert_bytes) = cert_val
-                                    && let Ok(cert) = Certificate::from_der(cert_bytes)
-                                {
-                                    candidates.push((idx, cert));
-                                }
-                            }
-
-                            let mut progress = true;
-                            while progress {
-                                progress = false;
-                                let mut new_trusted_indices = Vec::new();
-
-                                for (i, (_idx, cert)) in candidates.iter().enumerate() {
-                                    let mut is_signed_by_trusted = false;
-                                    for trust_cert in trusted_certs.iter() {
-                                        if cert.tbs_certificate.issuer
-                                            == trust_cert.tbs_certificate.subject
-                                            && verify_signature(cert, trust_cert).is_ok()
-                                        {
-                                            is_signed_by_trusted = true;
-                                            break;
-                                        }
-                                    }
-
-                                    if is_signed_by_trusted {
-                                        new_trusted_indices.push(i);
-                                    }
-                                }
-
-                                // Sort indices in reverse to remove safely
-                                new_trusted_indices.sort_by(|a, b| b.cmp(a));
-                                new_trusted_indices.dedup();
-
-                                for i in new_trusted_indices {
-                                    let (_idx, cert) = candidates.remove(i);
-
-                                    // Check if CA before adding
-                                    let is_ca = cert
-                                        .tbs_certificate
-                                        .extensions
-                                        .as_ref()
-                                        .and_then(|exts| {
-                                            let bc_oid: x509_cert::der::oid::ObjectIdentifier =
-                                                "2.5.29.19".parse().ok()?;
-                                            exts.iter().find(|e| e.extn_id == bc_oid)
-                                        })
-                                        .and_then(|e| {
-                                            use x509_cert::der::Decode;
-                                            let bc =
-                                                BasicConstraints::from_der(e.extn_value.as_bytes())
-                                                    .ok()?;
-                                            Some(bc.ca)
-                                        })
-                                        .unwrap_or(false);
-
-                                    if is_ca && let Ok(pem) = cert.to_pem(Default::default()) {
-                                        pem_anchors.push(PemTrustAnchor {
-                                            certificate_pem: pem,
-                                            purpose: TrustPurpose::Iaca,
-                                        });
-                                        trusted_certs.push(cert);
-                                        progress = true;
-                                    }
-                                }
-                            }
-                        }
+                        // Build trust chain by discovering intermediate CAs
+                        let (_all_trusted, additional_anchors) =
+                            build_intermediate_trust_chain(trusted_certs, &x5chain_cbor);
+                        pem_anchors.extend(additional_anchors);
                     }
                 }
 

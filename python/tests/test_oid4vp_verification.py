@@ -27,7 +27,7 @@ class TestOID4VPVerification:
         # Should raise an error for invalid CBOR
         try:
             mdl_module.verify_oid4vp_response(
-                invalid_response, nonce, client_id, response_uri, trust_anchors
+                invalid_response, nonce, client_id, response_uri, trust_anchors, False
             )
             raise AssertionError("Expected an exception for invalid CBOR")
         except Exception as e:
@@ -45,7 +45,7 @@ class TestOID4VPVerification:
 
         try:
             mdl_module.verify_oid4vp_response(
-                empty_response, nonce, client_id, response_uri, trust_anchors
+                empty_response, nonce, client_id, response_uri, trust_anchors, False
             )
             raise AssertionError("Expected an exception for empty response")
         except Exception as e:
@@ -87,6 +87,7 @@ class TestOID4VPVerification:
                     case["client_id"],
                     case["response_uri"],
                     case["trust_anchors"],
+                    False,
                 )
                 # If it doesn't throw an error, it should at least parse the parameters
                 # The CBOR parsing will fail, but parameter validation should work
@@ -118,7 +119,9 @@ class TestOID4VPVerification:
         minimal_cbor = b"\xa0"  # Empty CBOR map
 
         try:
-            mdl_module.verify_oid4vp_response(minimal_cbor, nonce, client_id, response_uri, None)
+            mdl_module.verify_oid4vp_response(
+                minimal_cbor, nonce, client_id, response_uri, None, False
+            )
             # If this succeeds, great! If not, we expect a specific error
         except Exception as e:
             error_msg = str(e)
@@ -141,7 +144,7 @@ class TestOID4VPVerification:
 
         try:
             result = mdl_module.verify_oid4vp_response(
-                invalid_response, nonce, client_id, response_uri, None
+                invalid_response, nonce, client_id, response_uri, None, False
             )
             # If somehow this succeeds, verify the structure
             assert hasattr(result, "verified_response")
@@ -182,7 +185,9 @@ class TestOID4VPVerification:
 
         # Test with empty trust anchor list
         try:
-            mdl_module.verify_oid4vp_response(invalid_response, nonce, client_id, response_uri, [])
+            mdl_module.verify_oid4vp_response(
+                invalid_response, nonce, client_id, response_uri, [], False
+            )
         except Exception as e:
             assert "Unable to parse DeviceResponse" in str(e)
 
@@ -190,7 +195,7 @@ class TestOID4VPVerification:
         invalid_trust_anchor = ["not_valid_json"]
         try:
             mdl_module.verify_oid4vp_response(
-                invalid_response, nonce, client_id, response_uri, invalid_trust_anchor
+                invalid_response, nonce, client_id, response_uri, invalid_trust_anchor, False
             )
         except Exception as e:
             # Should fail either at trust anchor parsing or CBOR parsing
@@ -220,6 +225,7 @@ class TestOID4VPVerification:
             "client_id": "https://verifier.example.com",  # str
             "response_uri": "https://verifier.example.com/response/123",  # str
             "trust_anchor_registry": None,  # Optional[List[str]]
+            "use_intermediate_chaining": False,  # bool
         }
 
         try:

@@ -42,8 +42,10 @@ use serde::Deserialize;
 use serde::Serialize;
 use time::OffsetDateTime;
 use uuid::Uuid;
+use x509_cert::Certificate;
+use x509_cert::der::DecodePem;
 
-use super::util::setup_certificate_chain;
+use super::util::{build_intermediate_trust_chain, setup_certificate_chain};
 
 uniffi::custom_newtype!(Namespace, String);
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -135,12 +137,21 @@ impl Mdoc {
         let builder = prepare_builder(pub_key, namespaces, doc_type)
             .map_err(|_e| MdocInitError::GeneralConstructionError)?;
 
-        let (certificate, signer) = setup_certificate_chain(iaca_cert_perm, iaca_key_perm)
+        let (certificate, iaca_certs, signer) =
+            setup_certificate_chain(iaca_cert_perm, iaca_key_perm)
+                .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+
+        let mut x5chain_builder = X5Chain::builder()
+            .with_certificate(certificate)
             .map_err(|_e| MdocInitError::GeneralConstructionError)?;
 
-        let x5chain = X5Chain::builder()
-            .with_certificate(certificate)
-            .map_err(|_e| MdocInitError::GeneralConstructionError)?
+        for cert in iaca_certs {
+            x5chain_builder = x5chain_builder
+                .with_certificate(cert)
+                .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+        }
+
+        let x5chain = x5chain_builder
             .build()
             .map_err(|_e| MdocInitError::GeneralConstructionError)?;
 
@@ -216,12 +227,21 @@ impl Mdoc {
         let builder = prepare_builder(pub_key, namespaces, doc_type)
             .map_err(|_e| MdocInitError::GeneralConstructionError)?;
 
-        let (certificate, signer) = setup_certificate_chain(iaca_cert_pem, iaca_key_pem)
+        let (certificate, iaca_certs, signer) =
+            setup_certificate_chain(iaca_cert_pem, iaca_key_pem)
+                .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+
+        let mut x5chain_builder = X5Chain::builder()
+            .with_certificate(certificate)
             .map_err(|_e| MdocInitError::GeneralConstructionError)?;
 
-        let x5chain = X5Chain::builder()
-            .with_certificate(certificate)
-            .map_err(|_e| MdocInitError::GeneralConstructionError)?
+        for cert in iaca_certs {
+            x5chain_builder = x5chain_builder
+                .with_certificate(cert)
+                .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+        }
+
+        let x5chain = x5chain_builder
             .build()
             .map_err(|_e| MdocInitError::GeneralConstructionError)?;
 
@@ -326,6 +346,9 @@ impl Mdoc {
     /// * `trust_anchors` - Optional list of PEM-encoded trust anchor certificates.
     ///   If not provided, X5Chain validation is skipped but signature verification
     ///   is still performed using the certificate in the X5Chain.
+    /// * `use_intermediate_chaining` - If true, the verifier will attempt to build a trust path
+    ///   using intermediate certificates found in the X5Chain header. If false, only the
+    ///   certificates explicitly provided in `trust_anchors` are trusted.
     ///
     /// # Returns
     /// * `Ok(IssuerVerificationResult)` - The verification result with verified status
@@ -335,6 +358,7 @@ impl Mdoc {
     pub fn verify_issuer_signature(
         &self,
         trust_anchors: Option<Vec<String>>,
+        use_intermediate_chaining: bool,
     ) -> Result<IssuerVerificationResult, MdocVerificationError> {
         // 1. Extract X5Chain from issuer_auth unprotected header
         let x5chain_cbor = self
@@ -348,7 +372,7 @@ impl Mdoc {
             .map(|(_, value)| value.to_owned())
             .ok_or(MdocVerificationError::X5ChainMissing)?;
 
-        let x5chain = X5Chain::from_cbor(x5chain_cbor)
+        let x5chain = X5Chain::from_cbor(x5chain_cbor.clone())
             .map_err(|e| MdocVerificationError::X5ChainParsing(format!("{:?}", e)))?;
 
         // 2. Get the common name from the end-entity certificate
@@ -356,18 +380,29 @@ impl Mdoc {
 
         // 3. If trust anchors are provided, validate the X5Chain against them
         if let Some(anchors) = trust_anchors.filter(|a| !a.is_empty()) {
-            let pem_anchors: Vec<PemTrustAnchor> = anchors
-                .into_iter()
+            let mut pem_anchors: Vec<PemTrustAnchor> = anchors
+                .iter()
                 .map(|cert_pem| PemTrustAnchor {
-                    certificate_pem: cert_pem,
+                    certificate_pem: cert_pem.clone(),
                     purpose: TrustPurpose::Iaca,
                 })
                 .collect();
 
-            let registry = TrustAnchorRegistry::from_pem_certificates(pem_anchors)
-                .map_err(|e| MdocVerificationError::TrustAnchorRegistryError(format!("{:?}", e)))?;
+            if use_intermediate_chaining {
+                // Parse roots from provided anchors
+                let trusted_certs: Vec<Certificate> = anchors
+                    .iter()
+                    .filter_map(|pem| Certificate::from_pem(pem).ok())
+                    .collect();
 
-            // Validate X5Chain against trust anchors using mDL validation rules
+                // Build trust chain by discovering intermediate CAs
+                let (_all_trusted, additional_anchors) =
+                    build_intermediate_trust_chain(trusted_certs, &x5chain_cbor);
+                pem_anchors.extend(additional_anchors);
+            }
+
+            let registry = TrustAnchorRegistry::from_pem_certificates(pem_anchors)
+                .map_err(|e| MdocVerificationError::TrustAnchorRegistryError(format!("{:?}", e)))?; // Validate X5Chain against trust anchors using mDL validation rules
             let validation_errors = isomdl::definitions::x509::validation::ValidationRuleset::Mdl
                 .validate(&x5chain, &registry)
                 .errors;
@@ -685,9 +720,6 @@ mod tests {
         let result =
             Mdoc::create_and_sign_mdl(mdl_items, None, holder_jwk, cert_pem, issuer_key_pem);
 
-        if let Err(e) = &result {
-            println!("Error creating mdoc: {:?}", e);
-        }
         let mdoc = result.unwrap();
 
         // 6. Verify Output
@@ -791,7 +823,7 @@ mod tests {
         .expect("Failed to create mdoc");
 
         // 6. Verify issuer signature without trust anchors (just signature check)
-        let result = mdoc.verify_issuer_signature(None);
+        let result = mdoc.verify_issuer_signature(None, false);
         assert!(result.is_ok(), "Verification should succeed: {:?}", result);
 
         let verification = result.unwrap();
@@ -896,7 +928,7 @@ mod tests {
             .expect("Failed to create mdoc");
 
         // 6. Try to verify with WRONG trust anchor - should fail validation
-        let result = mdoc.verify_issuer_signature(Some(vec![other_cert_pem]));
+        let result = mdoc.verify_issuer_signature(Some(vec![other_cert_pem]), false);
 
         // The verification should fail because the mdoc's issuer cert is not trusted
         assert!(
@@ -985,5 +1017,151 @@ mod tests {
             .find(|e| e.identifier == "custom-element")
             .expect("Element not found");
         assert!(element.value.as_ref().unwrap().contains("custom-value"));
+    }
+
+    #[test]
+    fn test_verify_issuer_signature_chaining() {
+        use x509_cert::ext::pkix::{
+            CrlDistributionPoints, IssuerAltName,
+            crl::dp::DistributionPoint,
+            name::{DistributionPointName, GeneralName},
+        };
+
+        // 1. Generate Root CA Key and Certificate
+        let root_key = SigningKey::random(&mut OsRng);
+        let root_subject: Name = "CN=Root CA,C=US,ST=NY,O=SpruceID".parse().unwrap();
+        let root_spki =
+            SubjectPublicKeyInfoOwned::from_key(root_key.verifying_key().clone()).unwrap();
+
+        let root_builder = CertificateBuilder::new(
+            Profile::Root,
+            SerialNumber::from(1u64),
+            Validity::from_now(Duration::from_secs(3600)).unwrap(),
+            root_subject.clone(),
+            root_spki,
+            &root_key,
+        )
+        .unwrap();
+
+        let root_cert = root_builder.build::<p256::ecdsa::DerSignature>().unwrap();
+        let root_cert_pem = root_cert.to_pem(LineEnding::LF).unwrap();
+
+        // 2. Generate Intermediate CA Key and Certificate (Signed by Root)
+        let intermediate_key = SigningKey::random(&mut OsRng);
+        let intermediate_subject: Name =
+            "CN=Intermediate CA,C=US,ST=NY,O=SpruceID".parse().unwrap();
+        let intermediate_spki =
+            SubjectPublicKeyInfoOwned::from_key(intermediate_key.verifying_key().clone()).unwrap();
+
+        let mut intermediate_builder = CertificateBuilder::new(
+            Profile::SubCA {
+                issuer: root_subject.clone(),
+                path_len_constraint: Some(0),
+            },
+            SerialNumber::from(2u64),
+            Validity::from_now(Duration::from_secs(3600)).unwrap(),
+            intermediate_subject,
+            intermediate_spki,
+            &root_key, // Signed by Root Key
+        )
+        .unwrap();
+
+        // Add required extensions for mDL IACA profile
+        intermediate_builder
+            .add_extension(&CrlDistributionPoints(vec![DistributionPoint {
+                distribution_point: Some(DistributionPointName::FullName(vec![
+                    GeneralName::UniformResourceIdentifier(
+                        "https://example.com/crl".to_string().try_into().unwrap(),
+                    ),
+                ])),
+                reasons: None,
+                crl_issuer: None,
+            }]))
+            .unwrap();
+
+        intermediate_builder
+            .add_extension(&IssuerAltName(vec![GeneralName::Rfc822Name(
+                "ca@example.com".to_string().try_into().unwrap(),
+            )]))
+            .unwrap();
+
+        let intermediate_cert = intermediate_builder
+            .build::<p256::ecdsa::DerSignature>()
+            .unwrap();
+        let intermediate_cert_pem = intermediate_cert.to_pem(LineEnding::LF).unwrap();
+        let intermediate_key_pem = intermediate_key
+            .to_pkcs8_pem(LineEnding::LF)
+            .unwrap()
+            .to_string();
+
+        // 3. Generate Holder Key (JWK)
+        let holder_key = SigningKey::random(&mut OsRng);
+        let point = holder_key.verifying_key().to_encoded_point(false);
+        let x = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(point.x().unwrap());
+        let y = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(point.y().unwrap());
+
+        let holder_jwk = serde_json::json!({
+            "kty": "EC",
+            "crv": "P-256",
+            "x": x,
+            "y": y
+        })
+        .to_string();
+
+        // 4. Sample Data
+        let mdl_items = serde_json::json!({
+            "family_name": "Doe",
+            "given_name": "Jane",
+            "birth_date": "1992-01-01",
+            "issue_date": "2023-01-01",
+            "expiry_date": "2028-01-01",
+            "issuing_country": "US",
+            "issuing_authority": "DMV",
+            "document_number": "987654321",
+            "portrait": "SGVsbG8gV29ybGQ=",
+            "driving_privileges": [],
+            "un_distinguishing_sign": "USA"
+        })
+        .to_string();
+
+        // 5. Create mdoc signed by Intermediate CA
+        // This will create a chain: [Ephemeral DS, Intermediate CA]
+        let mdoc = Mdoc::create_and_sign_mdl(
+            mdl_items,
+            None,
+            holder_jwk,
+            intermediate_cert_pem.clone(),
+            intermediate_key_pem,
+        )
+        .expect("Failed to create mdoc");
+
+        // 6. Verify with Root CA as trust anchor
+
+        // Case A: Chaining Disabled (Default) - Should Fail
+        // The mDL is signed by Ephemeral DS, which is signed by Intermediate.
+        // We only trust Root. Intermediate is not in trust anchors.
+        let result_no_chain =
+            mdoc.verify_issuer_signature(Some(vec![root_cert_pem.clone()]), false);
+        assert!(
+            result_no_chain.is_err(),
+            "Verification should fail when chaining is disabled and intermediate is missing from anchors"
+        );
+
+        // Case B: Chaining Enabled - Should Succeed
+        // The verifier should find Intermediate in the x5chain, verify it against Root, and then verify Ephemeral DS against Intermediate.
+        let result_chain = mdoc.verify_issuer_signature(Some(vec![root_cert_pem]), true);
+        assert!(
+            result_chain.is_ok(),
+            "Verification should succeed when chaining is enabled: {:?}",
+            result_chain.err()
+        );
+
+        let verification = result_chain.unwrap();
+        assert!(verification.verified);
+        // Common name should be the Ephemeral DS created by setup_certificate_chain
+        assert_eq!(
+            verification.common_name,
+            Some("SpruceID Test DS".to_string())
+        );
     }
 }

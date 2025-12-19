@@ -43,14 +43,16 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use anyhow::{Context, Result};
+use p256::pkcs8::AssociatedOid;
 
+use isomdl::definitions::x509::trust_anchor::{PemTrustAnchor, TrustPurpose};
 use x509_cert::{
     Certificate,
     builder::{Builder, CertificateBuilder},
-    der::{DecodePem as _, asn1::OctetString},
+    der::{Decode, DecodePem as _, Encode, EncodePem as _, asn1::OctetString},
     ext::pkix::{
-        AuthorityKeyIdentifier, CrlDistributionPoints, ExtendedKeyUsage, IssuerAltName, KeyUsage,
-        KeyUsages, SubjectKeyIdentifier,
+        AuthorityKeyIdentifier, BasicConstraints, CrlDistributionPoints, ExtendedKeyUsage,
+        ID_CE_SUBJECT_KEY_IDENTIFIER, IssuerAltName, KeyUsage, KeyUsages, SubjectKeyIdentifier,
         crl::dp::DistributionPoint,
         name::{DistributionPointName, GeneralName},
     },
@@ -60,6 +62,151 @@ use x509_cert::{
     },
     time::Validity,
 };
+
+// ============================================================================
+// Shared Certificate Utilities
+// ============================================================================
+
+/// Verifies that the `subject` certificate's signature was created by the `issuer`'s private key.
+///
+/// This function checks that the subject certificate was properly signed by the issuer
+/// using ECDSA P-256 signature verification.
+///
+/// # Arguments
+/// * `subject` - The certificate whose signature should be verified
+/// * `issuer` - The certificate containing the public key that should have signed the subject
+///
+/// # Returns
+/// * `Ok(())` if the signature is valid
+/// * `Err(String)` with a description if verification fails
+pub fn verify_certificate_signature(
+    subject: &Certificate,
+    issuer: &Certificate,
+) -> Result<(), String> {
+    let spki = &issuer.tbs_certificate.subject_public_key_info;
+    let key_bytes = spki
+        .subject_public_key
+        .as_bytes()
+        .ok_or("Invalid public key bytes")?;
+
+    let verifying_key = p256::ecdsa::VerifyingKey::from_sec1_bytes(key_bytes)
+        .map_err(|e| format!("Failed to parse public key from SEC1 bytes: {:?}", e))?;
+
+    let signature_bytes = subject.signature.as_bytes().ok_or("Missing signature")?;
+    let signature = p256::ecdsa::Signature::from_der(signature_bytes)
+        .map_err(|e| format!("Failed to parse signature: {:?}", e))?;
+
+    let tbs_der = subject
+        .tbs_certificate
+        .to_der()
+        .map_err(|e| format!("Failed to encode TBS: {:?}", e))?;
+
+    use signature::Verifier;
+    verifying_key
+        .verify(&tbs_der, &signature)
+        .map_err(|e| format!("Signature verification failed: {:?}", e))?;
+
+    Ok(())
+}
+
+/// Checks if a certificate is a Certificate Authority (CA) based on the BasicConstraints extension.
+///
+/// # Arguments
+/// * `cert` - The certificate to check
+///
+/// # Returns
+/// * `true` if the certificate has BasicConstraints with CA=true
+/// * `false` otherwise (including if the extension is missing)
+pub fn is_ca_certificate(cert: &Certificate) -> bool {
+    cert.tbs_certificate
+        .extensions
+        .as_ref()
+        .and_then(|exts| exts.iter().find(|e| e.extn_id == BasicConstraints::OID))
+        .and_then(|e| BasicConstraints::from_der(e.extn_value.as_bytes()).ok())
+        .map(|bc| bc.ca)
+        .unwrap_or(false)
+}
+
+/// Builds an extended trust chain by discovering intermediate CA certificates from the X5Chain
+/// that are signed by already-trusted certificates.
+///
+/// This function iteratively finds certificates in the X5Chain that:
+/// 1. Are signed by a certificate already in the trusted set
+/// 2. Have the BasicConstraints CA=true extension
+///
+/// These intermediate CAs are then added to the trust anchors, allowing verification
+/// of certificate chains that include intermediate CAs not explicitly provided as trust anchors.
+///
+/// # Arguments
+/// * `initial_trusted_certs` - Certificates already trusted (typically root CAs)
+/// * `x5chain_cbor` - The X5Chain as a CBOR Value (expected to be an Array of Bytes)
+///
+/// # Returns
+/// A tuple containing:
+/// * `Vec<Certificate>` - All trusted certificates (initial + discovered intermediates)
+/// * `Vec<PemTrustAnchor>` - PEM-encoded trust anchors for the discovered intermediate CAs
+pub fn build_intermediate_trust_chain(
+    initial_trusted_certs: Vec<Certificate>,
+    x5chain_cbor: &ciborium::Value,
+) -> (Vec<Certificate>, Vec<PemTrustAnchor>) {
+    let mut trusted_certs = initial_trusted_certs;
+    let mut additional_anchors: Vec<PemTrustAnchor> = Vec::new();
+
+    // Extract candidate certificates from the X5Chain CBOR
+    let ciborium::Value::Array(certs_vals) = x5chain_cbor else {
+        return (trusted_certs, additional_anchors);
+    };
+
+    let mut candidates: Vec<(usize, Certificate)> = Vec::new();
+    for (idx, cert_val) in certs_vals.iter().enumerate() {
+        if let ciborium::Value::Bytes(cert_bytes) = cert_val
+            && let Ok(cert) = Certificate::from_der(cert_bytes)
+        {
+            candidates.push((idx, cert));
+        }
+    }
+
+    // Iteratively find certificates signed by trusted certs
+    let mut progress = true;
+    while progress {
+        progress = false;
+        let mut new_trusted_indices = Vec::new();
+
+        for (i, (_idx, cert)) in candidates.iter().enumerate() {
+            let is_signed_by_trusted = trusted_certs.iter().any(|trust_cert| {
+                cert.tbs_certificate.issuer == trust_cert.tbs_certificate.subject
+                    && verify_certificate_signature(cert, trust_cert).is_ok()
+            });
+
+            if is_signed_by_trusted {
+                new_trusted_indices.push(i);
+            }
+        }
+
+        // Sort indices in reverse to remove safely
+        new_trusted_indices.sort_by(|a, b| b.cmp(a));
+        new_trusted_indices.dedup();
+
+        for i in new_trusted_indices {
+            let (_idx, cert) = candidates.remove(i);
+
+            // Only add CA certificates as trust anchors
+            if is_ca_certificate(&cert)
+                && let Ok(pem) = cert.to_pem(x509_cert::der::pem::LineEnding::LF)
+            {
+                additional_anchors.push(PemTrustAnchor {
+                    certificate_pem: pem,
+                    purpose: TrustPurpose::Iaca,
+                });
+            }
+
+            trusted_certs.push(cert);
+            progress = true;
+        }
+    }
+
+    (trusted_certs, additional_anchors)
+}
 
 #[derive(Debug, uniffi::Error, thiserror::Error)]
 pub enum MdlUtilError {
@@ -137,7 +284,7 @@ impl P256KeyPair {
 #[uniffi::export]
 /// Generate a new test mDL with hardcoded values, using the supplied key as the DeviceKey.
 pub fn generate_test_mdl(key_pair: Arc<P256KeyPair>) -> Result<Mdoc, MdlUtilError> {
-    let (certificate, signer) = setup_certificate_chain(
+    let (certificate, certs, signer) = setup_certificate_chain(
         include_str!("../../tests/res/mdl/utrecht-certificate.pem").to_string(),
         include_str!("../../tests/res/mdl/utrecht-key.pem").to_string(),
     )
@@ -153,11 +300,17 @@ pub fn generate_test_mdl(key_pair: Arc<P256KeyPair>) -> Result<Mdoc, MdlUtilErro
 
     let mdoc_builder = prepare_mdoc(pk).context("failed to prepare mdoc")?;
 
-    let x5chain = X5Chain::builder()
+    let mut x5chain_builder = X5Chain::builder()
         .with_certificate(certificate)
-        .context("failed to add certificate to x5chain")?
-        .build()
-        .context("failed to build x5chain")?;
+        .context("failed to add certificate to x5chain")?;
+
+    for cert in certs {
+        x5chain_builder = x5chain_builder
+            .with_certificate(cert)
+            .context("failed to add cert to x5chain")?;
+    }
+
+    let x5chain = x5chain_builder.build().context("failed to build x5chain")?;
 
     let mdoc = mdoc_builder
         .issue::<p256::ecdsa::SigningKey, p256::ecdsa::Signature>(x5chain, signer)
@@ -337,25 +490,85 @@ fn prepare_mdoc(pub_key: PublicKey) -> Result<isomdl::issuance::mdoc::Builder> {
 pub fn setup_certificate_chain(
     iaca_cert_pem: String,
     iaca_key_pem: String,
-) -> Result<(Certificate, p256::ecdsa::SigningKey)> {
-    let iaca_cert = Certificate::from_pem(&iaca_cert_pem)?;
-    let iaca_name: Name = iaca_cert.tbs_certificate.subject;
+) -> Result<(Certificate, Vec<Certificate>, p256::ecdsa::SigningKey)> {
+    let parts: Vec<&str> = iaca_cert_pem.split("-----BEGIN CERTIFICATE-----").collect();
+    let mut iaca_certs = Vec::new();
+
+    for part in parts.iter().skip(1) {
+        if part.trim().is_empty() {
+            continue;
+        }
+        let full_pem = format!("-----BEGIN CERTIFICATE-----\n{}", part.trim_start());
+        match Certificate::from_pem(&full_pem) {
+            Ok(cert) => iaca_certs.push(cert),
+            Err(_) => {
+                // Try parsing with pem crate as fallback
+                if let Ok(p) = pem::parse(&full_pem)
+                    && let Ok(cert) = Certificate::from_der(p.contents())
+                {
+                    iaca_certs.push(cert);
+                }
+            }
+        }
+    }
+
+    if iaca_certs.is_empty() {
+        let cert = Certificate::from_pem(&iaca_cert_pem)?;
+        iaca_certs.push(cert);
+    }
+
     let iaca_key = p256::ecdsa::SigningKey::from_pkcs8_pem(&iaca_key_pem)?;
+
+    // Check if the first certificate is a CA
+    let is_ca = iaca_certs[0]
+        .tbs_certificate
+        .extensions
+        .as_ref()
+        .and_then(|exts| {
+            let bc_oid: x509_cert::der::oid::ObjectIdentifier = "2.5.29.19".parse().unwrap();
+            exts.iter().find(|e| e.extn_id == bc_oid)
+        })
+        .and_then(|e| {
+            use x509_cert::ext::pkix::BasicConstraints;
+            BasicConstraints::from_der(e.extn_value.as_bytes()).ok()
+        })
+        .map(|bc| bc.ca)
+        .unwrap_or(false);
+
+    if !is_ca {
+        let certificate = iaca_certs.remove(0);
+        return Ok((certificate, iaca_certs, iaca_key));
+    }
+
+    let iaca_cert = &iaca_certs[0];
+    let iaca_name: Name = iaca_cert.tbs_certificate.subject.clone();
+
+    let issuer_ski = iaca_cert
+        .tbs_certificate
+        .extensions
+        .as_ref()
+        .and_then(|exts| {
+            exts.iter()
+                .find(|e| e.extn_id == ID_CE_SUBJECT_KEY_IDENTIFIER)
+        })
+        .and_then(|e| SubjectKeyIdentifier::from_der(e.extn_value.as_bytes()).ok())
+        .map(|ski| ski.0.as_bytes().to_vec());
 
     let ds_key = p256::ecdsa::SigningKey::random(&mut signature::rand_core::OsRng);
     let mut prepared_ds_certificate =
-        prepare_signer_certificate(&ds_key, &iaca_key, iaca_name.clone())?;
+        prepare_signer_certificate(&ds_key, &iaca_key, iaca_name.clone(), issuer_ski)?;
     let signature: p256::ecdsa::Signature = iaca_key.sign(&prepared_ds_certificate.finalize()?);
     let ds_certificate: Certificate =
         prepared_ds_certificate.assemble(signature.to_der().to_bitstring()?)?;
 
-    Ok((ds_certificate, ds_key))
+    Ok((ds_certificate, iaca_certs, ds_key))
 }
 
 fn prepare_signer_certificate<'s, S>(
     signer_key: &'s S,
     iaca_key: &'s S,
     iaca_name: Name,
+    issuer_ski: Option<Vec<u8>>,
 ) -> Result<CertificateBuilder<'s, S>>
 where
     S: signature::KeypairRef + DynSignatureAlgorithmIdentifier,
@@ -365,9 +578,13 @@ where
     let ski_digest = Sha1::digest(spki.subject_public_key.raw_bytes());
     let ski_digest_octet = OctetString::new(ski_digest.to_vec())?;
 
-    let apki = SubjectPublicKeyInfoOwned::from_key(iaca_key.verifying_key())?;
-    let aki_digest = Sha1::digest(apki.subject_public_key.raw_bytes());
-    let aki_digest_octet = OctetString::new(aki_digest.to_vec())?;
+    let aki_digest_octet = if let Some(ski) = issuer_ski {
+        OctetString::new(ski)?
+    } else {
+        let apki = SubjectPublicKeyInfoOwned::from_key(iaca_key.verifying_key())?;
+        let aki_digest = Sha1::digest(apki.subject_public_key.raw_bytes());
+        OctetString::new(aki_digest.to_vec())?
+    };
 
     let mut builder = CertificateBuilder::new(
         x509_cert::builder::Profile::Manual {

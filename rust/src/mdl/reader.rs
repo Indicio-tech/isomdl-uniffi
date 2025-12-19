@@ -9,11 +9,16 @@
 // This project contains code from Spruce Systems, Inc.
 // https://github.com/spruceid/sprucekit-mobile
 
+use ciborium;
+use coset::Label;
+use isomdl::definitions::x509::x5chain::X5CHAIN_COSE_HEADER_LABEL;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, HashMap},
     sync::Arc,
 };
+use x509_cert::Certificate;
+use x509_cert::der::DecodePem;
 
 use isomdl::{
     definitions::{
@@ -28,11 +33,36 @@ use isomdl::{
 };
 use uuid::Uuid;
 
-#[derive(Serialize, Deserialize, Clone)]
-pub struct OID4VPSessionTranscript(pub Option<Vec<u8>>, pub Option<Vec<u8>>, pub OID4VPHandover);
+use super::util::build_intermediate_trust_chain;
 
+/// OID4VP SessionTranscript per OpenID4VP over ISO 18013-5 spec (updated 2024):
+/// SessionTranscript = [null, null, OID4VPHandover]
 #[derive(Serialize, Deserialize, Clone)]
-pub struct OID4VPHandover(pub Vec<u8>, pub Vec<u8>, pub String);
+pub struct OID4VPSessionTranscript(
+    pub Option<()>, // DeviceEngagementBytes - null for OID4VP
+    pub Option<()>, // EReaderKeyBytes - null for OID4VP
+    pub OID4VPHandover,
+);
+
+/// OID4VP Handover per OpenID4VP spec Appendix B.2.6.1 (updated 2024):
+/// OID4VPHandover = ["OpenID4VPHandover", OpenID4VPHandoverInfoHash]
+/// Where OpenID4VPHandoverInfoHash = sha256(cbor(OpenID4VPHandoverInfo))
+/// And OpenID4VPHandoverInfo = [clientId, nonce, jwkThumbprint, responseUri]
+#[derive(Serialize, Deserialize, Clone)]
+pub struct OID4VPHandover(
+    pub String,                                 // Fixed identifier "OpenID4VPHandover"
+    #[serde(with = "serde_bytes")] pub Vec<u8>, // SHA-256 hash of CBOR-encoded OpenID4VPHandoverInfo
+);
+
+/// OpenID4VPHandoverInfo = [clientId, nonce, jwkThumbprint, responseUri]
+/// Used to compute the hash for OID4VPHandover
+#[derive(Serialize, Clone)]
+pub struct OID4VPHandoverInfo(
+    pub String,          // clientId
+    pub String,          // nonce
+    pub Option<Vec<u8>>, // jwkThumbprint (null if no encryption)
+    pub String,          // responseUri
+);
 
 impl isomdl::definitions::session::SessionTranscript for OID4VPSessionTranscript {}
 
@@ -304,6 +334,8 @@ pub fn handle_response(
 
 #[derive(uniffi::Record, Debug)]
 pub struct MDLReaderVerifiedData {
+    /// The document type (e.g., "org.iso.18013.5.1.mDL")
+    pub doc_type: String,
     pub verified_response: HashMap<String, HashMap<String, MDocItem>>,
     pub issuer_authentication: AuthenticationStatus,
     pub device_authentication: AuthenticationStatus,
@@ -338,50 +370,104 @@ pub fn verify_oid4vp_response(
     client_id: String,
     response_uri: String,
     trust_anchor_registry: Option<Vec<String>>,
+    use_intermediate_chaining: bool,
 ) -> Result<MDLReaderVerifiedData, MDLReaderSessionError> {
     // 1. Parse DeviceResponse
     let device_response: isomdl::definitions::DeviceResponse = isomdl::cbor::from_slice(&response)
-        .map_err(|e| MDLReaderSessionError::Generic {
-            value: format!("Unable to parse DeviceResponse: {}", e),
+        .map_err(|e| {
+            let debug_info = match ciborium::from_reader::<ciborium::Value, _>(response.as_slice())
+            {
+                Ok(v) => format!("Generic CBOR structure: {:?}", v),
+                Err(e2) => format!("Failed to parse as generic CBOR: {}", e2),
+            };
+            MDLReaderSessionError::Generic {
+                value: format!("Unable to parse DeviceResponse: {}. {}", e, debug_info),
+            }
         })?;
 
-    // 2. Construct OID4VP SessionTranscript
-    // [null, null, [clientIdHash, responseUriHash, nonce]]
+    // 2. Construct OID4VP SessionTranscript per updated spec (Appendix B.2.6.1)
+    // SessionTranscript = [null, null, ["OpenID4VPHandover", sha256(cbor([clientId, nonce, jwkThumbprint, responseUri]))]]
     use sha2::{Digest, Sha256};
-    let client_id_hash = Sha256::digest(client_id.as_bytes()).to_vec();
-    let response_uri_hash = Sha256::digest(response_uri.as_bytes()).to_vec();
 
-    let transcript = OID4VPSessionTranscript(
-        None,
-        None,
-        OID4VPHandover(client_id_hash, response_uri_hash, nonce),
+    // Build OpenID4VPHandoverInfo = [clientId, nonce, jwkThumbprint, responseUri]
+    // jwkThumbprint is null for non-encrypted responses
+    let handover_info = OID4VPHandoverInfo(
+        client_id.clone(),
+        nonce.clone(),
+        None, // jwkThumbprint - null for non-encrypted responses
+        response_uri.clone(),
     );
 
-    let registry = if let Some(anchors) = trust_anchor_registry {
-        let mut certs = Vec::new();
-        for anchor in anchors {
-            let anchor: PemTrustAnchor =
-                serde_json::from_str(&anchor).map_err(|e| MDLReaderSessionError::Generic {
-                    value: format!("Invalid trust anchor JSON: {}", e),
-                })?;
-            certs.push(anchor);
+    // CBOR-encode the handover info
+    let mut handover_info_bytes = Vec::new();
+    ciborium::into_writer(&handover_info, &mut handover_info_bytes).map_err(|e| {
+        MDLReaderSessionError::Generic {
+            value: format!("Failed to CBOR-encode handover info: {}", e),
         }
-        TrustAnchorRegistry::from_pem_certificates(certs).map_err(|e| {
-            MDLReaderSessionError::Generic {
-                value: format!("Failed to create trust registry: {}", e),
-            }
-        })?
-    } else {
-        TrustAnchorRegistry::from_pem_certificates(vec![]).map_err(|e| {
-            MDLReaderSessionError::Generic {
-                value: format!("Failed to create empty trust registry: {}", e),
-            }
-        })?
-    };
+    })?;
+
+    // Hash the CBOR-encoded handover info
+    let handover_info_hash = Sha256::digest(&handover_info_bytes).to_vec();
+
+    // Build the handover structure: ["OpenID4VPHandover", hash]
+    let transcript = OID4VPSessionTranscript(
+        None, // DeviceEngagementBytes - null for OID4VP
+        None, // EReaderKeyBytes - null for OID4VP
+        OID4VPHandover("OpenID4VPHandover".to_string(), handover_info_hash),
+    );
 
     // 3. Parse and Validate
     match isomdl::presentation::reader::parse(&device_response) {
         Ok((doc, x5chain, namespaces)) => {
+            let registry = if let Some(anchors) = trust_anchor_registry {
+                let mut pem_anchors = Vec::new();
+                for anchor in anchors {
+                    let anchor: PemTrustAnchor = serde_json::from_str(&anchor).map_err(|e| {
+                        MDLReaderSessionError::Generic {
+                            value: format!("Invalid trust anchor JSON: {}", e),
+                        }
+                    })?;
+                    pem_anchors.push(anchor);
+                }
+
+                if use_intermediate_chaining {
+                    // Extract X5Chain CBOR from doc
+                    if let Some(x5chain_cbor) = doc
+                        .issuer_signed
+                        .issuer_auth
+                        .inner
+                        .unprotected
+                        .rest
+                        .iter()
+                        .find(|(label, _)| label == &Label::Int(X5CHAIN_COSE_HEADER_LABEL))
+                        .map(|(_, value)| value.to_owned())
+                    {
+                        // Parse roots from provided anchors
+                        let trusted_certs: Vec<Certificate> = pem_anchors
+                            .iter()
+                            .filter_map(|pem| Certificate::from_pem(&pem.certificate_pem).ok())
+                            .collect();
+
+                        // Build trust chain by discovering intermediate CAs
+                        let (_all_trusted, additional_anchors) =
+                            build_intermediate_trust_chain(trusted_certs, &x5chain_cbor);
+                        pem_anchors.extend(additional_anchors);
+                    }
+                }
+
+                TrustAnchorRegistry::from_pem_certificates(pem_anchors).map_err(|e| {
+                    MDLReaderSessionError::Generic {
+                        value: format!("Failed to create trust registry: {}", e),
+                    }
+                })?
+            } else {
+                TrustAnchorRegistry::from_pem_certificates(vec![]).map_err(|e| {
+                    MDLReaderSessionError::Generic {
+                        value: format!("Failed to create empty trust registry: {}", e),
+                    }
+                })?
+            };
+
             let validation_result = isomdl::presentation::reader_utils::validate_response(
                 transcript,
                 registry,
@@ -389,6 +475,9 @@ pub fn verify_oid4vp_response(
                 doc.clone(),
                 namespaces,
             );
+
+            // Extract doc_type from the parsed document
+            let doc_type = doc.doc_type.clone();
 
             // Convert namespaces to HashMap<String, HashMap<String, MDocItem>>
             let mut verified_response = HashMap::new();
@@ -412,6 +501,7 @@ pub fn verify_oid4vp_response(
             };
 
             Ok(MDLReaderVerifiedData {
+                doc_type,
                 verified_response,
                 issuer_authentication: validation_result.issuer_authentication.into(),
                 device_authentication: validation_result.device_authentication.into(),
@@ -454,11 +544,9 @@ mod tests {
         match result {
             Ok(_) => {
                 // If it somehow succeeds, that's great - the UUID extraction worked
-                println!("✅ Session established successfully - UUID extraction works!");
             }
             Err(e) => {
                 let error_msg = e.to_string();
-                println!("Error received: {}", error_msg);
 
                 // The error should NOT be about UUID extraction if our fix is correct
                 // It should be about session establishment, QR code construction, etc.
@@ -477,8 +565,6 @@ mod tests {
                     "Expected session establishment error, got: {}",
                     error_msg
                 );
-
-                println!("✅ Expected error (not UUID related): {}", error_msg);
             }
         }
     }
@@ -499,15 +585,6 @@ mod tests {
 
         // This test verifies our understanding is correct
         assert!(true, "✅ UUID extraction API documentation test passed");
-
-        // Log the current API structure for future reference
-        println!("📋 Current UUID extraction API:");
-        println!(
-            "   manager.ble_central_client_options()  // Returns Iterator<Item = &CentralClientMode>"
-        );
-        println!("   .next()                               // Gets first CentralClientMode");
-        println!("   .map(|mode| mode.uuid)                // Accesses uuid field directly");
-        println!("   Returns: Option<Uuid>                 // No dereferencing needed");
     }
 
     #[test]
@@ -518,8 +595,14 @@ mod tests {
         let response_uri = "response_uri".to_string();
         let trust_anchors = None;
 
-        let result =
-            verify_oid4vp_response(response, nonce, client_id, response_uri, trust_anchors);
+        let result = verify_oid4vp_response(
+            response,
+            nonce,
+            client_id,
+            response_uri,
+            trust_anchors,
+            false,
+        );
 
         assert!(result.is_err());
         match result {
@@ -528,5 +611,166 @@ mod tests {
             }
             _ => panic!("Expected Generic error"),
         }
+    }
+
+    #[test]
+    fn test_oid4vp_session_transcript_serialization() {
+        // Test that the spec-compliant OID4VP SessionTranscript serializes correctly
+        use sha2::{Digest, Sha256};
+
+        let client_id = "https://example.com/client".to_string();
+        let nonce = "test-nonce-12345".to_string();
+        let response_uri = "https://example.com/response".to_string();
+
+        // Build OpenID4VPHandoverInfo = [clientId, nonce, jwkThumbprint, responseUri]
+        let handover_info = OID4VPHandoverInfo(
+            client_id.clone(),
+            nonce.clone(),
+            None, // jwkThumbprint - null for non-encrypted responses
+            response_uri.clone(),
+        );
+
+        // CBOR-encode the handover info
+        let mut handover_info_bytes = Vec::new();
+        ciborium::into_writer(&handover_info, &mut handover_info_bytes)
+            .expect("Failed to CBOR-encode handover info");
+
+        // Hash the CBOR-encoded handover info
+        let handover_info_hash = Sha256::digest(&handover_info_bytes).to_vec();
+
+        // Build the session transcript
+        let transcript = OID4VPSessionTranscript(
+            None,
+            None,
+            OID4VPHandover("OpenID4VPHandover".to_string(), handover_info_hash.clone()),
+        );
+
+        // Serialize to CBOR
+        let mut transcript_bytes = Vec::new();
+        ciborium::into_writer(&transcript, &mut transcript_bytes)
+            .expect("Failed to serialize session transcript");
+
+        // Verify the structure is correct by deserializing
+        let parsed: OID4VPSessionTranscript = ciborium::from_reader(&transcript_bytes[..])
+            .expect("Failed to deserialize session transcript");
+
+        assert!(parsed.0.is_none(), "DeviceEngagementBytes should be null");
+        assert!(parsed.1.is_none(), "EReaderKeyBytes should be null");
+        assert_eq!(
+            parsed.2.0, "OpenID4VPHandover",
+            "Handover identifier should match"
+        );
+        assert_eq!(parsed.2.1, handover_info_hash, "Handover hash should match");
+    }
+
+    #[test]
+    fn test_handover_info_structure() {
+        // Test that OID4VPHandoverInfo serializes as expected [clientId, nonce, jwkThumbprint, responseUri]
+        let handover_info = OID4VPHandoverInfo(
+            "client123".to_string(),
+            "nonce456".to_string(),
+            None, // null jwkThumbprint
+            "https://response.uri".to_string(),
+        );
+
+        let mut bytes = Vec::new();
+        ciborium::into_writer(&handover_info, &mut bytes).unwrap();
+
+        // Parse as generic CBOR to verify structure
+        let value: ciborium::Value = ciborium::from_reader(&bytes[..]).unwrap();
+
+        if let ciborium::Value::Array(arr) = value {
+            assert_eq!(arr.len(), 4, "HandoverInfo should be a 4-element array");
+
+            // Check clientId
+            if let ciborium::Value::Text(s) = &arr[0] {
+                assert_eq!(s, "client123");
+            } else {
+                panic!("First element should be text (clientId)");
+            }
+
+            // Check nonce
+            if let ciborium::Value::Text(s) = &arr[1] {
+                assert_eq!(s, "nonce456");
+            } else {
+                panic!("Second element should be text (nonce)");
+            }
+
+            // Check jwkThumbprint is null
+            assert!(
+                matches!(arr[2], ciborium::Value::Null),
+                "Third element should be null (jwkThumbprint)"
+            );
+
+            // Check responseUri
+            if let ciborium::Value::Text(s) = &arr[3] {
+                assert_eq!(s, "https://response.uri");
+            } else {
+                panic!("Fourth element should be text (responseUri)");
+            }
+        } else {
+            panic!("HandoverInfo should serialize as an array");
+        }
+    }
+
+    #[test]
+    fn test_mdl_reader_verified_data_has_doc_type() {
+        // Test that MDLReaderVerifiedData struct includes doc_type field
+        // This is a structural test to ensure the field exists and can be set
+
+        let verified_data = MDLReaderVerifiedData {
+            doc_type: "org.iso.18013.5.1.mDL".to_string(),
+            verified_response: HashMap::new(),
+            issuer_authentication: AuthenticationStatus::Unchecked,
+            device_authentication: AuthenticationStatus::Unchecked,
+            errors: None,
+        };
+
+        assert_eq!(verified_data.doc_type, "org.iso.18013.5.1.mDL");
+        assert!(verified_data.verified_response.is_empty());
+    }
+
+    #[test]
+    fn test_mdl_reader_verified_data_doc_type_with_namespace() {
+        // Test that doc_type and namespace are independent but related
+        // doc_type is "org.iso.18013.5.1.mDL" and namespace is "org.iso.18013.5.1"
+
+        let mut verified_response = HashMap::new();
+        let mut namespace_claims = HashMap::new();
+        namespace_claims.insert(
+            "family_name".to_string(),
+            MDocItem::Text("Smith".to_string()),
+        );
+        namespace_claims.insert(
+            "given_name".to_string(),
+            MDocItem::Text("Alice".to_string()),
+        );
+        verified_response.insert("org.iso.18013.5.1".to_string(), namespace_claims);
+
+        let verified_data = MDLReaderVerifiedData {
+            doc_type: "org.iso.18013.5.1.mDL".to_string(),
+            verified_response,
+            issuer_authentication: AuthenticationStatus::Valid,
+            device_authentication: AuthenticationStatus::Valid,
+            errors: None,
+        };
+
+        // Verify doc_type
+        assert_eq!(verified_data.doc_type, "org.iso.18013.5.1.mDL");
+
+        // Verify namespace exists (note: different from doc_type)
+        assert!(
+            verified_data
+                .verified_response
+                .contains_key("org.iso.18013.5.1")
+        );
+
+        // Verify claims within namespace
+        let claims = verified_data
+            .verified_response
+            .get("org.iso.18013.5.1")
+            .unwrap();
+        assert!(matches!(claims.get("family_name"), Some(MDocItem::Text(s)) if s == "Smith"));
+        assert!(matches!(claims.get("given_name"), Some(MDocItem::Text(s)) if s == "Alice"));
     }
 }

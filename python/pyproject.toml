@@ -39,6 +39,7 @@ dev = [
     "build",
     "pytest>=7.0.0",
     "pytest-cov",
+    "cryptography>=39.0.0",
 ]
 
 [project.urls]
@@ -101,5 +102,6 @@ markers = [
     "unit: Unit tests",
     "integration: Integration tests",
     "workflow: End-to-end workflow tests",
-    "slow: Tests that take longer to run"
+    "slow: Tests that take longer to run",
+    "cross_language: marks tests as cross-language verification tests (deselect with '-m \"not cross_language\"')",
 ]

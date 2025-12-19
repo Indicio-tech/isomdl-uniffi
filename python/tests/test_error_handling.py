@@ -36,7 +36,7 @@ class TestInvalidInput:
 
         for invalid_uuid in invalid_uuids:
             # Implementation validates UUID format strictly - should raise
-            with pytest.raises(mdl_module.SessionError):  # SessionError for invalid UUID
+            with pytest.raises(mdl_module.SessionError):  # SessionError for invalid UUID format
                 mdl_module.MdlPresentationSession(test_mdl, invalid_uuid)
 
     def test_corrupted_qr_code_uri(self, mdl_module):

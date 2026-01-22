@@ -6,7 +6,7 @@
 # See the LICENSE-APACHE and LICENSE-MIT files for details.
 
 [build-system]
-requires = ["setuptools>=45", "wheel"]
+requires = ["setuptools>=65", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]

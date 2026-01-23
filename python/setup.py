@@ -31,14 +31,19 @@ class BuildRust:
         # Detect target architecture from Python
         import platform
         python_arch = platform.machine()
+        python_os = platform.system()
         
-        # Map Python architecture to Rust target
-        if python_arch == "x86_64":
-            rust_target = "x86_64-apple-darwin"
-        elif python_arch == "arm64" or python_arch == "aarch64":
-            rust_target = "aarch64-apple-darwin"
-        else:
-            rust_target = None  # Use default
+        # Map Python architecture to Rust target (OS-specific)
+        rust_target = None
+        if python_os == "Darwin":  # macOS
+            if python_arch == "x86_64":
+                rust_target = "x86_64-apple-darwin"
+            elif python_arch == "arm64" or python_arch == "aarch64":
+                rust_target = "aarch64-apple-darwin"
+        elif python_os == "Linux":
+            # On Linux, just use native compilation
+            rust_target = None
+        # For other OSes, use default
 
         # Build the Rust library in release mode for the correct architecture
         build_cmd = ["cargo", "build", "--release"]

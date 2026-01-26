@@ -113,7 +113,3 @@ bindings = "uniffi"
 manifest-path = "../rust/Cargo.toml"
 # Python module name (must use underscores, not hyphens)
 module-name = "isomdl_uniffi"
-# Python source directory (where __init__.py is)
-python-source = "."
-# Include the native library and generated bindings
-include = ["isomdl_uniffi/**/*"]

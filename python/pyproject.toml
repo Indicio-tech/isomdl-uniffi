@@ -111,6 +111,8 @@ markers = [
 bindings = "uniffi"
 # Path to the Rust crate relative to this pyproject.toml
 manifest-path = "../rust/Cargo.toml"
+# Python module name (must use underscores, not hyphens)
+module-name = "isomdl_uniffi"
 # Python source directory (where __init__.py is)
 python-source = "."
 # Include the native library and generated bindings

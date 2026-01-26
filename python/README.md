@@ -27,7 +27,30 @@ python/
 
 ## Quick Start
 
-### 1. Build Python Bindings
+### Installation from GitHub Releases
+
+For production use, install pre-built wheels from GitHub releases:
+
+```bash
+# Install the latest release for your platform
+pip install https://github.com/Indicio-tech/isomdl-uniffi/releases/download/v0.1.0/isomdl_uniffi-0.1.0-<platform>.whl
+
+# Examples for specific platforms:
+# Linux (x86_64)
+pip install https://github.com/Indicio-tech/isomdl-uniffi/releases/download/v0.1.0/isomdl_uniffi-0.1.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+
+# macOS (Intel/Apple Silicon universal2)
+pip install https://github.com/Indicio-tech/isomdl-uniffi/releases/download/v0.1.0/isomdl_uniffi-0.1.0-cp311-cp311-macosx_11_0_universal2.whl
+
+# Windows (x86_64)
+pip install https://github.com/Indicio-tech/isomdl-uniffi/releases/download/v0.1.0/isomdl_uniffi-0.1.0-cp311-cp311-win_amd64.whl
+```
+
+**Note:** Replace `v0.1.0` with the desired version tag and `cp311` with your Python version (`cp39`, `cp310`, `cp311`, or `cp312`).
+
+### 1. Build Python Bindings (Development)
+
+For local development, build the bindings from source:
 
 **Using UV (recommended):**
 ```bash

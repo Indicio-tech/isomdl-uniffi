@@ -6,8 +6,8 @@
 # See the LICENSE-APACHE and LICENSE-MIT files for details.
 
 [build-system]
-requires = ["setuptools>=65", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
 
 [project]
 name = "isomdl-uniffi"
@@ -105,3 +105,13 @@ markers = [
     "slow: Tests that take longer to run",
     "cross_language: marks tests as cross-language verification tests (deselect with '-m \"not cross_language\"')",
 ]
+
+[tool.maturin]
+# Maturin configuration for building UniFFI bindings
+bindings = "uniffi"
+# Path to the Rust crate relative to this pyproject.toml
+manifest-path = "../rust/Cargo.toml"
+# Python source directory (where __init__.py is)
+python-source = "."
+# Include the native library and generated bindings
+include = ["isomdl_uniffi/**/*"]

@@ -58,6 +58,10 @@ path = "uniffi-bindgen.rs"
 [lib]
 crate-type = ["cdylib", "staticlib", "rlib"]
 
+[package.metadata.maturin]
+# Specify the Python package name for the wheel
+name = "isomdl_uniffi"
+
 [profile.release]
 strip = true
 opt-level = "s"

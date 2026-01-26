@@ -77,7 +77,8 @@ jobs:
       matrix:
         platform:
           - { os: "linux", runner: "ubuntu-latest", target: "x86_64-unknown-linux-gnu", manylinux: "2_17" }
-          - { os: "macos", runner: "macos-latest", target: "universal2-apple-darwin" }
+          - { os: "macos-intel", runner: "macos-13", target: "x86_64-apple-darwin" }
+          - { os: "macos-arm", runner: "macos-latest", target: "aarch64-apple-darwin" }
           - { os: "windows", runner: "windows-latest", target: "x86_64-pc-windows-msvc" }
 
     steps:

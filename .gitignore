@@ -19,8 +19,11 @@ venv/
 env/
 .env
 .venv/
-# Generated Python bindings
-python/isomdl_uniffi/
+# Generated Python bindings (keep __init__.py but ignore generated files)
+python/isomdl_uniffi/isomdl_uniffi.py
+python/isomdl_uniffi/*.so
+python/isomdl_uniffi/*.dylib
+python/isomdl_uniffi/*.dll
 
 # Kotlin build artifacts
 .kotlin

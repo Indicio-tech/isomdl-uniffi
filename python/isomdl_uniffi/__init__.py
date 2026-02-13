@@ -25,9 +25,30 @@ _import_error = None
 # - isomdl_uniffi/isomdl_uniffi.py (the Python bindings)
 # - isomdl_uniffi/isomdl_uniffi/ (directory containing the .so)
 # Python prefers packages over modules, so we must explicitly load the .py file.
+# Additionally, the generated bindings look for the .so next to the .py file,
+# but it's in the subdirectory. We symlink it before loading.
 
 _module_dir = os.path.dirname(os.path.abspath(__file__))
 _bindings_path = os.path.join(_module_dir, "isomdl_uniffi.py")
+
+# Ensure the native library is findable next to isomdl_uniffi.py
+# The .so is in isomdl_uniffi/isomdl_uniffi/ but the .py expects it in isomdl_uniffi/
+_lib_extensions = {
+    "darwin": "libisomdl_uniffi.dylib",
+    "win32": "isomdl_uniffi.dll",
+}
+_lib_name = _lib_extensions.get(sys.platform, "libisomdl_uniffi.so")
+_lib_nested = os.path.join(_module_dir, "isomdl_uniffi", _lib_name)
+_lib_target = os.path.join(_module_dir, _lib_name)
+
+if os.path.exists(_lib_nested) and not os.path.exists(_lib_target):
+    try:
+        os.symlink(_lib_nested, _lib_target)
+    except OSError:
+        # Fallback: copy the file if symlinks are not supported
+        import shutil
+
+        shutil.copy2(_lib_nested, _lib_target)
 
 if os.path.exists(_bindings_path):
     try:

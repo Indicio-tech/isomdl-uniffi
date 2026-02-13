@@ -46,14 +46,14 @@ class _UniffiRustBuffer(ctypes.Structure):
 
     @staticmethod
     def alloc(size):
-        return _uniffi_rust_call(_UniffiLib.ffi_isomdl_uniffi_rustbuffer_alloc, size)
+        return _uniffi_rust_call(_UniffiLib.ffi_isomdl_rustbuffer_alloc, size)
 
     @staticmethod
     def reserve(rbuf, additional):
-        return _uniffi_rust_call(_UniffiLib.ffi_isomdl_uniffi_rustbuffer_reserve, rbuf, additional)
+        return _uniffi_rust_call(_UniffiLib.ffi_isomdl_rustbuffer_reserve, rbuf, additional)
 
     def free(self):
-        return _uniffi_rust_call(_UniffiLib.ffi_isomdl_uniffi_rustbuffer_free, self)
+        return _uniffi_rust_call(_UniffiLib.ffi_isomdl_rustbuffer_free, self)
 
     def __str__(self):
         return "_UniffiRustBuffer(capacity={}, len={}, data={})".format(
@@ -446,7 +446,7 @@ def _uniffi_load_indirect():
         # Anything else must be an ELF platform - Linux, *BSD, Solaris/illumos
         libname = "lib{}.so"
 
-    libname = libname.format("isomdl_uniffi")
+    libname = libname.format("isomdl")
     path = os.path.join(os.path.dirname(__file__), libname)
     lib = ctypes.cdll.LoadLibrary(path)
     return lib
@@ -455,70 +455,70 @@ def _uniffi_check_contract_api_version(lib):
     # Get the bindings contract version from our ComponentInterface
     bindings_contract_version = 26
     # Get the scaffolding contract version by calling the into the dylib
-    scaffolding_contract_version = lib.ffi_isomdl_uniffi_uniffi_contract_version()
+    scaffolding_contract_version = lib.ffi_isomdl_uniffi_contract_version()
     if bindings_contract_version != scaffolding_contract_version:
         raise InternalError("UniFFI contract version mismatch: try cleaning and rebuilding your project")
 
 def _uniffi_check_api_checksums(lib):
-    if lib.uniffi_isomdl_uniffi_checksum_func_establish_session() != 53873:
+    if lib.uniffi_isomdl_checksum_func_establish_session() != 48853:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_func_generate_test_mdl() != 21646:
+    if lib.uniffi_isomdl_checksum_func_generate_test_mdl() != 26643:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_func_handle_response() != 42478:
+    if lib.uniffi_isomdl_checksum_func_handle_response() != 32895:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_func_iso1801351_aamva_from_json() != 22886:
+    if lib.uniffi_isomdl_checksum_func_iso1801351_aamva_from_json() != 51549:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_func_iso1801351_from_json() != 46310:
+    if lib.uniffi_isomdl_checksum_func_iso1801351_from_json() != 35336:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_func_verified_response_as_json_string() != 24954:
+    if lib.uniffi_isomdl_checksum_func_verified_response_as_json_string() != 17494:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_func_verify_oid4vp_response() != 1253:
+    if lib.uniffi_isomdl_checksum_func_verify_oid4vp_response() != 1894:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_method_mdlpresentationsession_generate_response() != 18706:
+    if lib.uniffi_isomdl_checksum_method_mdlpresentationsession_generate_response() != 50255:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_method_mdlpresentationsession_get_ble_ident() != 27464:
+    if lib.uniffi_isomdl_checksum_method_mdlpresentationsession_get_ble_ident() != 40314:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_method_mdlpresentationsession_get_qr_code_uri() != 59339:
+    if lib.uniffi_isomdl_checksum_method_mdlpresentationsession_get_qr_code_uri() != 61968:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_method_mdlpresentationsession_handle_request() != 50972:
+    if lib.uniffi_isomdl_checksum_method_mdlpresentationsession_handle_request() != 30224:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_method_mdlpresentationsession_submit_response() != 12859:
+    if lib.uniffi_isomdl_checksum_method_mdlpresentationsession_submit_response() != 43815:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_method_mdlpresentationsession_terminate_session() != 32687:
+    if lib.uniffi_isomdl_checksum_method_mdlpresentationsession_terminate_session() != 40163:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_method_mdoc_details() != 47403:
+    if lib.uniffi_isomdl_checksum_method_mdoc_details() != 25313:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_method_mdoc_doctype() != 8025:
+    if lib.uniffi_isomdl_checksum_method_mdoc_doctype() != 44108:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_method_mdoc_id() != 45880:
+    if lib.uniffi_isomdl_checksum_method_mdoc_id() != 17522:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_method_mdoc_json() != 1636:
+    if lib.uniffi_isomdl_checksum_method_mdoc_json() != 65026:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_method_mdoc_key_alias() != 9235:
+    if lib.uniffi_isomdl_checksum_method_mdoc_key_alias() != 47531:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_method_mdoc_stringify() != 16395:
+    if lib.uniffi_isomdl_checksum_method_mdoc_stringify() != 25884:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_method_mdoc_verify_issuer_signature() != 1127:
+    if lib.uniffi_isomdl_checksum_method_mdoc_verify_issuer_signature() != 33645:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_method_p256keypair_public_jwk() != 36332:
+    if lib.uniffi_isomdl_checksum_method_p256keypair_public_jwk() != 10471:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_method_p256keypair_sign() != 44060:
+    if lib.uniffi_isomdl_checksum_method_p256keypair_sign() != 40276:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_constructor_mdlpresentationsession_new() != 1270:
+    if lib.uniffi_isomdl_checksum_constructor_mdlpresentationsession_new() != 65097:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_create_and_sign() != 3320:
+    if lib.uniffi_isomdl_checksum_constructor_mdoc_create_and_sign() != 61009:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_create_and_sign_mdl() != 21814:
+    if lib.uniffi_isomdl_checksum_constructor_mdoc_create_and_sign_mdl() != 46853:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_from_cbor_encoded_document() != 38241:
+    if lib.uniffi_isomdl_checksum_constructor_mdoc_from_cbor_encoded_document() != 49995:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_from_string() != 15398:
+    if lib.uniffi_isomdl_checksum_constructor_mdoc_from_string() != 33889:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_from_stringified_document() != 9578:
+    if lib.uniffi_isomdl_checksum_constructor_mdoc_from_stringified_document() != 47252:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_new_from_base64url_encoded_issuer_signed() != 55023:
+    if lib.uniffi_isomdl_checksum_constructor_mdoc_new_from_base64url_encoded_issuer_signed() != 17557:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_constructor_p256keypair_new() != 41043:
+    if lib.uniffi_isomdl_checksum_constructor_p256keypair_new() != 47416:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
 
 # A ctypes library to expose the extern-C FFI definitions.
@@ -626,95 +626,86 @@ class _UniffiForeignFutureStructVoid(ctypes.Structure):
     ]
 _UNIFFI_FOREIGN_FUTURE_COMPLETE_VOID = ctypes.CFUNCTYPE(None,ctypes.c_uint64,_UniffiForeignFutureStructVoid,
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_clone_inprocessrecord.argtypes = (
+_UniffiLib.uniffi_isomdl_fn_clone_inprocessrecord.argtypes = (
     ctypes.c_void_p,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_clone_inprocessrecord.restype = ctypes.c_void_p
-_UniffiLib.uniffi_isomdl_uniffi_fn_free_inprocessrecord.argtypes = (
+_UniffiLib.uniffi_isomdl_fn_clone_inprocessrecord.restype = ctypes.c_void_p
+_UniffiLib.uniffi_isomdl_fn_free_inprocessrecord.argtypes = (
     ctypes.c_void_p,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_free_inprocessrecord.restype = None
-_UniffiLib.uniffi_isomdl_uniffi_fn_clone_mdlsessionmanager.argtypes = (
+_UniffiLib.uniffi_isomdl_fn_free_inprocessrecord.restype = None
+_UniffiLib.uniffi_isomdl_fn_clone_mdlsessionmanager.argtypes = (
     ctypes.c_void_p,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_clone_mdlsessionmanager.restype = ctypes.c_void_p
-_UniffiLib.uniffi_isomdl_uniffi_fn_free_mdlsessionmanager.argtypes = (
+_UniffiLib.uniffi_isomdl_fn_clone_mdlsessionmanager.restype = ctypes.c_void_p
+_UniffiLib.uniffi_isomdl_fn_free_mdlsessionmanager.argtypes = (
     ctypes.c_void_p,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_free_mdlsessionmanager.restype = None
-_UniffiLib.uniffi_isomdl_uniffi_fn_clone_mdlpresentationsession.argtypes = (
+_UniffiLib.uniffi_isomdl_fn_free_mdlsessionmanager.restype = None
+_UniffiLib.uniffi_isomdl_fn_clone_mdlpresentationsession.argtypes = (
     ctypes.c_void_p,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_clone_mdlpresentationsession.restype = ctypes.c_void_p
-_UniffiLib.uniffi_isomdl_uniffi_fn_free_mdlpresentationsession.argtypes = (
+_UniffiLib.uniffi_isomdl_fn_clone_mdlpresentationsession.restype = ctypes.c_void_p
+_UniffiLib.uniffi_isomdl_fn_free_mdlpresentationsession.argtypes = (
     ctypes.c_void_p,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_free_mdlpresentationsession.restype = None
-_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdlpresentationsession_new.argtypes = (
-    ctypes.c_void_p,
-    _UniffiRustBuffer,
-    ctypes.POINTER(_UniffiRustCallStatus),
-)
-_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdlpresentationsession_new.restype = ctypes.c_void_p
-_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdlpresentationsession_generate_response.argtypes = (
+_UniffiLib.uniffi_isomdl_fn_free_mdlpresentationsession.restype = None
+_UniffiLib.uniffi_isomdl_fn_constructor_mdlpresentationsession_new.argtypes = (
     ctypes.c_void_p,
     _UniffiRustBuffer,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdlpresentationsession_generate_response.restype = _UniffiRustBuffer
-_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdlpresentationsession_get_ble_ident.argtypes = (
-    ctypes.c_void_p,
-    ctypes.POINTER(_UniffiRustCallStatus),
-)
-_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdlpresentationsession_get_ble_ident.restype = _UniffiRustBuffer
-_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdlpresentationsession_get_qr_code_uri.argtypes = (
-    ctypes.c_void_p,
-    ctypes.POINTER(_UniffiRustCallStatus),
-)
-_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdlpresentationsession_get_qr_code_uri.restype = _UniffiRustBuffer
-_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdlpresentationsession_handle_request.argtypes = (
+_UniffiLib.uniffi_isomdl_fn_constructor_mdlpresentationsession_new.restype = ctypes.c_void_p
+_UniffiLib.uniffi_isomdl_fn_method_mdlpresentationsession_generate_response.argtypes = (
     ctypes.c_void_p,
     _UniffiRustBuffer,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdlpresentationsession_handle_request.restype = _UniffiRustBuffer
-_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdlpresentationsession_submit_response.argtypes = (
+_UniffiLib.uniffi_isomdl_fn_method_mdlpresentationsession_generate_response.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_isomdl_fn_method_mdlpresentationsession_get_ble_ident.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_isomdl_fn_method_mdlpresentationsession_get_ble_ident.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_isomdl_fn_method_mdlpresentationsession_get_qr_code_uri.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_isomdl_fn_method_mdlpresentationsession_get_qr_code_uri.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_isomdl_fn_method_mdlpresentationsession_handle_request.argtypes = (
     ctypes.c_void_p,
     _UniffiRustBuffer,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdlpresentationsession_submit_response.restype = _UniffiRustBuffer
-_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdlpresentationsession_terminate_session.argtypes = (
+_UniffiLib.uniffi_isomdl_fn_method_mdlpresentationsession_handle_request.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_isomdl_fn_method_mdlpresentationsession_submit_response.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_isomdl_fn_method_mdlpresentationsession_submit_response.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_isomdl_fn_method_mdlpresentationsession_terminate_session.argtypes = (
     ctypes.c_void_p,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdlpresentationsession_terminate_session.restype = _UniffiRustBuffer
-_UniffiLib.uniffi_isomdl_uniffi_fn_clone_mdoc.argtypes = (
+_UniffiLib.uniffi_isomdl_fn_method_mdlpresentationsession_terminate_session.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_isomdl_fn_clone_mdoc.argtypes = (
     ctypes.c_void_p,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_clone_mdoc.restype = ctypes.c_void_p
-_UniffiLib.uniffi_isomdl_uniffi_fn_free_mdoc.argtypes = (
+_UniffiLib.uniffi_isomdl_fn_clone_mdoc.restype = ctypes.c_void_p
+_UniffiLib.uniffi_isomdl_fn_free_mdoc.argtypes = (
     ctypes.c_void_p,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_free_mdoc.restype = None
-_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_create_and_sign.argtypes = (
-    _UniffiRustBuffer,
-    _UniffiRustBuffer,
-    _UniffiRustBuffer,
-    _UniffiRustBuffer,
-    _UniffiRustBuffer,
-    ctypes.POINTER(_UniffiRustCallStatus),
-)
-_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_create_and_sign.restype = ctypes.c_void_p
-_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_create_and_sign_mdl.argtypes = (
+_UniffiLib.uniffi_isomdl_fn_free_mdoc.restype = None
+_UniffiLib.uniffi_isomdl_fn_constructor_mdoc_create_and_sign.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
     _UniffiRustBuffer,
@@ -722,126 +713,135 @@ _UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_create_and_sign_mdl.argtypes
     _UniffiRustBuffer,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_create_and_sign_mdl.restype = ctypes.c_void_p
-_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_from_cbor_encoded_document.argtypes = (
+_UniffiLib.uniffi_isomdl_fn_constructor_mdoc_create_and_sign.restype = ctypes.c_void_p
+_UniffiLib.uniffi_isomdl_fn_constructor_mdoc_create_and_sign_mdl.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
-    ctypes.POINTER(_UniffiRustCallStatus),
-)
-_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_from_cbor_encoded_document.restype = ctypes.c_void_p
-_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_from_string.argtypes = (
     _UniffiRustBuffer,
-    ctypes.POINTER(_UniffiRustCallStatus),
-)
-_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_from_string.restype = ctypes.c_void_p
-_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_from_stringified_document.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_from_stringified_document.restype = ctypes.c_void_p
-_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_new_from_base64url_encoded_issuer_signed.argtypes = (
+_UniffiLib.uniffi_isomdl_fn_constructor_mdoc_create_and_sign_mdl.restype = ctypes.c_void_p
+_UniffiLib.uniffi_isomdl_fn_constructor_mdoc_from_cbor_encoded_document.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_new_from_base64url_encoded_issuer_signed.restype = ctypes.c_void_p
-_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_details.argtypes = (
+_UniffiLib.uniffi_isomdl_fn_constructor_mdoc_from_cbor_encoded_document.restype = ctypes.c_void_p
+_UniffiLib.uniffi_isomdl_fn_constructor_mdoc_from_string.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_isomdl_fn_constructor_mdoc_from_string.restype = ctypes.c_void_p
+_UniffiLib.uniffi_isomdl_fn_constructor_mdoc_from_stringified_document.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_isomdl_fn_constructor_mdoc_from_stringified_document.restype = ctypes.c_void_p
+_UniffiLib.uniffi_isomdl_fn_constructor_mdoc_new_from_base64url_encoded_issuer_signed.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_isomdl_fn_constructor_mdoc_new_from_base64url_encoded_issuer_signed.restype = ctypes.c_void_p
+_UniffiLib.uniffi_isomdl_fn_method_mdoc_details.argtypes = (
     ctypes.c_void_p,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_details.restype = _UniffiRustBuffer
-_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_doctype.argtypes = (
+_UniffiLib.uniffi_isomdl_fn_method_mdoc_details.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_isomdl_fn_method_mdoc_doctype.argtypes = (
     ctypes.c_void_p,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_doctype.restype = _UniffiRustBuffer
-_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_id.argtypes = (
+_UniffiLib.uniffi_isomdl_fn_method_mdoc_doctype.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_isomdl_fn_method_mdoc_id.argtypes = (
     ctypes.c_void_p,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_id.restype = _UniffiRustBuffer
-_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_json.argtypes = (
+_UniffiLib.uniffi_isomdl_fn_method_mdoc_id.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_isomdl_fn_method_mdoc_json.argtypes = (
     ctypes.c_void_p,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_json.restype = _UniffiRustBuffer
-_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_key_alias.argtypes = (
+_UniffiLib.uniffi_isomdl_fn_method_mdoc_json.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_isomdl_fn_method_mdoc_key_alias.argtypes = (
     ctypes.c_void_p,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_key_alias.restype = _UniffiRustBuffer
-_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_stringify.argtypes = (
+_UniffiLib.uniffi_isomdl_fn_method_mdoc_key_alias.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_isomdl_fn_method_mdoc_stringify.argtypes = (
     ctypes.c_void_p,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_stringify.restype = _UniffiRustBuffer
-_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_verify_issuer_signature.argtypes = (
+_UniffiLib.uniffi_isomdl_fn_method_mdoc_stringify.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_isomdl_fn_method_mdoc_verify_issuer_signature.argtypes = (
     ctypes.c_void_p,
     _UniffiRustBuffer,
     ctypes.c_int8,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_verify_issuer_signature.restype = _UniffiRustBuffer
-_UniffiLib.uniffi_isomdl_uniffi_fn_clone_p256keypair.argtypes = (
+_UniffiLib.uniffi_isomdl_fn_method_mdoc_verify_issuer_signature.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_isomdl_fn_clone_p256keypair.argtypes = (
     ctypes.c_void_p,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_clone_p256keypair.restype = ctypes.c_void_p
-_UniffiLib.uniffi_isomdl_uniffi_fn_free_p256keypair.argtypes = (
+_UniffiLib.uniffi_isomdl_fn_clone_p256keypair.restype = ctypes.c_void_p
+_UniffiLib.uniffi_isomdl_fn_free_p256keypair.argtypes = (
     ctypes.c_void_p,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_free_p256keypair.restype = None
-_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_p256keypair_new.argtypes = (
+_UniffiLib.uniffi_isomdl_fn_free_p256keypair.restype = None
+_UniffiLib.uniffi_isomdl_fn_constructor_p256keypair_new.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_p256keypair_new.restype = ctypes.c_void_p
-_UniffiLib.uniffi_isomdl_uniffi_fn_method_p256keypair_public_jwk.argtypes = (
+_UniffiLib.uniffi_isomdl_fn_constructor_p256keypair_new.restype = ctypes.c_void_p
+_UniffiLib.uniffi_isomdl_fn_method_p256keypair_public_jwk.argtypes = (
     ctypes.c_void_p,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_method_p256keypair_public_jwk.restype = _UniffiRustBuffer
-_UniffiLib.uniffi_isomdl_uniffi_fn_method_p256keypair_sign.argtypes = (
-    ctypes.c_void_p,
-    _UniffiRustBuffer,
-    ctypes.POINTER(_UniffiRustCallStatus),
-)
-_UniffiLib.uniffi_isomdl_uniffi_fn_method_p256keypair_sign.restype = _UniffiRustBuffer
-_UniffiLib.uniffi_isomdl_uniffi_fn_func_establish_session.argtypes = (
-    _UniffiRustBuffer,
-    _UniffiRustBuffer,
-    _UniffiRustBuffer,
-    ctypes.POINTER(_UniffiRustCallStatus),
-)
-_UniffiLib.uniffi_isomdl_uniffi_fn_func_establish_session.restype = _UniffiRustBuffer
-_UniffiLib.uniffi_isomdl_uniffi_fn_func_generate_test_mdl.argtypes = (
-    ctypes.c_void_p,
-    ctypes.POINTER(_UniffiRustCallStatus),
-)
-_UniffiLib.uniffi_isomdl_uniffi_fn_func_generate_test_mdl.restype = ctypes.c_void_p
-_UniffiLib.uniffi_isomdl_uniffi_fn_func_handle_response.argtypes = (
+_UniffiLib.uniffi_isomdl_fn_method_p256keypair_public_jwk.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_isomdl_fn_method_p256keypair_sign.argtypes = (
     ctypes.c_void_p,
     _UniffiRustBuffer,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_func_handle_response.restype = _UniffiRustBuffer
-_UniffiLib.uniffi_isomdl_uniffi_fn_func_iso1801351_aamva_from_json.argtypes = (
+_UniffiLib.uniffi_isomdl_fn_method_p256keypair_sign.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_isomdl_fn_func_establish_session.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
     _UniffiRustBuffer,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_func_iso1801351_aamva_from_json.restype = _UniffiRustBuffer
-_UniffiLib.uniffi_isomdl_uniffi_fn_func_iso1801351_from_json.argtypes = (
+_UniffiLib.uniffi_isomdl_fn_func_establish_session.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_isomdl_fn_func_generate_test_mdl.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_isomdl_fn_func_generate_test_mdl.restype = ctypes.c_void_p
+_UniffiLib.uniffi_isomdl_fn_func_handle_response.argtypes = (
+    ctypes.c_void_p,
     _UniffiRustBuffer,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_func_iso1801351_from_json.restype = _UniffiRustBuffer
-_UniffiLib.uniffi_isomdl_uniffi_fn_func_verified_response_as_json_string.argtypes = (
+_UniffiLib.uniffi_isomdl_fn_func_handle_response.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_isomdl_fn_func_iso1801351_aamva_from_json.argtypes = (
     _UniffiRustBuffer,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_func_verified_response_as_json_string.restype = _UniffiRustBuffer
-_UniffiLib.uniffi_isomdl_uniffi_fn_func_verify_oid4vp_response.argtypes = (
+_UniffiLib.uniffi_isomdl_fn_func_iso1801351_aamva_from_json.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_isomdl_fn_func_iso1801351_from_json.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_isomdl_fn_func_iso1801351_from_json.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_isomdl_fn_func_verified_response_as_json_string.argtypes = (
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_isomdl_fn_func_verified_response_as_json_string.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_isomdl_fn_func_verify_oid4vp_response.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
     _UniffiRustBuffer,
@@ -850,368 +850,368 @@ _UniffiLib.uniffi_isomdl_uniffi_fn_func_verify_oid4vp_response.argtypes = (
     ctypes.c_int8,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.uniffi_isomdl_uniffi_fn_func_verify_oid4vp_response.restype = _UniffiRustBuffer
-_UniffiLib.ffi_isomdl_uniffi_rustbuffer_alloc.argtypes = (
+_UniffiLib.uniffi_isomdl_fn_func_verify_oid4vp_response.restype = _UniffiRustBuffer
+_UniffiLib.ffi_isomdl_rustbuffer_alloc.argtypes = (
     ctypes.c_uint64,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.ffi_isomdl_uniffi_rustbuffer_alloc.restype = _UniffiRustBuffer
-_UniffiLib.ffi_isomdl_uniffi_rustbuffer_from_bytes.argtypes = (
+_UniffiLib.ffi_isomdl_rustbuffer_alloc.restype = _UniffiRustBuffer
+_UniffiLib.ffi_isomdl_rustbuffer_from_bytes.argtypes = (
     _UniffiForeignBytes,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.ffi_isomdl_uniffi_rustbuffer_from_bytes.restype = _UniffiRustBuffer
-_UniffiLib.ffi_isomdl_uniffi_rustbuffer_free.argtypes = (
+_UniffiLib.ffi_isomdl_rustbuffer_from_bytes.restype = _UniffiRustBuffer
+_UniffiLib.ffi_isomdl_rustbuffer_free.argtypes = (
     _UniffiRustBuffer,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.ffi_isomdl_uniffi_rustbuffer_free.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rustbuffer_reserve.argtypes = (
+_UniffiLib.ffi_isomdl_rustbuffer_free.restype = None
+_UniffiLib.ffi_isomdl_rustbuffer_reserve.argtypes = (
     _UniffiRustBuffer,
     ctypes.c_uint64,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.ffi_isomdl_uniffi_rustbuffer_reserve.restype = _UniffiRustBuffer
-_UniffiLib.ffi_isomdl_uniffi_rust_future_poll_u8.argtypes = (
+_UniffiLib.ffi_isomdl_rustbuffer_reserve.restype = _UniffiRustBuffer
+_UniffiLib.ffi_isomdl_rust_future_poll_u8.argtypes = (
     ctypes.c_uint64,
     _UNIFFI_RUST_FUTURE_CONTINUATION_CALLBACK,
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_poll_u8.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_cancel_u8.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_poll_u8.restype = None
+_UniffiLib.ffi_isomdl_rust_future_cancel_u8.argtypes = (
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_cancel_u8.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_free_u8.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_cancel_u8.restype = None
+_UniffiLib.ffi_isomdl_rust_future_free_u8.argtypes = (
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_free_u8.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_complete_u8.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_free_u8.restype = None
+_UniffiLib.ffi_isomdl_rust_future_complete_u8.argtypes = (
     ctypes.c_uint64,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_complete_u8.restype = ctypes.c_uint8
-_UniffiLib.ffi_isomdl_uniffi_rust_future_poll_i8.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_complete_u8.restype = ctypes.c_uint8
+_UniffiLib.ffi_isomdl_rust_future_poll_i8.argtypes = (
     ctypes.c_uint64,
     _UNIFFI_RUST_FUTURE_CONTINUATION_CALLBACK,
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_poll_i8.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_cancel_i8.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_poll_i8.restype = None
+_UniffiLib.ffi_isomdl_rust_future_cancel_i8.argtypes = (
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_cancel_i8.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_free_i8.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_cancel_i8.restype = None
+_UniffiLib.ffi_isomdl_rust_future_free_i8.argtypes = (
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_free_i8.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_complete_i8.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_free_i8.restype = None
+_UniffiLib.ffi_isomdl_rust_future_complete_i8.argtypes = (
     ctypes.c_uint64,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_complete_i8.restype = ctypes.c_int8
-_UniffiLib.ffi_isomdl_uniffi_rust_future_poll_u16.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_complete_i8.restype = ctypes.c_int8
+_UniffiLib.ffi_isomdl_rust_future_poll_u16.argtypes = (
     ctypes.c_uint64,
     _UNIFFI_RUST_FUTURE_CONTINUATION_CALLBACK,
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_poll_u16.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_cancel_u16.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_poll_u16.restype = None
+_UniffiLib.ffi_isomdl_rust_future_cancel_u16.argtypes = (
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_cancel_u16.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_free_u16.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_cancel_u16.restype = None
+_UniffiLib.ffi_isomdl_rust_future_free_u16.argtypes = (
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_free_u16.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_complete_u16.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_free_u16.restype = None
+_UniffiLib.ffi_isomdl_rust_future_complete_u16.argtypes = (
     ctypes.c_uint64,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_complete_u16.restype = ctypes.c_uint16
-_UniffiLib.ffi_isomdl_uniffi_rust_future_poll_i16.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_complete_u16.restype = ctypes.c_uint16
+_UniffiLib.ffi_isomdl_rust_future_poll_i16.argtypes = (
     ctypes.c_uint64,
     _UNIFFI_RUST_FUTURE_CONTINUATION_CALLBACK,
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_poll_i16.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_cancel_i16.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_poll_i16.restype = None
+_UniffiLib.ffi_isomdl_rust_future_cancel_i16.argtypes = (
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_cancel_i16.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_free_i16.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_cancel_i16.restype = None
+_UniffiLib.ffi_isomdl_rust_future_free_i16.argtypes = (
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_free_i16.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_complete_i16.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_free_i16.restype = None
+_UniffiLib.ffi_isomdl_rust_future_complete_i16.argtypes = (
     ctypes.c_uint64,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_complete_i16.restype = ctypes.c_int16
-_UniffiLib.ffi_isomdl_uniffi_rust_future_poll_u32.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_complete_i16.restype = ctypes.c_int16
+_UniffiLib.ffi_isomdl_rust_future_poll_u32.argtypes = (
     ctypes.c_uint64,
     _UNIFFI_RUST_FUTURE_CONTINUATION_CALLBACK,
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_poll_u32.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_cancel_u32.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_poll_u32.restype = None
+_UniffiLib.ffi_isomdl_rust_future_cancel_u32.argtypes = (
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_cancel_u32.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_free_u32.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_cancel_u32.restype = None
+_UniffiLib.ffi_isomdl_rust_future_free_u32.argtypes = (
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_free_u32.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_complete_u32.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_free_u32.restype = None
+_UniffiLib.ffi_isomdl_rust_future_complete_u32.argtypes = (
     ctypes.c_uint64,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_complete_u32.restype = ctypes.c_uint32
-_UniffiLib.ffi_isomdl_uniffi_rust_future_poll_i32.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_complete_u32.restype = ctypes.c_uint32
+_UniffiLib.ffi_isomdl_rust_future_poll_i32.argtypes = (
     ctypes.c_uint64,
     _UNIFFI_RUST_FUTURE_CONTINUATION_CALLBACK,
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_poll_i32.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_cancel_i32.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_poll_i32.restype = None
+_UniffiLib.ffi_isomdl_rust_future_cancel_i32.argtypes = (
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_cancel_i32.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_free_i32.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_cancel_i32.restype = None
+_UniffiLib.ffi_isomdl_rust_future_free_i32.argtypes = (
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_free_i32.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_complete_i32.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_free_i32.restype = None
+_UniffiLib.ffi_isomdl_rust_future_complete_i32.argtypes = (
     ctypes.c_uint64,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_complete_i32.restype = ctypes.c_int32
-_UniffiLib.ffi_isomdl_uniffi_rust_future_poll_u64.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_complete_i32.restype = ctypes.c_int32
+_UniffiLib.ffi_isomdl_rust_future_poll_u64.argtypes = (
     ctypes.c_uint64,
     _UNIFFI_RUST_FUTURE_CONTINUATION_CALLBACK,
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_poll_u64.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_cancel_u64.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_poll_u64.restype = None
+_UniffiLib.ffi_isomdl_rust_future_cancel_u64.argtypes = (
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_cancel_u64.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_free_u64.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_cancel_u64.restype = None
+_UniffiLib.ffi_isomdl_rust_future_free_u64.argtypes = (
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_free_u64.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_complete_u64.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_free_u64.restype = None
+_UniffiLib.ffi_isomdl_rust_future_complete_u64.argtypes = (
     ctypes.c_uint64,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_complete_u64.restype = ctypes.c_uint64
-_UniffiLib.ffi_isomdl_uniffi_rust_future_poll_i64.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_complete_u64.restype = ctypes.c_uint64
+_UniffiLib.ffi_isomdl_rust_future_poll_i64.argtypes = (
     ctypes.c_uint64,
     _UNIFFI_RUST_FUTURE_CONTINUATION_CALLBACK,
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_poll_i64.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_cancel_i64.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_poll_i64.restype = None
+_UniffiLib.ffi_isomdl_rust_future_cancel_i64.argtypes = (
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_cancel_i64.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_free_i64.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_cancel_i64.restype = None
+_UniffiLib.ffi_isomdl_rust_future_free_i64.argtypes = (
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_free_i64.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_complete_i64.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_free_i64.restype = None
+_UniffiLib.ffi_isomdl_rust_future_complete_i64.argtypes = (
     ctypes.c_uint64,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_complete_i64.restype = ctypes.c_int64
-_UniffiLib.ffi_isomdl_uniffi_rust_future_poll_f32.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_complete_i64.restype = ctypes.c_int64
+_UniffiLib.ffi_isomdl_rust_future_poll_f32.argtypes = (
     ctypes.c_uint64,
     _UNIFFI_RUST_FUTURE_CONTINUATION_CALLBACK,
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_poll_f32.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_cancel_f32.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_poll_f32.restype = None
+_UniffiLib.ffi_isomdl_rust_future_cancel_f32.argtypes = (
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_cancel_f32.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_free_f32.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_cancel_f32.restype = None
+_UniffiLib.ffi_isomdl_rust_future_free_f32.argtypes = (
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_free_f32.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_complete_f32.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_free_f32.restype = None
+_UniffiLib.ffi_isomdl_rust_future_complete_f32.argtypes = (
     ctypes.c_uint64,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_complete_f32.restype = ctypes.c_float
-_UniffiLib.ffi_isomdl_uniffi_rust_future_poll_f64.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_complete_f32.restype = ctypes.c_float
+_UniffiLib.ffi_isomdl_rust_future_poll_f64.argtypes = (
     ctypes.c_uint64,
     _UNIFFI_RUST_FUTURE_CONTINUATION_CALLBACK,
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_poll_f64.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_cancel_f64.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_poll_f64.restype = None
+_UniffiLib.ffi_isomdl_rust_future_cancel_f64.argtypes = (
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_cancel_f64.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_free_f64.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_cancel_f64.restype = None
+_UniffiLib.ffi_isomdl_rust_future_free_f64.argtypes = (
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_free_f64.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_complete_f64.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_free_f64.restype = None
+_UniffiLib.ffi_isomdl_rust_future_complete_f64.argtypes = (
     ctypes.c_uint64,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_complete_f64.restype = ctypes.c_double
-_UniffiLib.ffi_isomdl_uniffi_rust_future_poll_pointer.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_complete_f64.restype = ctypes.c_double
+_UniffiLib.ffi_isomdl_rust_future_poll_pointer.argtypes = (
     ctypes.c_uint64,
     _UNIFFI_RUST_FUTURE_CONTINUATION_CALLBACK,
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_poll_pointer.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_cancel_pointer.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_poll_pointer.restype = None
+_UniffiLib.ffi_isomdl_rust_future_cancel_pointer.argtypes = (
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_cancel_pointer.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_free_pointer.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_cancel_pointer.restype = None
+_UniffiLib.ffi_isomdl_rust_future_free_pointer.argtypes = (
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_free_pointer.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_complete_pointer.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_free_pointer.restype = None
+_UniffiLib.ffi_isomdl_rust_future_complete_pointer.argtypes = (
     ctypes.c_uint64,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_complete_pointer.restype = ctypes.c_void_p
-_UniffiLib.ffi_isomdl_uniffi_rust_future_poll_rust_buffer.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_complete_pointer.restype = ctypes.c_void_p
+_UniffiLib.ffi_isomdl_rust_future_poll_rust_buffer.argtypes = (
     ctypes.c_uint64,
     _UNIFFI_RUST_FUTURE_CONTINUATION_CALLBACK,
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_poll_rust_buffer.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_cancel_rust_buffer.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_poll_rust_buffer.restype = None
+_UniffiLib.ffi_isomdl_rust_future_cancel_rust_buffer.argtypes = (
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_cancel_rust_buffer.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_free_rust_buffer.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_cancel_rust_buffer.restype = None
+_UniffiLib.ffi_isomdl_rust_future_free_rust_buffer.argtypes = (
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_free_rust_buffer.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_complete_rust_buffer.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_free_rust_buffer.restype = None
+_UniffiLib.ffi_isomdl_rust_future_complete_rust_buffer.argtypes = (
     ctypes.c_uint64,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_complete_rust_buffer.restype = _UniffiRustBuffer
-_UniffiLib.ffi_isomdl_uniffi_rust_future_poll_void.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_complete_rust_buffer.restype = _UniffiRustBuffer
+_UniffiLib.ffi_isomdl_rust_future_poll_void.argtypes = (
     ctypes.c_uint64,
     _UNIFFI_RUST_FUTURE_CONTINUATION_CALLBACK,
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_poll_void.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_cancel_void.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_poll_void.restype = None
+_UniffiLib.ffi_isomdl_rust_future_cancel_void.argtypes = (
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_cancel_void.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_free_void.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_cancel_void.restype = None
+_UniffiLib.ffi_isomdl_rust_future_free_void.argtypes = (
     ctypes.c_uint64,
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_free_void.restype = None
-_UniffiLib.ffi_isomdl_uniffi_rust_future_complete_void.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_free_void.restype = None
+_UniffiLib.ffi_isomdl_rust_future_complete_void.argtypes = (
     ctypes.c_uint64,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
-_UniffiLib.ffi_isomdl_uniffi_rust_future_complete_void.restype = None
-_UniffiLib.uniffi_isomdl_uniffi_checksum_func_establish_session.argtypes = (
+_UniffiLib.ffi_isomdl_rust_future_complete_void.restype = None
+_UniffiLib.uniffi_isomdl_checksum_func_establish_session.argtypes = (
 )
-_UniffiLib.uniffi_isomdl_uniffi_checksum_func_establish_session.restype = ctypes.c_uint16
-_UniffiLib.uniffi_isomdl_uniffi_checksum_func_generate_test_mdl.argtypes = (
+_UniffiLib.uniffi_isomdl_checksum_func_establish_session.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_checksum_func_generate_test_mdl.argtypes = (
 )
-_UniffiLib.uniffi_isomdl_uniffi_checksum_func_generate_test_mdl.restype = ctypes.c_uint16
-_UniffiLib.uniffi_isomdl_uniffi_checksum_func_handle_response.argtypes = (
+_UniffiLib.uniffi_isomdl_checksum_func_generate_test_mdl.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_checksum_func_handle_response.argtypes = (
 )
-_UniffiLib.uniffi_isomdl_uniffi_checksum_func_handle_response.restype = ctypes.c_uint16
-_UniffiLib.uniffi_isomdl_uniffi_checksum_func_iso1801351_aamva_from_json.argtypes = (
+_UniffiLib.uniffi_isomdl_checksum_func_handle_response.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_checksum_func_iso1801351_aamva_from_json.argtypes = (
 )
-_UniffiLib.uniffi_isomdl_uniffi_checksum_func_iso1801351_aamva_from_json.restype = ctypes.c_uint16
-_UniffiLib.uniffi_isomdl_uniffi_checksum_func_iso1801351_from_json.argtypes = (
+_UniffiLib.uniffi_isomdl_checksum_func_iso1801351_aamva_from_json.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_checksum_func_iso1801351_from_json.argtypes = (
 )
-_UniffiLib.uniffi_isomdl_uniffi_checksum_func_iso1801351_from_json.restype = ctypes.c_uint16
-_UniffiLib.uniffi_isomdl_uniffi_checksum_func_verified_response_as_json_string.argtypes = (
+_UniffiLib.uniffi_isomdl_checksum_func_iso1801351_from_json.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_checksum_func_verified_response_as_json_string.argtypes = (
 )
-_UniffiLib.uniffi_isomdl_uniffi_checksum_func_verified_response_as_json_string.restype = ctypes.c_uint16
-_UniffiLib.uniffi_isomdl_uniffi_checksum_func_verify_oid4vp_response.argtypes = (
+_UniffiLib.uniffi_isomdl_checksum_func_verified_response_as_json_string.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_checksum_func_verify_oid4vp_response.argtypes = (
 )
-_UniffiLib.uniffi_isomdl_uniffi_checksum_func_verify_oid4vp_response.restype = ctypes.c_uint16
-_UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdlpresentationsession_generate_response.argtypes = (
+_UniffiLib.uniffi_isomdl_checksum_func_verify_oid4vp_response.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_checksum_method_mdlpresentationsession_generate_response.argtypes = (
 )
-_UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdlpresentationsession_generate_response.restype = ctypes.c_uint16
-_UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdlpresentationsession_get_ble_ident.argtypes = (
+_UniffiLib.uniffi_isomdl_checksum_method_mdlpresentationsession_generate_response.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_checksum_method_mdlpresentationsession_get_ble_ident.argtypes = (
 )
-_UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdlpresentationsession_get_ble_ident.restype = ctypes.c_uint16
-_UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdlpresentationsession_get_qr_code_uri.argtypes = (
+_UniffiLib.uniffi_isomdl_checksum_method_mdlpresentationsession_get_ble_ident.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_checksum_method_mdlpresentationsession_get_qr_code_uri.argtypes = (
 )
-_UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdlpresentationsession_get_qr_code_uri.restype = ctypes.c_uint16
-_UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdlpresentationsession_handle_request.argtypes = (
+_UniffiLib.uniffi_isomdl_checksum_method_mdlpresentationsession_get_qr_code_uri.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_checksum_method_mdlpresentationsession_handle_request.argtypes = (
 )
-_UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdlpresentationsession_handle_request.restype = ctypes.c_uint16
-_UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdlpresentationsession_submit_response.argtypes = (
+_UniffiLib.uniffi_isomdl_checksum_method_mdlpresentationsession_handle_request.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_checksum_method_mdlpresentationsession_submit_response.argtypes = (
 )
-_UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdlpresentationsession_submit_response.restype = ctypes.c_uint16
-_UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdlpresentationsession_terminate_session.argtypes = (
+_UniffiLib.uniffi_isomdl_checksum_method_mdlpresentationsession_submit_response.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_checksum_method_mdlpresentationsession_terminate_session.argtypes = (
 )
-_UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdlpresentationsession_terminate_session.restype = ctypes.c_uint16
-_UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdoc_details.argtypes = (
+_UniffiLib.uniffi_isomdl_checksum_method_mdlpresentationsession_terminate_session.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_checksum_method_mdoc_details.argtypes = (
 )
-_UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdoc_details.restype = ctypes.c_uint16
-_UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdoc_doctype.argtypes = (
+_UniffiLib.uniffi_isomdl_checksum_method_mdoc_details.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_checksum_method_mdoc_doctype.argtypes = (
 )
-_UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdoc_doctype.restype = ctypes.c_uint16
-_UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdoc_id.argtypes = (
+_UniffiLib.uniffi_isomdl_checksum_method_mdoc_doctype.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_checksum_method_mdoc_id.argtypes = (
 )
-_UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdoc_id.restype = ctypes.c_uint16
-_UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdoc_json.argtypes = (
+_UniffiLib.uniffi_isomdl_checksum_method_mdoc_id.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_checksum_method_mdoc_json.argtypes = (
 )
-_UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdoc_json.restype = ctypes.c_uint16
-_UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdoc_key_alias.argtypes = (
+_UniffiLib.uniffi_isomdl_checksum_method_mdoc_json.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_checksum_method_mdoc_key_alias.argtypes = (
 )
-_UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdoc_key_alias.restype = ctypes.c_uint16
-_UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdoc_stringify.argtypes = (
+_UniffiLib.uniffi_isomdl_checksum_method_mdoc_key_alias.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_checksum_method_mdoc_stringify.argtypes = (
 )
-_UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdoc_stringify.restype = ctypes.c_uint16
-_UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdoc_verify_issuer_signature.argtypes = (
+_UniffiLib.uniffi_isomdl_checksum_method_mdoc_stringify.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_checksum_method_mdoc_verify_issuer_signature.argtypes = (
 )
-_UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdoc_verify_issuer_signature.restype = ctypes.c_uint16
-_UniffiLib.uniffi_isomdl_uniffi_checksum_method_p256keypair_public_jwk.argtypes = (
+_UniffiLib.uniffi_isomdl_checksum_method_mdoc_verify_issuer_signature.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_checksum_method_p256keypair_public_jwk.argtypes = (
 )
-_UniffiLib.uniffi_isomdl_uniffi_checksum_method_p256keypair_public_jwk.restype = ctypes.c_uint16
-_UniffiLib.uniffi_isomdl_uniffi_checksum_method_p256keypair_sign.argtypes = (
+_UniffiLib.uniffi_isomdl_checksum_method_p256keypair_public_jwk.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_checksum_method_p256keypair_sign.argtypes = (
 )
-_UniffiLib.uniffi_isomdl_uniffi_checksum_method_p256keypair_sign.restype = ctypes.c_uint16
-_UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdlpresentationsession_new.argtypes = (
+_UniffiLib.uniffi_isomdl_checksum_method_p256keypair_sign.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_checksum_constructor_mdlpresentationsession_new.argtypes = (
 )
-_UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdlpresentationsession_new.restype = ctypes.c_uint16
-_UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_create_and_sign.argtypes = (
+_UniffiLib.uniffi_isomdl_checksum_constructor_mdlpresentationsession_new.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_checksum_constructor_mdoc_create_and_sign.argtypes = (
 )
-_UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_create_and_sign.restype = ctypes.c_uint16
-_UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_create_and_sign_mdl.argtypes = (
+_UniffiLib.uniffi_isomdl_checksum_constructor_mdoc_create_and_sign.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_checksum_constructor_mdoc_create_and_sign_mdl.argtypes = (
 )
-_UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_create_and_sign_mdl.restype = ctypes.c_uint16
-_UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_from_cbor_encoded_document.argtypes = (
+_UniffiLib.uniffi_isomdl_checksum_constructor_mdoc_create_and_sign_mdl.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_checksum_constructor_mdoc_from_cbor_encoded_document.argtypes = (
 )
-_UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_from_cbor_encoded_document.restype = ctypes.c_uint16
-_UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_from_string.argtypes = (
+_UniffiLib.uniffi_isomdl_checksum_constructor_mdoc_from_cbor_encoded_document.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_checksum_constructor_mdoc_from_string.argtypes = (
 )
-_UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_from_string.restype = ctypes.c_uint16
-_UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_from_stringified_document.argtypes = (
+_UniffiLib.uniffi_isomdl_checksum_constructor_mdoc_from_string.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_checksum_constructor_mdoc_from_stringified_document.argtypes = (
 )
-_UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_from_stringified_document.restype = ctypes.c_uint16
-_UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_new_from_base64url_encoded_issuer_signed.argtypes = (
+_UniffiLib.uniffi_isomdl_checksum_constructor_mdoc_from_stringified_document.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_checksum_constructor_mdoc_new_from_base64url_encoded_issuer_signed.argtypes = (
 )
-_UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_new_from_base64url_encoded_issuer_signed.restype = ctypes.c_uint16
-_UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_p256keypair_new.argtypes = (
+_UniffiLib.uniffi_isomdl_checksum_constructor_mdoc_new_from_base64url_encoded_issuer_signed.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_checksum_constructor_p256keypair_new.argtypes = (
 )
-_UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_p256keypair_new.restype = ctypes.c_uint16
-_UniffiLib.ffi_isomdl_uniffi_uniffi_contract_version.argtypes = (
+_UniffiLib.uniffi_isomdl_checksum_constructor_p256keypair_new.restype = ctypes.c_uint16
+_UniffiLib.ffi_isomdl_uniffi_contract_version.argtypes = (
 )
-_UniffiLib.ffi_isomdl_uniffi_uniffi_contract_version.restype = ctypes.c_uint32
+_UniffiLib.ffi_isomdl_uniffi_contract_version.restype = ctypes.c_uint32
 
 _uniffi_check_contract_api_version(_UniffiLib)
 # _uniffi_check_api_checksums(_UniffiLib)
@@ -1321,10 +1321,10 @@ class InProcessRecord:
         # In case of partial initialization of instances.
         pointer = getattr(self, "_pointer", None)
         if pointer is not None:
-            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_free_inprocessrecord, pointer)
+            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_fn_free_inprocessrecord, pointer)
 
     def _uniffi_clone_pointer(self):
-        return _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_clone_inprocessrecord, self._pointer)
+        return _uniffi_rust_call(_UniffiLib.uniffi_isomdl_fn_clone_inprocessrecord, self._pointer)
 
     # Used by alternative constructors or any methods which return this type.
     @classmethod
@@ -1439,7 +1439,7 @@ class MdlPresentationSession:
         
         _UniffiConverterString.check_lower(uuid)
         
-        self._pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeSessionError,_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdlpresentationsession_new,
+        self._pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeSessionError,_UniffiLib.uniffi_isomdl_fn_constructor_mdlpresentationsession_new,
         _UniffiConverterTypeMdoc.lower(mdoc),
         _UniffiConverterString.lower(uuid))
 
@@ -1447,10 +1447,10 @@ class MdlPresentationSession:
         # In case of partial initialization of instances.
         pointer = getattr(self, "_pointer", None)
         if pointer is not None:
-            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_free_mdlpresentationsession, pointer)
+            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_fn_free_mdlpresentationsession, pointer)
 
     def _uniffi_clone_pointer(self):
-        return _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_clone_mdlpresentationsession, self._pointer)
+        return _uniffi_rust_call(_UniffiLib.uniffi_isomdl_fn_clone_mdlpresentationsession, self._pointer)
 
     # Used by alternative constructors or any methods which return this type.
     @classmethod
@@ -1476,7 +1476,7 @@ class MdlPresentationSession:
         _UniffiConverterMapStringMapStringSequenceString.check_lower(permitted_items)
         
         return _UniffiConverterBytes.lift(
-            _uniffi_rust_call_with_error(_UniffiConverterTypeSignatureError,_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdlpresentationsession_generate_response,self._uniffi_clone_pointer(),
+            _uniffi_rust_call_with_error(_UniffiConverterTypeSignatureError,_UniffiLib.uniffi_isomdl_fn_method_mdlpresentationsession_generate_response,self._uniffi_clone_pointer(),
         _UniffiConverterMapStringMapStringSequenceString.lower(permitted_items))
         )
 
@@ -1490,7 +1490,7 @@ class MdlPresentationSession:
         """
 
         return _UniffiConverterBytes.lift(
-            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdlpresentationsession_get_ble_ident,self._uniffi_clone_pointer(),)
+            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_fn_method_mdlpresentationsession_get_ble_ident,self._uniffi_clone_pointer(),)
         )
 
 
@@ -1503,7 +1503,7 @@ class MdlPresentationSession:
         """
 
         return _UniffiConverterString.lift(
-            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdlpresentationsession_get_qr_code_uri,self._uniffi_clone_pointer(),)
+            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_fn_method_mdlpresentationsession_get_qr_code_uri,self._uniffi_clone_pointer(),)
         )
 
 
@@ -1522,7 +1522,7 @@ class MdlPresentationSession:
         _UniffiConverterBytes.check_lower(request)
         
         return _UniffiConverterSequenceTypeItemsRequest.lift(
-            _uniffi_rust_call_with_error(_UniffiConverterTypeRequestError,_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdlpresentationsession_handle_request,self._uniffi_clone_pointer(),
+            _uniffi_rust_call_with_error(_UniffiConverterTypeRequestError,_UniffiLib.uniffi_isomdl_fn_method_mdlpresentationsession_handle_request,self._uniffi_clone_pointer(),
         _UniffiConverterBytes.lower(request))
         )
 
@@ -1534,7 +1534,7 @@ class MdlPresentationSession:
         _UniffiConverterBytes.check_lower(signature)
         
         return _UniffiConverterBytes.lift(
-            _uniffi_rust_call_with_error(_UniffiConverterTypeSignatureError,_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdlpresentationsession_submit_response,self._uniffi_clone_pointer(),
+            _uniffi_rust_call_with_error(_UniffiConverterTypeSignatureError,_UniffiLib.uniffi_isomdl_fn_method_mdlpresentationsession_submit_response,self._uniffi_clone_pointer(),
         _UniffiConverterBytes.lower(signature))
         )
 
@@ -1550,7 +1550,7 @@ class MdlPresentationSession:
         """
 
         return _UniffiConverterBytes.lift(
-            _uniffi_rust_call_with_error(_UniffiConverterTypeTerminationError,_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdlpresentationsession_terminate_session,self._uniffi_clone_pointer(),)
+            _uniffi_rust_call_with_error(_UniffiConverterTypeTerminationError,_UniffiLib.uniffi_isomdl_fn_method_mdlpresentationsession_terminate_session,self._uniffi_clone_pointer(),)
         )
 
 
@@ -1602,10 +1602,10 @@ class MdlSessionManager:
         # In case of partial initialization of instances.
         pointer = getattr(self, "_pointer", None)
         if pointer is not None:
-            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_free_mdlsessionmanager, pointer)
+            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_fn_free_mdlsessionmanager, pointer)
 
     def _uniffi_clone_pointer(self):
-        return _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_clone_mdlsessionmanager, self._pointer)
+        return _uniffi_rust_call(_UniffiLib.uniffi_isomdl_fn_clone_mdlsessionmanager, self._pointer)
 
     # Used by alternative constructors or any methods which return this type.
     @classmethod
@@ -1716,10 +1716,10 @@ class Mdoc:
         # In case of partial initialization of instances.
         pointer = getattr(self, "_pointer", None)
         if pointer is not None:
-            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_free_mdoc, pointer)
+            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_fn_free_mdoc, pointer)
 
     def _uniffi_clone_pointer(self):
-        return _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_clone_mdoc, self._pointer)
+        return _uniffi_rust_call(_UniffiLib.uniffi_isomdl_fn_clone_mdoc, self._pointer)
 
     # Used by alternative constructors or any methods which return this type.
     @classmethod
@@ -1742,7 +1742,7 @@ class Mdoc:
         _UniffiConverterString.check_lower(iaca_key_perm)
         
         # Call the (fallible) function before creating any half-baked object instances.
-        pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_create_and_sign,
+        pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_fn_constructor_mdoc_create_and_sign,
         _UniffiConverterString.lower(doc_type),
         _UniffiConverterMapStringMapStringBytes.lower(namespaces),
         _UniffiConverterString.lower(holder_jwk),
@@ -1763,7 +1763,7 @@ class Mdoc:
         _UniffiConverterString.check_lower(iaca_key_pem)
         
         # Call the (fallible) function before creating any half-baked object instances.
-        pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_create_and_sign_mdl,
+        pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_fn_constructor_mdoc_create_and_sign_mdl,
         _UniffiConverterString.lower(mdl_items),
         _UniffiConverterOptionalString.lower(aamva_items),
         _UniffiConverterString.lower(holder_jwk),
@@ -1783,7 +1783,7 @@ class Mdoc:
         _UniffiConverterTypeKeyAlias.check_lower(key_alias)
         
         # Call the (fallible) function before creating any half-baked object instances.
-        pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_from_cbor_encoded_document,
+        pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_fn_constructor_mdoc_from_cbor_encoded_document,
         _UniffiConverterBytes.lower(cbor_encoded_document),
         _UniffiConverterTypeKeyAlias.lower(key_alias))
         return cls._make_instance_(pointer)
@@ -1798,7 +1798,7 @@ class Mdoc:
         _UniffiConverterString.check_lower(stringified_document)
         
         # Call the (fallible) function before creating any half-baked object instances.
-        pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_from_string,
+        pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_fn_constructor_mdoc_from_string,
         _UniffiConverterString.lower(stringified_document))
         return cls._make_instance_(pointer)
 
@@ -1814,7 +1814,7 @@ class Mdoc:
         _UniffiConverterTypeKeyAlias.check_lower(key_alias)
         
         # Call the (fallible) function before creating any half-baked object instances.
-        pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_from_stringified_document,
+        pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_fn_constructor_mdoc_from_stringified_document,
         _UniffiConverterString.lower(stringified_document),
         _UniffiConverterTypeKeyAlias.lower(key_alias))
         return cls._make_instance_(pointer)
@@ -1830,7 +1830,7 @@ class Mdoc:
         _UniffiConverterTypeKeyAlias.check_lower(key_alias)
         
         # Call the (fallible) function before creating any half-baked object instances.
-        pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_new_from_base64url_encoded_issuer_signed,
+        pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_fn_constructor_mdoc_new_from_base64url_encoded_issuer_signed,
         _UniffiConverterString.lower(base64url_encoded_issuer_signed),
         _UniffiConverterTypeKeyAlias.lower(key_alias))
         return cls._make_instance_(pointer)
@@ -1843,7 +1843,7 @@ class Mdoc:
         """
 
         return _UniffiConverterMapTypeNamespaceSequenceTypeElement.lift(
-            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_details,self._uniffi_clone_pointer(),)
+            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_fn_method_mdoc_details,self._uniffi_clone_pointer(),)
         )
 
 
@@ -1856,7 +1856,7 @@ class Mdoc:
         """
 
         return _UniffiConverterString.lift(
-            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_doctype,self._uniffi_clone_pointer(),)
+            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_fn_method_mdoc_doctype,self._uniffi_clone_pointer(),)
         )
 
 
@@ -1869,7 +1869,7 @@ class Mdoc:
         """
 
         return _UniffiConverterTypeUuid.lift(
-            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_id,self._uniffi_clone_pointer(),)
+            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_fn_method_mdoc_id,self._uniffi_clone_pointer(),)
         )
 
 
@@ -1882,7 +1882,7 @@ class Mdoc:
         """
 
         return _UniffiConverterString.lift(
-            _uniffi_rust_call_with_error(_UniffiConverterTypeMdocEncodingError,_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_json,self._uniffi_clone_pointer(),)
+            _uniffi_rust_call_with_error(_UniffiConverterTypeMdocEncodingError,_UniffiLib.uniffi_isomdl_fn_method_mdoc_json,self._uniffi_clone_pointer(),)
         )
 
 
@@ -1891,7 +1891,7 @@ class Mdoc:
 
     def key_alias(self, ) -> "KeyAlias":
         return _UniffiConverterTypeKeyAlias.lift(
-            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_key_alias,self._uniffi_clone_pointer(),)
+            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_fn_method_mdoc_key_alias,self._uniffi_clone_pointer(),)
         )
 
 
@@ -1904,7 +1904,7 @@ class Mdoc:
         """
 
         return _UniffiConverterString.lift(
-            _uniffi_rust_call_with_error(_UniffiConverterTypeMdocEncodingError,_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_stringify,self._uniffi_clone_pointer(),)
+            _uniffi_rust_call_with_error(_UniffiConverterTypeMdocEncodingError,_UniffiLib.uniffi_isomdl_fn_method_mdoc_stringify,self._uniffi_clone_pointer(),)
         )
 
 
@@ -1938,7 +1938,7 @@ class Mdoc:
         _UniffiConverterBool.check_lower(use_intermediate_chaining)
         
         return _UniffiConverterTypeIssuerVerificationResult.lift(
-            _uniffi_rust_call_with_error(_UniffiConverterTypeMdocVerificationError,_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_verify_issuer_signature,self._uniffi_clone_pointer(),
+            _uniffi_rust_call_with_error(_UniffiConverterTypeMdocVerificationError,_UniffiLib.uniffi_isomdl_fn_method_mdoc_verify_issuer_signature,self._uniffi_clone_pointer(),
         _UniffiConverterOptionalSequenceString.lower(trust_anchors),
         _UniffiConverterBool.lower(use_intermediate_chaining))
         )
@@ -1988,16 +1988,16 @@ class P256KeyPairProtocol(typing.Protocol):
 class P256KeyPair:
     _pointer: ctypes.c_void_p
     def __init__(self, ):
-        self._pointer = _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_p256keypair_new,)
+        self._pointer = _uniffi_rust_call(_UniffiLib.uniffi_isomdl_fn_constructor_p256keypair_new,)
 
     def __del__(self):
         # In case of partial initialization of instances.
         pointer = getattr(self, "_pointer", None)
         if pointer is not None:
-            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_free_p256keypair, pointer)
+            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_fn_free_p256keypair, pointer)
 
     def _uniffi_clone_pointer(self):
-        return _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_clone_p256keypair, self._pointer)
+        return _uniffi_rust_call(_UniffiLib.uniffi_isomdl_fn_clone_p256keypair, self._pointer)
 
     # Used by alternative constructors or any methods which return this type.
     @classmethod
@@ -2011,7 +2011,7 @@ class P256KeyPair:
 
     def public_jwk(self, ) -> "str":
         return _UniffiConverterString.lift(
-            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_method_p256keypair_public_jwk,self._uniffi_clone_pointer(),)
+            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_fn_method_p256keypair_public_jwk,self._uniffi_clone_pointer(),)
         )
 
 
@@ -2022,7 +2022,7 @@ class P256KeyPair:
         _UniffiConverterBytes.check_lower(msg)
         
         return _UniffiConverterBytes.lift(
-            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_method_p256keypair_sign,self._uniffi_clone_pointer(),
+            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_fn_method_p256keypair_sign,self._uniffi_clone_pointer(),
         _UniffiConverterBytes.lower(msg))
         )
 
@@ -4213,7 +4213,7 @@ def establish_session(uri: "str",requested_items: "dict[str, dict[str, bool]]",t
     
     _UniffiConverterOptionalSequenceString.check_lower(trust_anchor_registry)
     
-    return _UniffiConverterTypeMdlReaderSessionData.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeMdlReaderSessionError,_UniffiLib.uniffi_isomdl_uniffi_fn_func_establish_session,
+    return _UniffiConverterTypeMdlReaderSessionData.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeMdlReaderSessionError,_UniffiLib.uniffi_isomdl_fn_func_establish_session,
         _UniffiConverterString.lower(uri),
         _UniffiConverterMapStringMapStringBool.lower(requested_items),
         _UniffiConverterOptionalSequenceString.lower(trust_anchor_registry)))
@@ -4226,7 +4226,7 @@ def generate_test_mdl(key_pair: "P256KeyPair") -> "Mdoc":
 
     _UniffiConverterTypeP256KeyPair.check_lower(key_pair)
     
-    return _UniffiConverterTypeMdoc.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeMdlUtilError,_UniffiLib.uniffi_isomdl_uniffi_fn_func_generate_test_mdl,
+    return _UniffiConverterTypeMdoc.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeMdlUtilError,_UniffiLib.uniffi_isomdl_fn_func_generate_test_mdl,
         _UniffiConverterTypeP256KeyPair.lower(key_pair)))
 
 
@@ -4235,7 +4235,7 @@ def handle_response(state: "MdlSessionManager",response: "bytes") -> "MdlReaderR
     
     _UniffiConverterBytes.check_lower(response)
     
-    return _UniffiConverterTypeMdlReaderResponseData.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeMdlReaderResponseError,_UniffiLib.uniffi_isomdl_uniffi_fn_func_handle_response,
+    return _UniffiConverterTypeMdlReaderResponseData.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeMdlReaderResponseError,_UniffiLib.uniffi_isomdl_fn_func_handle_response,
         _UniffiConverterTypeMdlSessionManager.lower(state),
         _UniffiConverterBytes.lower(response)))
 
@@ -4243,21 +4243,21 @@ def handle_response(state: "MdlSessionManager",response: "bytes") -> "MdlReaderR
 def iso1801351_aamva_from_json(json: "str") -> "dict[str, bytes]":
     _UniffiConverterString.check_lower(json)
     
-    return _UniffiConverterMapStringBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeMdlUtilError,_UniffiLib.uniffi_isomdl_uniffi_fn_func_iso1801351_aamva_from_json,
+    return _UniffiConverterMapStringBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeMdlUtilError,_UniffiLib.uniffi_isomdl_fn_func_iso1801351_aamva_from_json,
         _UniffiConverterString.lower(json)))
 
 
 def iso1801351_from_json(json: "str") -> "dict[str, bytes]":
     _UniffiConverterString.check_lower(json)
     
-    return _UniffiConverterMapStringBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeMdlUtilError,_UniffiLib.uniffi_isomdl_uniffi_fn_func_iso1801351_from_json,
+    return _UniffiConverterMapStringBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeMdlUtilError,_UniffiLib.uniffi_isomdl_fn_func_iso1801351_from_json,
         _UniffiConverterString.lower(json)))
 
 
 def verified_response_as_json_string(response: "MdlReaderResponseData") -> "str":
     _UniffiConverterTypeMdlReaderResponseData.check_lower(response)
     
-    return _UniffiConverterString.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeMdlReaderResponseSerializeError,_UniffiLib.uniffi_isomdl_uniffi_fn_func_verified_response_as_json_string,
+    return _UniffiConverterString.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeMdlReaderResponseSerializeError,_UniffiLib.uniffi_isomdl_fn_func_verified_response_as_json_string,
         _UniffiConverterTypeMdlReaderResponseData.lower(response)))
 
 
@@ -4274,7 +4274,7 @@ def verify_oid4vp_response(response: "bytes",nonce: "str",client_id: "str",respo
     
     _UniffiConverterBool.check_lower(use_intermediate_chaining)
     
-    return _UniffiConverterTypeMdlReaderVerifiedData.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeMdlReaderSessionError,_UniffiLib.uniffi_isomdl_uniffi_fn_func_verify_oid4vp_response,
+    return _UniffiConverterTypeMdlReaderVerifiedData.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeMdlReaderSessionError,_UniffiLib.uniffi_isomdl_fn_func_verify_oid4vp_response,
         _UniffiConverterBytes.lower(response),
         _UniffiConverterString.lower(nonce),
         _UniffiConverterString.lower(client_id),

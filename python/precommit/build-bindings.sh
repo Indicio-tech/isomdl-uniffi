@@ -55,7 +55,8 @@ fi
 
 # Generate Python bindings
 # Rust converts hyphens to underscores in library names
-LIBRARY_NAME="libisomdl_uniffi"
+# Using lib name "isomdl" (not "isomdl_uniffi") to avoid nested package structure in wheels
+LIBRARY_NAME="libisomdl"
 echo "🔧 Generating bindings with: target/release/${LIBRARY_NAME}.$LIB_EXT"
 ls -la target/release/${LIBRARY_NAME}.$LIB_EXT || {
     echo "❌ Library file not found!"
@@ -90,13 +91,17 @@ ls -la out/python/ || {
     exit 1
 }
 
-# Verify the Python module was generated
-if [ ! -f "out/python/isomdl_uniffi.py" ]; then
+# Verify the Python module was generated (will be isomdl.py based on lib name)
+if [ ! -f "out/python/isomdl.py" ]; then
     echo "❌ Python module file not generated!"
     echo "🔍 Contents of out/python/:"
     find out/python/ -type f || echo "No files found"
     exit 1
 fi
+
+# Rename to isomdl_uniffi.py for backward compatibility with existing imports
+echo "🔄 Renaming isomdl.py to isomdl_uniffi.py for backward compatibility..."
+mv out/python/isomdl.py out/python/isomdl_uniffi.py
 
 echo "✅ Python module generated successfully"
 

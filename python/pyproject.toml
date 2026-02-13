@@ -113,3 +113,5 @@ bindings = "uniffi"
 manifest-path = "../rust/Cargo.toml"
 # Python module name (must use underscores, not hyphens)
 module-name = "isomdl_uniffi"
+# Include the Python package source files in the wheel
+python-source = "."

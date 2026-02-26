@@ -670,9 +670,9 @@ fn build_ds_subject(iaca_name: &Name, cn: &str) -> Result<Name> {
     let mut dn_parts = vec![format!("CN={cn}")];
     dn_parts.extend(non_cn);
     let dn_str = dn_parts.join(",");
-    Ok(dn_str.parse().map_err(|e: x509_cert::der::Error| {
+    dn_str.parse().map_err(|e: x509_cert::der::Error| {
         anyhow::anyhow!("Failed to build DS subject DN '{}': {:?}", dn_str, e)
-    })?)
+    })
 }
 
 #[uniffi::export]

@@ -148,7 +148,7 @@ jobs:
           TAG_NAME="${GITHUB_REF#refs/tags/}"
           for whl in dist/*.whl; do
             echo "Uploading $whl..."
-            gh release upload "$TAG_NAME" "$whl" --clobber
+            gh release upload "$TAG_NAME" "$whl" --clobber --repo "$GITHUB_REPOSITORY"
           done
           echo "✅ All wheels uploaded"
         env:

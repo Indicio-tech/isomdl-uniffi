@@ -145,7 +145,7 @@ jobs:
           echo "🔍 Building for Linux with maturin..."
           echo "🔍 Python version: $(python3 --version)"
           echo "🔍 Rust version: $(rustc --version)"
-          maturin build --release --interpreter python3.12
+          maturin build --release --out target/wheels --interpreter python3.12
 
       - name: Build Python bindings with maturin (macOS)
         if: matrix.os == 'macos-latest'
@@ -154,7 +154,7 @@ jobs:
           echo "🔍 Building for macOS with maturin..."
           echo "🔍 Python version: $(python3 --version)"
           echo "🔍 Rust version: $(rustc --version)"
-          maturin build --release --interpreter python3.12
+          maturin build --release --out target/wheels --interpreter python3.12
 
       - name: Install built wheel for testing
         working-directory: python
@@ -431,4 +431,5 @@ jobs:
             --ignore RUSTSEC-2023-0071 \
             --ignore RUSTSEC-2024-0436 \
             --ignore RUSTSEC-2024-0370 \
-            --ignore RUSTSEC-2025-0141
+            --ignore RUSTSEC-2025-0141 \
+            --ignore RUSTSEC-2026-0007

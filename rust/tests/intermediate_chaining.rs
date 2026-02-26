@@ -77,7 +77,7 @@ fn test_intermediate_chaining() {
     // 4. Use setup_certificate_chain
     use isomdl_uniffi::mdl::util::setup_certificate_chain;
 
-    let (ds_cert, iaca_certs, ds_key) = setup_certificate_chain(chain_pem, intermediate_key_pem)
+    let (ds_cert, iaca_certs, ds_key) = setup_certificate_chain(chain_pem, intermediate_key_pem, None)
         .expect("Failed to setup certificate chain");
 
     // 5. Create Document using Mdoc builder

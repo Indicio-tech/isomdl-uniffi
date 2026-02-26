@@ -138,7 +138,7 @@ impl Mdoc {
             .map_err(|_e| MdocInitError::GeneralConstructionError)?;
 
         let (certificate, iaca_certs, signer) =
-            setup_certificate_chain(iaca_cert_perm, iaca_key_perm)
+            setup_certificate_chain(iaca_cert_perm, iaca_key_perm, None)
                 .map_err(|_e| MdocInitError::GeneralConstructionError)?;
 
         let mut x5chain_builder = X5Chain::builder()
@@ -228,7 +228,7 @@ impl Mdoc {
             .map_err(|_e| MdocInitError::GeneralConstructionError)?;
 
         let (certificate, iaca_certs, signer) =
-            setup_certificate_chain(iaca_cert_pem, iaca_key_pem)
+            setup_certificate_chain(iaca_cert_pem, iaca_key_pem, None)
                 .map_err(|_e| MdocInitError::GeneralConstructionError)?;
 
         let mut x5chain_builder = X5Chain::builder()
@@ -828,11 +828,11 @@ mod tests {
 
         let verification = result.unwrap();
         assert!(verification.verified, "Signature should be valid");
-        // Note: setup_certificate_chain creates an intermediate "SpruceID Test DS" certificate
+        // Note: setup_certificate_chain creates an intermediate "Test DS" certificate
         // signed by the provided IACA cert, so the common name is from the DS cert, not IACA
         assert_eq!(
             verification.common_name,
-            Some("SpruceID Test DS".to_string()),
+            Some("Test DS".to_string()),
             "Common name should match DS certificate"
         );
         assert!(verification.error.is_none(), "No error expected");
@@ -1161,7 +1161,7 @@ mod tests {
         // Common name should be the Ephemeral DS created by setup_certificate_chain
         assert_eq!(
             verification.common_name,
-            Some("SpruceID Test DS".to_string())
+            Some("Test DS".to_string())
         );
     }
 }

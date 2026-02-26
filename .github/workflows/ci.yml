@@ -162,12 +162,11 @@ jobs:
           pip install --force-reinstall target/wheels/*.whl
 
       - name: Debug built artifacts
-        working-directory: python
         run: |
           echo "🔍 Checking built artifacts..."
-          ls -la target/wheels/
-          echo "🔍 Installed package:"
-          python -c "import isomdl_uniffi; print('✅ Successfully imported isomdl_uniffi')"
+          ls -la python/target/wheels/
+          echo "🔍 Installed package (from neutral dir to avoid local src shadowing):"
+          cd /tmp && python -c "import isomdl_uniffi; print('✅ Successfully imported isomdl_uniffi')"
 
       - name: Upload wheel artifact
         uses: actions/upload-artifact@v5

@@ -144,9 +144,12 @@ jobs:
           ls -lh dist/
 
       - name: Upload wheels to release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*.whl
-          tag_name: ${{ github.ref }}
+        run: |
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
+          for whl in dist/*.whl; do
+            echo "Uploading $whl..."
+            gh release upload "$TAG_NAME" "$whl" --clobber
+          done
+          echo "✅ All wheels uploaded"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -170,4 +170,4 @@ def test_verify_issuer_signature_chaining():
     # Case B: Chaining Enabled - Should Succeed
     result = mdoc.verify_issuer_signature([root_cert_pem], True)
     assert result.verified
-    assert result.common_name == "SpruceID Test DS"
+    assert result.common_name == "Test DS"

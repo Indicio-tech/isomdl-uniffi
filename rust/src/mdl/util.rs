@@ -287,6 +287,7 @@ pub fn generate_test_mdl(key_pair: Arc<P256KeyPair>) -> Result<Mdoc, MdlUtilErro
     let (certificate, certs, signer) = setup_certificate_chain(
         include_str!("../../tests/res/mdl/utrecht-certificate.pem").to_string(),
         include_str!("../../tests/res/mdl/utrecht-key.pem").to_string(),
+        None,
     )
     .context("failed to setup certificate chain")?;
     // RustCrypto does not accept JWKs with additional fields, including the `alg` field, so we
@@ -490,6 +491,7 @@ fn prepare_mdoc(pub_key: PublicKey) -> Result<isomdl::issuance::mdoc::Builder> {
 pub fn setup_certificate_chain(
     iaca_cert_pem: String,
     iaca_key_pem: String,
+    ds_subject_name: Option<String>,
 ) -> Result<(Certificate, Vec<Certificate>, p256::ecdsa::SigningKey)> {
     let parts: Vec<&str> = iaca_cert_pem.split("-----BEGIN CERTIFICATE-----").collect();
     let mut iaca_certs = Vec::new();
@@ -555,8 +557,12 @@ pub fn setup_certificate_chain(
         .map(|ski| ski.0.as_bytes().to_vec());
 
     let ds_key = p256::ecdsa::SigningKey::random(&mut signature::rand_core::OsRng);
+    let ds_subject = match ds_subject_name {
+        Some(full_dn) => full_dn.parse::<Name>()?,
+        None => build_ds_subject(&iaca_name, "Test DS")?,
+    };
     let mut prepared_ds_certificate =
-        prepare_signer_certificate(&ds_key, &iaca_key, iaca_name.clone(), issuer_ski)?;
+        prepare_signer_certificate(&ds_key, &iaca_key, iaca_name.clone(), issuer_ski, ds_subject)?;
     let signature: p256::ecdsa::Signature = iaca_key.sign(&prepared_ds_certificate.finalize()?);
     let ds_certificate: Certificate =
         prepared_ds_certificate.assemble(signature.to_der().to_bitstring()?)?;
@@ -569,6 +575,7 @@ fn prepare_signer_certificate<'s, S>(
     iaca_key: &'s S,
     iaca_name: Name,
     issuer_ski: Option<Vec<u8>>,
+    subject: Name,
 ) -> Result<CertificateBuilder<'s, S>>
 where
     S: signature::KeypairRef + DynSignatureAlgorithmIdentifier,
@@ -591,9 +598,9 @@ where
             issuer: Some(iaca_name),
         },
         rand::random::<u64>().into(),
-        // Document signer certificate valid for sixty days.
-        Validity::from_now(Duration::from_secs(60 * 60 * 24 * 60))?,
-        "CN=SpruceID Test DS,C=US,ST=NY,O=SpruceID".parse()?,
+        // Document signer certificate valid for ten years.
+        Validity::from_now(Duration::from_secs(60 * 60 * 24 * 365 * 10))?,
+        subject,
         spki,
         iaca_key,
     )?;
@@ -628,6 +635,37 @@ where
     )?]))?;
 
     Ok(builder)
+}
+
+/// Derives the DS certificate subject from the IACA certificate subject.
+///
+/// Preserves C (country), ST (state), O (organization), and L (locality) from the
+/// IACA subject and sets the CN to the provided `cn` value. This ensures the DS cert
+/// complies with mDL validation rules that require matching C/ST between DS and IACA.
+fn build_ds_subject(iaca_name: &Name, cn: &str) -> Result<Name> {
+    // Use the RFC 4514 string representation of the IACA name (e.g. "CN=Root CA,C=US,ST=NY,O=Org")
+    // to extract C/ST/O/L attributes, then build the DS subject with a new CN.
+    let iaca_str = iaca_name.to_string();
+
+    let non_cn: Vec<String> = iaca_str
+        .split(',')
+        .filter_map(|part| {
+            let mut kv = part.splitn(2, '=');
+            let key = kv.next()?.trim();
+            let val = kv.next()?.trim();
+            let upper = key.to_uppercase();
+            if upper == "CN" {
+                None
+            } else {
+                Some(format!("{key}={val}"))
+            }
+        })
+        .collect();
+
+    let mut dn_parts = vec![format!("CN={cn}")];
+    dn_parts.extend(non_cn);
+    let dn_str = dn_parts.join(",");
+    Ok(dn_str.parse().map_err(|e: x509_cert::der::Error| anyhow::anyhow!("Failed to build DS subject DN '{}': {:?}", dn_str, e))?)
 }
 
 #[uniffi::export]

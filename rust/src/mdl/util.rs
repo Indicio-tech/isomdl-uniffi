@@ -561,8 +561,13 @@ pub fn setup_certificate_chain(
         Some(full_dn) => full_dn.parse::<Name>()?,
         None => build_ds_subject(&iaca_name, "Test DS")?,
     };
-    let mut prepared_ds_certificate =
-        prepare_signer_certificate(&ds_key, &iaca_key, iaca_name.clone(), issuer_ski, ds_subject)?;
+    let mut prepared_ds_certificate = prepare_signer_certificate(
+        &ds_key,
+        &iaca_key,
+        iaca_name.clone(),
+        issuer_ski,
+        ds_subject,
+    )?;
     let signature: p256::ecdsa::Signature = iaca_key.sign(&prepared_ds_certificate.finalize()?);
     let ds_certificate: Certificate =
         prepared_ds_certificate.assemble(signature.to_der().to_bitstring()?)?;
@@ -665,7 +670,9 @@ fn build_ds_subject(iaca_name: &Name, cn: &str) -> Result<Name> {
     let mut dn_parts = vec![format!("CN={cn}")];
     dn_parts.extend(non_cn);
     let dn_str = dn_parts.join(",");
-    Ok(dn_str.parse().map_err(|e: x509_cert::der::Error| anyhow::anyhow!("Failed to build DS subject DN '{}': {:?}", dn_str, e))?)
+    Ok(dn_str.parse().map_err(|e: x509_cert::der::Error| {
+        anyhow::anyhow!("Failed to build DS subject DN '{}': {:?}", dn_str, e)
+    })?)
 }
 
 #[uniffi::export]

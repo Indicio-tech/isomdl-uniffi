@@ -1159,9 +1159,6 @@ mod tests {
         let verification = result_chain.unwrap();
         assert!(verification.verified);
         // Common name should be the Ephemeral DS created by setup_certificate_chain
-        assert_eq!(
-            verification.common_name,
-            Some("Test DS".to_string())
-        );
+        assert_eq!(verification.common_name, Some("Test DS".to_string()));
     }
 }

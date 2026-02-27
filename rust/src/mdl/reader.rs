@@ -363,6 +363,108 @@ impl MDLReaderVerifiedData {
     }
 }
 
+/// Inject a placeholder `deviceSigned` field into any Document entries in a
+/// CBOR-encoded DeviceResponse that are missing one.
+///
+/// ISO 18013-5 marks `deviceSigned` as optional (`?`) in the Document CDDL,
+/// but the upstream isomdl Rust crate's serde implementation requires it.
+/// This helper bridges that gap for issuer-only OID4VP presentations where
+/// no device-side signature is produced (e.g. Sphereon / web wallet flows).
+///
+/// The injected placeholder contains:
+///   - empty `nameSpaces` (Tag 24 wrapping an empty CBOR map)
+///   - a zero-filled COSE_Sign1 `deviceSignature` (will fail signature
+///     verification, which is expected — callers must tolerate
+///     `device_authentication == Invalid` while accepting
+///     `issuer_authentication == Valid`)
+fn inject_device_signed_if_missing(response: &[u8]) -> Result<Vec<u8>, String> {
+    // Fast path: if the DeviceResponse already parses cleanly, return as-is.
+    if isomdl::cbor::from_slice::<isomdl::definitions::DeviceResponse>(response).is_ok() {
+        return Ok(response.to_vec());
+    }
+
+    // Parse as a generic ciborium::Value so we can inspect and modify it.
+    let mut value: ciborium::Value = ciborium::from_reader(response)
+        .map_err(|e| format!("CBOR decode failure: {}", e))?;
+
+    // Traverse: top-level map → "documents" key → array → each Document map.
+    if let ciborium::Value::Map(ref mut entries) = value {
+        for (key, val) in entries.iter_mut() {
+            if matches!(key, ciborium::Value::Text(k) if k == "documents") {
+                if let ciborium::Value::Array(ref mut docs) = val {
+                    for doc in docs.iter_mut() {
+                        if let ciborium::Value::Map(ref mut doc_map) = doc {
+                            let has = doc_map.iter().any(|(k, _)| {
+                                matches!(k, ciborium::Value::Text(s) if s == "deviceSigned")
+                            });
+                            if !has {
+                                doc_map.push((
+                                    ciborium::Value::Text("deviceSigned".to_string()),
+                                    make_placeholder_device_signed_cbor(),
+                                ));
+                            }
+                        }
+                    }
+                }
+                break;
+            }
+        }
+    }
+
+    // Re-serialise the (possibly modified) value back to CBOR bytes.
+    let mut out = Vec::new();
+    ciborium::into_writer(&value, &mut out)
+        .map_err(|e| format!("CBOR re-encode failure: {}", e))?;
+    Ok(out)
+}
+
+/// Build the ciborium::Value for a placeholder DeviceSigned entry.
+///
+/// Structure (per ISO 18013-5):
+/// ```text
+/// deviceSigned = {
+///     "nameSpaces" : Tag(24, bstr .cbor {}),   ; empty DeviceNameSpaces
+///     "deviceAuth" : { "deviceSignature" : COSE_Sign1 }
+/// }
+/// ```
+/// The COSE_Sign1 carries a zero-filled signature; verification will fail,
+/// which downstream callers must handle by checking issuer_authentication
+/// independently of device_authentication.
+fn make_placeholder_device_signed_cbor() -> ciborium::Value {
+    // DeviceNamespacesBytes = Tag(24, Bytes(0xa0))  where 0xa0 = CBOR empty map
+    let device_namespaces = ciborium::Value::Tag(
+        24,
+        Box::new(ciborium::Value::Bytes(vec![0xa0])),
+    );
+
+    // Minimal COSE_Sign1 array: [protected_bstr, unprotected_map, null, signature_bstr]
+    // protected = {1: -7}  →  serialised as 0xa1 0x01 0x26  (ES256)
+    let cose_sign1 = ciborium::Value::Array(vec![
+        ciborium::Value::Bytes(vec![0xa1, 0x01, 0x26]), // protected bstr
+        ciborium::Value::Map(vec![]),                    // unprotected (empty)
+        ciborium::Value::Null,                           // detached payload
+        ciborium::Value::Bytes(vec![0u8; 64]),           // placeholder signature
+    ]);
+
+    // DeviceAuth = { "deviceSignature": cose_sign1 }
+    let device_auth = ciborium::Value::Map(vec![(
+        ciborium::Value::Text("deviceSignature".to_string()),
+        cose_sign1,
+    )]);
+
+    // DeviceSigned = { "nameSpaces": …, "deviceAuth": … }
+    ciborium::Value::Map(vec![
+        (
+            ciborium::Value::Text("nameSpaces".to_string()),
+            device_namespaces,
+        ),
+        (
+            ciborium::Value::Text("deviceAuth".to_string()),
+            device_auth,
+        ),
+    ])
+}
+
 #[uniffi::export]
 pub fn verify_oid4vp_response(
     response: Vec<u8>,
@@ -372,14 +474,24 @@ pub fn verify_oid4vp_response(
     trust_anchor_registry: Option<Vec<String>>,
     use_intermediate_chaining: bool,
 ) -> Result<MDLReaderVerifiedData, MDLReaderSessionError> {
-    // 1. Parse DeviceResponse
-    let device_response: isomdl::definitions::DeviceResponse = isomdl::cbor::from_slice(&response)
-        .map_err(|e| {
-            let debug_info = match ciborium::from_reader::<ciborium::Value, _>(response.as_slice())
-            {
-                Ok(v) => format!("Generic CBOR structure: {:?}", v),
-                Err(e2) => format!("Failed to parse as generic CBOR: {}", e2),
-            };
+    // 1. Parse DeviceResponse.
+    //    Inject a placeholder deviceSigned into any Document that lacks one before
+    //    deserialising; this handles issuer-only OID4VP credentials where the
+    //    device never signs (deviceSigned is optional per ISO 18013-5 but required
+    //    by the isomdl serde implementation).
+    let response = inject_device_signed_if_missing(&response).map_err(|e| {
+        MDLReaderSessionError::Generic {
+            value: format!("Unable to parse DeviceResponse: {}", e),
+        }
+    })?;
+
+    let device_response: isomdl::definitions::DeviceResponse =
+        isomdl::cbor::from_slice(&response).map_err(|e| {
+            let debug_info =
+                match ciborium::from_reader::<ciborium::Value, _>(response.as_slice()) {
+                    Ok(v) => format!("Generic CBOR structure: {:?}", v),
+                    Err(e2) => format!("Failed to parse as generic CBOR: {}", e2),
+                };
             MDLReaderSessionError::Generic {
                 value: format!("Unable to parse DeviceResponse: {}. {}", e, debug_info),
             }

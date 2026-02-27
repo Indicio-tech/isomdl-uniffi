@@ -388,12 +388,13 @@ fn inject_device_signed_if_missing(response: &[u8]) -> Result<Vec<u8>, String> {
         .map_err(|e| format!("CBOR decode failure: {}", e))?;
 
     // Traverse: top-level map → "documents" key → array → each Document map.
-    if let ciborium::Value::Map(ref mut entries) = value {
+    // Use &mut value so all sub-pattern bindings are implicitly &mut (Rust 2024).
+    if let ciborium::Value::Map(entries) = &mut value {
         for (key, val) in entries.iter_mut() {
             if matches!(key, ciborium::Value::Text(k) if k == "documents") {
-                if let ciborium::Value::Array(ref mut docs) = val {
+                if let ciborium::Value::Array(docs) = val {
                     for doc in docs.iter_mut() {
-                        if let ciborium::Value::Map(ref mut doc_map) = doc {
+                        if let ciborium::Value::Map(doc_map) = doc {
                             let has = doc_map.iter().any(|(k, _)| {
                                 matches!(k, ciborium::Value::Text(s) if s == "deviceSigned")
                             });

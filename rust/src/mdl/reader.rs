@@ -363,6 +363,107 @@ impl MDLReaderVerifiedData {
     }
 }
 
+/// Pre-normalize a CBOR-encoded DeviceResponse by removing empty-array entries
+/// from each Document's `issuerSigned.nameSpaces` before parsing.
+///
+/// ISO 18013-5 defines `IssuerSignedItems` as `[ + IssuerSignedItem ]` (one or
+/// more items) and `IssuerNameSpaces` as `{ + NameSpace => IssuerSignedItems }`
+/// (one or more namespace entries). Some wallets send an mDoc where the holder
+/// discloses zero attributes, emitting an empty CBOR array `[]` for a namespace
+/// value or an empty map `{}` for `nameSpaces` itself. The isomdl crate's
+/// `NonEmptyVec` / `NonEmptyMap` serde implementation rejects these, causing a
+/// fatal parse error.
+///
+/// Per ISO 18013-5 §8.3.2.1.2.2, `nameSpaces` is optionally present in
+/// `IssuerSigned` (the `?` in the CDDL). This function normalises the response
+/// by:
+///
+/// 1. Removing each namespace entry whose value is an empty CBOR array.
+/// 2. Removing the `nameSpaces` key from `issuerSigned` entirely when all of
+///    its entries have been removed (or it was already an empty map).
+///
+/// This is valid per ISO 18013-5: a holder can present with zero selectively-
+/// disclosed elements. If no modifications are needed the original bytes are
+/// returned unchanged. If the bytes are not valid CBOR at all they are also
+/// returned unchanged — the error will be reported by the caller's subsequent
+/// `isomdl::cbor::from_slice` step with a consistent error message.
+fn normalize_empty_issuer_namespaces(response: &[u8]) -> Vec<u8> {
+    let mut value: ciborium::Value = match ciborium::from_reader(response) {
+        Ok(v) => v,
+        // Not valid CBOR — pass through and let the downstream parser report it.
+        Err(_) => return response.to_vec(),
+    };
+
+    let mut modified = false;
+
+    if let ciborium::Value::Map(top_entries) = &mut value {
+        for (key, val) in top_entries.iter_mut() {
+            if !matches!(key, ciborium::Value::Text(k) if k == "documents") {
+                continue;
+            }
+            if let ciborium::Value::Array(docs) = val {
+                for doc in docs.iter_mut() {
+                    if let ciborium::Value::Map(doc_map) = doc {
+                        for (doc_key, doc_val) in doc_map.iter_mut() {
+                            if !matches!(doc_key, ciborium::Value::Text(k) if k == "issuerSigned") {
+                                continue;
+                            }
+                            if let ciborium::Value::Map(issuer_signed) = doc_val {
+                                // Find the nameSpaces entry index.
+                                let ns_idx = issuer_signed.iter().position(|(k, _)| {
+                                    matches!(k, ciborium::Value::Text(s) if s == "nameSpaces")
+                                });
+
+                                if let Some(idx) = ns_idx {
+                                    let should_remove = match &mut issuer_signed[idx].1 {
+                                        ciborium::Value::Map(ns_map) => {
+                                            // Remove namespace entries with empty arrays.
+                                            let before = ns_map.len();
+                                            ns_map.retain(|(_, v)| {
+                                                !matches!(v, ciborium::Value::Array(a) if a.is_empty())
+                                            });
+                                            if ns_map.len() < before {
+                                                modified = true;
+                                            }
+                                            // Remove the key if the map is now empty.
+                                            ns_map.is_empty()
+                                        }
+                                        // nameSpaces encoded as an empty array — remove it.
+                                        ciborium::Value::Array(a) if a.is_empty() => {
+                                            modified = true;
+                                            true
+                                        }
+                                        _ => false,
+                                    };
+
+                                    if should_remove {
+                                        issuer_signed.remove(idx);
+                                        modified = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if !modified {
+        // Nothing changed — return the original bytes to avoid unnecessary
+        // re-encoding (which could alter canonical ordering).
+        return response.to_vec();
+    }
+
+    let mut out = Vec::new();
+    match ciborium::into_writer(&value, &mut out) {
+        Ok(()) => out,
+        // Re-encode failed unexpectedly — return original bytes and let the
+        // downstream parser surface the error with a consistent message.
+        Err(_) => response.to_vec(),
+    }
+}
+
 /// Inject a placeholder `deviceSigned` field into any Document entries in a
 /// CBOR-encoded DeviceResponse that are missing one.
 ///
@@ -384,8 +485,8 @@ fn inject_device_signed_if_missing(response: &[u8]) -> Result<Vec<u8>, String> {
     }
 
     // Parse as a generic ciborium::Value so we can inspect and modify it.
-    let mut value: ciborium::Value = ciborium::from_reader(response)
-        .map_err(|e| format!("CBOR decode failure: {}", e))?;
+    let mut value: ciborium::Value =
+        ciborium::from_reader(response).map_err(|e| format!("CBOR decode failure: {}", e))?;
 
     // Traverse: top-level map → "documents" key → array → each Document map.
     // Use &mut value so all sub-pattern bindings are implicitly &mut (Rust 2024).
@@ -433,18 +534,15 @@ fn inject_device_signed_if_missing(response: &[u8]) -> Result<Vec<u8>, String> {
 /// independently of device_authentication.
 fn make_placeholder_device_signed_cbor() -> ciborium::Value {
     // DeviceNamespacesBytes = Tag(24, Bytes(0xa0))  where 0xa0 = CBOR empty map
-    let device_namespaces = ciborium::Value::Tag(
-        24,
-        Box::new(ciborium::Value::Bytes(vec![0xa0])),
-    );
+    let device_namespaces = ciborium::Value::Tag(24, Box::new(ciborium::Value::Bytes(vec![0xa0])));
 
     // Minimal COSE_Sign1 array: [protected_bstr, unprotected_map, null, signature_bstr]
     // protected = {1: -7}  →  serialised as 0xa1 0x01 0x26  (ES256)
     let cose_sign1 = ciborium::Value::Array(vec![
         ciborium::Value::Bytes(vec![0xa1, 0x01, 0x26]), // protected bstr
-        ciborium::Value::Map(vec![]),                    // unprotected (empty)
-        ciborium::Value::Null,                           // detached payload
-        ciborium::Value::Bytes(vec![0u8; 64]),           // placeholder signature
+        ciborium::Value::Map(vec![]),                   // unprotected (empty)
+        ciborium::Value::Null,                          // detached payload
+        ciborium::Value::Bytes(vec![0u8; 64]),          // placeholder signature
     ]);
 
     // DeviceAuth = { "deviceSignature": cose_sign1 }
@@ -459,10 +557,7 @@ fn make_placeholder_device_signed_cbor() -> ciborium::Value {
             ciborium::Value::Text("nameSpaces".to_string()),
             device_namespaces,
         ),
-        (
-            ciborium::Value::Text("deviceAuth".to_string()),
-            device_auth,
-        ),
+        (ciborium::Value::Text("deviceAuth".to_string()), device_auth),
     ])
 }
 
@@ -476,23 +571,33 @@ pub fn verify_oid4vp_response(
     use_intermediate_chaining: bool,
 ) -> Result<MDLReaderVerifiedData, MDLReaderSessionError> {
     // 1. Parse DeviceResponse.
-    //    Inject a placeholder deviceSigned into any Document that lacks one before
-    //    deserialising; this handles issuer-only OID4VP credentials where the
-    //    device never signs (deviceSigned is optional per ISO 18013-5 but required
-    //    by the isomdl serde implementation).
-    let response = inject_device_signed_if_missing(&response).map_err(|e| {
-        MDLReaderSessionError::Generic {
-            value: format!("Unable to parse DeviceResponse: {}", e),
-        }
-    })?;
+    //    Step 1a: Normalise any empty nameSpaces arrays before parsing.
+    //    ISO 18013-5 allows a holder to present with zero selectively-disclosed
+    //    elements; in that case `nameSpaces` should be absent or omitted, but
+    //    some wallets send `{"nameSpaces": {"org.iso.18013.5.1": []}}`. The
+    //    isomdl `NonEmptyVec`/`NonEmptyMap` serde implementation rejects empty
+    //    arrays/maps, so we strip them here before handing off to the crate.
+    //    If the bytes are not valid CBOR at all, the normalizer passes them
+    //    through unchanged; the parse error is reported consistently by the
+    //    downstream `isomdl::cbor::from_slice` step below.
+    let response = normalize_empty_issuer_namespaces(&response);
 
-    let device_response: isomdl::definitions::DeviceResponse =
-        isomdl::cbor::from_slice(&response).map_err(|e| {
-            let debug_info =
-                match ciborium::from_reader::<ciborium::Value, _>(response.as_slice()) {
-                    Ok(v) => format!("Generic CBOR structure: {:?}", v),
-                    Err(e2) => format!("Failed to parse as generic CBOR: {}", e2),
-                };
+    //    Step 1b: Inject a placeholder deviceSigned into any Document that lacks
+    //    one before deserialising; this handles issuer-only OID4VP credentials
+    //    where the device never signs (deviceSigned is optional per ISO 18013-5
+    //    but required by the isomdl serde implementation).
+    let response =
+        inject_device_signed_if_missing(&response).map_err(|e| MDLReaderSessionError::Generic {
+            value: format!("Unable to parse DeviceResponse: {}", e),
+        })?;
+
+    let device_response: isomdl::definitions::DeviceResponse = isomdl::cbor::from_slice(&response)
+        .map_err(|e| {
+            let debug_info = match ciborium::from_reader::<ciborium::Value, _>(response.as_slice())
+            {
+                Ok(v) => format!("Generic CBOR structure: {:?}", v),
+                Err(e2) => format!("Failed to parse as generic CBOR: {}", e2),
+            };
             MDLReaderSessionError::Generic {
                 value: format!("Unable to parse DeviceResponse: {}. {}", e, debug_info),
             }
@@ -885,5 +990,274 @@ mod tests {
             .unwrap();
         assert!(matches!(claims.get("family_name"), Some(MDocItem::Text(s)) if s == "Smith"));
         assert!(matches!(claims.get("given_name"), Some(MDocItem::Text(s)) if s == "Alice"));
+    }
+
+    /// Build a minimal CBOR DeviceResponse where `issuerSigned.nameSpaces`
+    /// contains one namespace entry with an empty array value — the degenerate
+    /// case that triggers the `NonEmptyVec` deserialization error in the isomdl
+    /// crate when a holder discloses zero attributes.
+    fn make_response_with_empty_namespaces() -> Vec<u8> {
+        // issuerAuth placeholder: a 4-element CBOR array (COSE_Sign1 shape).
+        let issuer_auth = ciborium::Value::Array(vec![
+            ciborium::Value::Bytes(vec![]), // protected
+            ciborium::Value::Map(vec![]),   // unprotected
+            ciborium::Value::Null,          // payload
+            ciborium::Value::Bytes(vec![]), // signature
+        ]);
+
+        // nameSpaces: { "org.iso.18013.5.1": [] }  ← empty array is the bug trigger.
+        let namespaces = ciborium::Value::Map(vec![(
+            ciborium::Value::Text("org.iso.18013.5.1".to_string()),
+            ciborium::Value::Array(vec![]), // empty — NonEmptyVec rejects this
+        )]);
+
+        let issuer_signed = ciborium::Value::Map(vec![
+            (ciborium::Value::Text("nameSpaces".to_string()), namespaces),
+            (ciborium::Value::Text("issuerAuth".to_string()), issuer_auth),
+        ]);
+
+        let doc = ciborium::Value::Map(vec![
+            (
+                ciborium::Value::Text("docType".to_string()),
+                ciborium::Value::Text("org.iso.18013.5.1.mDL".to_string()),
+            ),
+            (
+                ciborium::Value::Text("issuerSigned".to_string()),
+                issuer_signed,
+            ),
+        ]);
+
+        let device_response = ciborium::Value::Map(vec![
+            (
+                ciborium::Value::Text("version".to_string()),
+                ciborium::Value::Text("1.0".to_string()),
+            ),
+            (
+                ciborium::Value::Text("documents".to_string()),
+                ciborium::Value::Array(vec![doc]),
+            ),
+            (
+                ciborium::Value::Text("status".to_string()),
+                ciborium::Value::Integer(0.into()),
+            ),
+        ]);
+
+        let mut bytes = Vec::new();
+        ciborium::into_writer(&device_response, &mut bytes)
+            .expect("Failed to encode test DeviceResponse");
+        bytes
+    }
+
+    #[test]
+    fn test_normalize_empty_issuer_namespaces_removes_empty_array_entries() {
+        let response = make_response_with_empty_namespaces();
+
+        // The raw bytes should contain an empty-array namespace entry.
+        let raw_value: ciborium::Value =
+            ciborium::from_reader(response.as_slice()).expect("should parse as generic CBOR");
+        if let ciborium::Value::Map(top) = &raw_value {
+            let docs = top
+                .iter()
+                .find(|(k, _)| matches!(k, ciborium::Value::Text(s) if s == "documents"))
+                .map(|(_, v)| v)
+                .expect("documents key missing");
+            if let ciborium::Value::Array(docs) = docs {
+                let doc_map = if let ciborium::Value::Map(m) = &docs[0] {
+                    m
+                } else {
+                    panic!("doc not a map")
+                };
+                let issuer_signed = doc_map
+                    .iter()
+                    .find(|(k, _)| matches!(k, ciborium::Value::Text(s) if s == "issuerSigned"))
+                    .map(|(_, v)| v)
+                    .expect("issuerSigned missing");
+                if let ciborium::Value::Map(is_map) = issuer_signed {
+                    let ns = is_map
+                        .iter()
+                        .find(|(k, _)| matches!(k, ciborium::Value::Text(s) if s == "nameSpaces"));
+                    assert!(ns.is_some(), "nameSpaces should exist before normalization");
+                }
+            }
+        }
+
+        // Normalise.
+        let normalised = normalize_empty_issuer_namespaces(&response);
+
+        // After normalisation the nameSpaces key must be absent (all entries were empty).
+        let normalised_value: ciborium::Value =
+            ciborium::from_reader(normalised.as_slice()).expect("normalised bytes should parse");
+        if let ciborium::Value::Map(top) = &normalised_value {
+            let docs = top
+                .iter()
+                .find(|(k, _)| matches!(k, ciborium::Value::Text(s) if s == "documents"))
+                .map(|(_, v)| v)
+                .expect("documents key missing after normalisation");
+            if let ciborium::Value::Array(docs) = docs {
+                let doc_map = if let ciborium::Value::Map(m) = &docs[0] {
+                    m
+                } else {
+                    panic!("doc not a map after normalisation")
+                };
+                let issuer_signed = doc_map
+                    .iter()
+                    .find(|(k, _)| matches!(k, ciborium::Value::Text(s) if s == "issuerSigned"))
+                    .map(|(_, v)| v)
+                    .expect("issuerSigned missing after normalisation");
+                if let ciborium::Value::Map(is_map) = issuer_signed {
+                    let ns = is_map
+                        .iter()
+                        .find(|(k, _)| matches!(k, ciborium::Value::Text(s) if s == "nameSpaces"));
+                    assert!(
+                        ns.is_none(),
+                        "nameSpaces should have been removed after all entries were empty"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_normalize_empty_issuer_namespaces_unchanged_when_no_empty_entries() {
+        // A response with no nameSpaces at all should be returned byte-for-byte.
+        let response_value = ciborium::Value::Map(vec![
+            (
+                ciborium::Value::Text("version".to_string()),
+                ciborium::Value::Text("1.0".to_string()),
+            ),
+            (
+                ciborium::Value::Text("documents".to_string()),
+                ciborium::Value::Array(vec![ciborium::Value::Map(vec![
+                    (
+                        ciborium::Value::Text("docType".to_string()),
+                        ciborium::Value::Text("org.iso.18013.5.1.mDL".to_string()),
+                    ),
+                    (
+                        ciborium::Value::Text("issuerSigned".to_string()),
+                        ciborium::Value::Map(vec![(
+                            ciborium::Value::Text("issuerAuth".to_string()),
+                            ciborium::Value::Array(vec![
+                                ciborium::Value::Bytes(vec![]),
+                                ciborium::Value::Map(vec![]),
+                                ciborium::Value::Null,
+                                ciborium::Value::Bytes(vec![]),
+                            ]),
+                        )]),
+                    ),
+                ])]),
+            ),
+            (
+                ciborium::Value::Text("status".to_string()),
+                ciborium::Value::Integer(0.into()),
+            ),
+        ]);
+
+        let mut response_bytes = Vec::new();
+        ciborium::into_writer(&response_value, &mut response_bytes)
+            .expect("Failed to encode test response");
+
+        let normalised = normalize_empty_issuer_namespaces(&response_bytes);
+
+        assert_eq!(
+            response_bytes, normalised,
+            "bytes should be identical when no empty nameSpaces entries exist"
+        );
+    }
+
+    #[test]
+    fn test_normalize_preserves_non_empty_namespace_entries() {
+        // A namespace entry with a non-empty array must be preserved.
+        let item_bytes = ciborium::Value::Tag(24, Box::new(ciborium::Value::Bytes(vec![0xa0])));
+        let namespaces = ciborium::Value::Map(vec![
+            (
+                ciborium::Value::Text("org.iso.18013.5.1".to_string()),
+                ciborium::Value::Array(vec![item_bytes.clone()]), // non-empty → keep
+            ),
+            (
+                ciborium::Value::Text("org.iso.18013.5.1.aamva".to_string()),
+                ciborium::Value::Array(vec![]), // empty → remove
+            ),
+        ]);
+
+        let response_value = ciborium::Value::Map(vec![
+            (
+                ciborium::Value::Text("version".to_string()),
+                ciborium::Value::Text("1.0".to_string()),
+            ),
+            (
+                ciborium::Value::Text("documents".to_string()),
+                ciborium::Value::Array(vec![ciborium::Value::Map(vec![
+                    (
+                        ciborium::Value::Text("docType".to_string()),
+                        ciborium::Value::Text("org.iso.18013.5.1.mDL".to_string()),
+                    ),
+                    (
+                        ciborium::Value::Text("issuerSigned".to_string()),
+                        ciborium::Value::Map(vec![
+                            (ciborium::Value::Text("nameSpaces".to_string()), namespaces),
+                            (
+                                ciborium::Value::Text("issuerAuth".to_string()),
+                                ciborium::Value::Array(vec![
+                                    ciborium::Value::Bytes(vec![]),
+                                    ciborium::Value::Map(vec![]),
+                                    ciborium::Value::Null,
+                                    ciborium::Value::Bytes(vec![]),
+                                ]),
+                            ),
+                        ]),
+                    ),
+                ])]),
+            ),
+            (
+                ciborium::Value::Text("status".to_string()),
+                ciborium::Value::Integer(0.into()),
+            ),
+        ]);
+
+        let mut response_bytes = Vec::new();
+        ciborium::into_writer(&response_value, &mut response_bytes)
+            .expect("Failed to encode test response");
+
+        let normalised = normalize_empty_issuer_namespaces(&response_bytes);
+
+        let normalised_value: ciborium::Value =
+            ciborium::from_reader(normalised.as_slice()).expect("normalised bytes should parse");
+
+        if let ciborium::Value::Map(top) = &normalised_value {
+            let docs = top
+                .iter()
+                .find(|(k, _)| matches!(k, ciborium::Value::Text(s) if s == "documents"))
+                .map(|(_, v)| v)
+                .expect("documents missing");
+            if let ciborium::Value::Array(docs) = docs {
+                let doc_map = if let ciborium::Value::Map(m) = &docs[0] {
+                    m
+                } else {
+                    panic!("doc not a map")
+                };
+                let issuer_signed = doc_map
+                    .iter()
+                    .find(|(k, _)| matches!(k, ciborium::Value::Text(s) if s == "issuerSigned"))
+                    .map(|(_, v)| v)
+                    .expect("issuerSigned missing");
+                if let ciborium::Value::Map(is_map) = issuer_signed {
+                    let ns_val = is_map
+                        .iter()
+                        .find(|(k, _)| matches!(k, ciborium::Value::Text(s) if s == "nameSpaces"))
+                        .map(|(_, v)| v)
+                        .expect("nameSpaces should still be present (has non-empty entry)");
+
+                    if let ciborium::Value::Map(ns_map) = ns_val {
+                        assert_eq!(ns_map.len(), 1, "only the non-empty entry should remain");
+                        assert!(
+                            matches!(&ns_map[0].0, ciborium::Value::Text(s) if s == "org.iso.18013.5.1"),
+                            "surviving namespace should be org.iso.18013.5.1"
+                        );
+                    } else {
+                        panic!("nameSpaces is not a map after normalisation");
+                    }
+                }
+            }
+        }
     }
 }

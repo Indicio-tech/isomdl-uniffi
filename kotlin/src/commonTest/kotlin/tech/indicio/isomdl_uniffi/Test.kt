@@ -18,8 +18,7 @@ import uniffi.isomdl_uniffi.P256KeyPair
 import uniffi.isomdl_uniffi.establishSession
 import uniffi.isomdl_uniffi.generateTestMdl
 import uniffi.isomdl_uniffi.handleResponse
-import uniffi.isomdl_uniffi.iso1801351AamvaFromJson
-import uniffi.isomdl_uniffi.iso1801351FromJson
+
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -112,14 +111,11 @@ class CommonGreetingTest {
 
     @Test
     fun generateMdl() = runTest{
-        val holderKey = P256KeyPair();
+        val holderKey = P256KeyPair()
 
-        val mdoc = Mdoc.createAndSign(
-            "org.iso.18013.5.1.mDL",
-            buildMap{
-                put("org.iso.18013.5.1", iso1801351FromJson(sampleMdlData))
-                put("org.iso.18013.5.1.aamva", iso1801351AamvaFromJson(sampleAamvaData))
-            },
+        val mdoc = Mdoc.createAndSignMdl(
+            sampleMdlData,
+            sampleAamvaData,
             holderKey.publicJwk(),
             utrechtCert,
             utrechtKey

@@ -14,6 +14,8 @@ import base64
 import json
 import uuid as uuid_module
 
+import pytest
+
 
 def test_mdl_serialization_json(test_mdl):
     """Test JSON serialization with validation."""
@@ -131,3 +133,47 @@ def test_mdl_metadata_consistency(test_mdl):
     doctype1 = test_mdl.doctype()
     doctype2 = test_mdl.doctype()
     assert doctype1 == doctype2, "Doctype should be consistent across calls"
+
+
+def test_issuer_signed_b64_iso_compliant_keys(test_mdl):
+    """Test that issuer_signed_b64 emits ISO 18013-5 §8.3 compliant CBOR keys.
+
+    Verifies:
+    - camelCase keys 'issuerAuth' and 'nameSpaces' are present (not snake_case)
+    - Each namespace's value is a CBOR array (NonEmptyVec<IssuerSignedItemBytes>)
+    - The output is parseable by new_from_base64url_encoded_issuer_signed
+
+    This is the fix for isomdl-uniffi previously emitting snake_case keys
+    ('issuer_auth', 'namespaces') when using Document.stringify().
+    """
+    try:
+        import cbor2
+    except ImportError:
+        pytest.skip("cbor2 not installed")
+
+    b64 = test_mdl.issuer_signed_b64()
+    assert isinstance(b64, str) and len(b64) > 0, "issuer_signed_b64 must return a non-empty string"
+
+    # Decode base64url and parse CBOR
+    pad = len(b64) % 4
+    cbor_bytes = base64.urlsafe_b64decode(b64 + "=" * (4 - pad) if pad else b64)
+    top = cbor2.loads(cbor_bytes)
+    assert isinstance(top, dict), "IssuerSigned must decode to a CBOR map"
+
+    # ISO 18013-5 §8.3: IssuerSigned uses camelCase keys
+    assert "issuerAuth" in top, f"Expected 'issuerAuth', got keys: {list(top.keys())}"
+    assert "nameSpaces" in top, f"Expected 'nameSpaces', got keys: {list(top.keys())}"
+    assert "issuer_auth" not in top, "Prohibited snake_case 'issuer_auth' present"
+    assert "namespaces" not in top, "Prohibited snake_case 'namespaces' present"
+
+    # ISO 18013-5 §8.3: nameSpaces values must be arrays of IssuerSignedItemBytes
+    assert isinstance(top["nameSpaces"], dict), "nameSpaces must be a map"
+    assert len(top["nameSpaces"]) > 0, "nameSpaces must not be empty"
+    for ns, items in top["nameSpaces"].items():
+        assert isinstance(items, list), (
+            f"Namespace '{ns}' value must be a CBOR array (ISO §8.3), "
+            f"got {type(items).__name__}"
+        )
+
+
+

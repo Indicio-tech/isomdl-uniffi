@@ -337,6 +337,48 @@ impl Mdoc {
         }
     }
 
+    /// Serialize as an ISO 18013-5 §8.3 compliant IssuerSigned structure (base64url, no padding).
+    ///
+    /// Unlike [`Mdoc::stringify`], which serializes the internal `Document` struct
+    /// with snake_case CBOR keys (`issuer_auth`, `namespaces`), this method
+    /// serializes an [`IssuerSigned`] value using the camelCase keys required
+    /// by ISO 18013-5 §8.3 (`issuerAuth`, `nameSpaces`) and the correct
+    /// map-of-lists namespace representation (`NonEmptyVec<IssuerSignedItemBytes>`).
+    ///
+    /// This is the correct format for use in OpenID4VCI mso_mdoc credential issuance
+    /// and ISO 18013-5 presentation.
+    pub fn issuer_signed_b64(&self) -> Result<String, MdocEncodingError> {
+        use isomdl::definitions::helpers::NonEmptyVec;
+
+        // Document.namespaces: NonEmptyMap<String, NonEmptyMap<ElementIdentifier, IssuerSignedItemBytes>>
+        // IssuerSigned.namespaces: Option<NonEmptyMap<String, NonEmptyVec<IssuerSignedItemBytes>>>
+        //
+        // The element identifier is embedded in each IssuerSignedItem, so we drop
+        // the map keys and collect just the values into a NonEmptyVec.
+        let converted = self
+            .inner
+            .namespaces
+            .clone()
+            .into_inner()
+            .into_iter()
+            .map(|(ns, element_map)| {
+                let items: Vec<_> = element_map.into_inner().into_values().collect();
+                let vec = NonEmptyVec::maybe_new(items)
+                    .ok_or(MdocEncodingError::SerializationError)?;
+                Ok((ns, vec))
+            })
+            .collect::<Result<std::collections::BTreeMap<_, _>, MdocEncodingError>>()?;
+
+        let issuer_signed = IssuerSigned {
+            namespaces: NonEmptyMap::maybe_new(converted),
+            issuer_auth: self.inner.issuer_auth.clone(),
+        };
+
+        let cbor_bytes = isomdl::cbor::to_vec(&issuer_signed)
+            .map_err(|_| MdocEncodingError::SerializationError)?;
+        Ok(BASE64_URL_SAFE_NO_PAD.encode(cbor_bytes))
+    }
+
     /// Verify the issuer signature of this mdoc credential.
     ///
     /// This method extracts the X5Chain from the issuer_auth header, validates it
@@ -1017,6 +1059,120 @@ mod tests {
             .find(|e| e.identifier == "custom-element")
             .expect("Element not found");
         assert!(element.value.as_ref().unwrap().contains("custom-value"));
+    }
+
+    #[test]
+    fn test_issuer_signed_b64_iso_keys() {
+        // Setup: mirrors test_create_and_sign with a generic namespace
+        let issuer_key = SigningKey::random(&mut OsRng);
+        let issuer_key_pem = issuer_key.to_pkcs8_pem(LineEnding::LF).unwrap().to_string();
+        let spki =
+            SubjectPublicKeyInfoOwned::from_key(issuer_key.verifying_key().clone()).unwrap();
+        let cert = CertificateBuilder::new(
+            Profile::Root,
+            SerialNumber::from(1u64),
+            Validity::from_now(Duration::from_secs(3600)).unwrap(),
+            "CN=Test Issuer".parse().unwrap(),
+            spki,
+            &issuer_key,
+        )
+        .unwrap()
+        .build::<p256::ecdsa::DerSignature>()
+        .unwrap();
+        let cert_pem = cert.to_pem(LineEnding::LF).unwrap();
+
+        let holder_key = SigningKey::random(&mut OsRng);
+        let point = holder_key.verifying_key().to_encoded_point(false);
+        let x = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(point.x().unwrap());
+        let y = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(point.y().unwrap());
+        let holder_jwk = serde_json::json!({"kty": "EC", "crv": "P-256", "x": x, "y": y})
+            .to_string();
+
+        let mut namespaces = HashMap::new();
+        let mut ns_items = HashMap::new();
+        let mut cursor = Cursor::new(Vec::new());
+        ciborium::into_writer(&Value::Text("Alice".to_string()), &mut cursor).unwrap();
+        ns_items.insert("given_name".to_string(), cursor.into_inner());
+        namespaces.insert("org.example.test".to_string(), ns_items);
+
+        let mdoc = Mdoc::create_and_sign(
+            "org.example.test.doc".to_string(),
+            namespaces,
+            holder_jwk,
+            cert_pem,
+            issuer_key_pem,
+        )
+        .expect("create_and_sign failed");
+
+        // Exercise: serialize as ISO 18013-5 §8.3 compliant IssuerSigned
+        let b64 = mdoc.issuer_signed_b64().expect("issuer_signed_b64 failed");
+
+        // Decode base64url and parse as CBOR
+        let cbor_bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
+            .decode(&b64)
+            .expect("base64url decode failed");
+        let value: Value = ciborium::from_reader(std::io::Cursor::new(&cbor_bytes))
+            .expect("CBOR parse failed");
+
+        let Value::Map(top_pairs) = value else {
+            panic!("Expected CBOR map at top level");
+        };
+
+        // Collect text keys for readable assertions
+        let keys: Vec<String> = top_pairs
+            .iter()
+            .filter_map(|(k, _)| {
+                if let Value::Text(s) = k {
+                    Some(s.clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        // ISO 18013-5 §8.3 requires camelCase keys in IssuerSigned
+        assert!(
+            keys.contains(&"issuerAuth".to_string()),
+            "Expected 'issuerAuth' (ISO §8.3), got keys: {keys:?}"
+        );
+        assert!(
+            keys.contains(&"nameSpaces".to_string()),
+            "Expected 'nameSpaces' (ISO §8.3), got keys: {keys:?}"
+        );
+        assert!(
+            !keys.contains(&"issuer_auth".to_string()),
+            "Prohibited snake_case 'issuer_auth' present in CBOR output: {keys:?}"
+        );
+        assert!(
+            !keys.contains(&"namespaces".to_string()),
+            "Prohibited snake_case 'namespaces' present in CBOR output: {keys:?}"
+        );
+
+        // ISO 18013-5 §8.3: nameSpaces values must be CBOR arrays (NonEmptyVec<IssuerSignedItemBytes>)
+        let ns_val = top_pairs
+            .iter()
+            .find(|(k, _)| k == &Value::Text("nameSpaces".to_string()))
+            .map(|(_, v)| v)
+            .expect("nameSpaces key unexpectedly missing");
+        let Value::Map(ns_map) = ns_val else {
+            panic!("Expected nameSpaces to be a CBOR map of namespace -> [items]");
+        };
+        assert!(!ns_map.is_empty(), "nameSpaces must not be empty");
+        for (_, items_val) in ns_map {
+            assert!(
+                matches!(items_val, Value::Array(_)),
+                "Each namespace value must be a CBOR array (ISO §8.3), got: {items_val:?}"
+            );
+        }
+
+        // Bonus: round-trip — the b64 must be parseable by Mdoc::new_from_base64url_encoded_issuer_signed
+        let key_alias = KeyAlias("test-alias".to_string());
+        let parsed = Mdoc::new_from_base64url_encoded_issuer_signed(b64.clone(), key_alias);
+        assert!(
+            parsed.is_ok(),
+            "issuer_signed_b64 output must be parseable by new_from_base64url_encoded_issuer_signed: {:?}",
+            parsed.err()
+        );
     }
 
     #[test]

@@ -492,6 +492,8 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_isomdl_uniffi_checksum_method_mdoc_id() != 45880:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_isomdl_uniffi_checksum_method_mdoc_issuer_signed_b64() != 28958:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_isomdl_uniffi_checksum_method_mdoc_json() != 1636:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_isomdl_uniffi_checksum_method_mdoc_key_alias() != 9235:
@@ -506,7 +508,7 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_isomdl_uniffi_checksum_constructor_mdlpresentationsession_new() != 1270:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_create_and_sign() != 3320:
+    if lib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_create_and_sign() != 347:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_create_and_sign_mdl() != 21814:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
@@ -761,6 +763,11 @@ _UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_id.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_id.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_issuer_signed_b64.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_issuer_signed_b64.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_json.argtypes = (
     ctypes.c_void_p,
     ctypes.POINTER(_UniffiRustCallStatus),
@@ -1167,6 +1174,9 @@ _UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdoc_doctype.restype = ctypes.c_
 _UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdoc_id.argtypes = (
 )
 _UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdoc_id.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdoc_issuer_signed_b64.argtypes = (
+)
+_UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdoc_issuer_signed_b64.restype = ctypes.c_uint16
 _UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdoc_json.argtypes = (
 )
 _UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdoc_json.restype = ctypes.c_uint16
@@ -1667,6 +1677,21 @@ class MdocProtocol(typing.Protocol):
         """
 
         raise NotImplementedError
+    def issuer_signed_b64(self, ):
+        """
+        Serialize as an ISO 18013-5 §8.3 compliant IssuerSigned structure (base64url, no padding).
+
+        Unlike [`Mdoc::stringify`], which serializes the internal `Document` struct
+        with snake_case CBOR keys (`issuer_auth`, `namespaces`), this method
+        serializes an [`IssuerSigned`] value using the camelCase keys required
+        by ISO 18013-5 §8.3 (`issuerAuth`, `nameSpaces`) and the correct
+        map-of-lists namespace representation (`NonEmptyVec<IssuerSignedItemBytes>`).
+
+        This is the correct format for use in OpenID4VCI mso_mdoc credential issuance
+        and ISO 18013-5 presentation.
+        """
+
+        raise NotImplementedError
     def json(self, ):
         """
         Serialize as JSON
@@ -1730,10 +1755,10 @@ class Mdoc:
         inst._pointer = pointer
         return inst
     @classmethod
-    def create_and_sign(cls, doc_type: "str",namespaces: "dict[str, dict[str, bytes]]",holder_jwk: "str",iaca_cert_perm: "str",iaca_key_perm: "str"):
+    def create_and_sign(cls, doc_type: "str",namespaces: "dict[str, dict[str, str]]",holder_jwk: "str",iaca_cert_perm: "str",iaca_key_perm: "str"):
         _UniffiConverterString.check_lower(doc_type)
         
-        _UniffiConverterMapStringMapStringBytes.check_lower(namespaces)
+        _UniffiConverterMapStringMapStringString.check_lower(namespaces)
         
         _UniffiConverterString.check_lower(holder_jwk)
         
@@ -1744,7 +1769,7 @@ class Mdoc:
         # Call the (fallible) function before creating any half-baked object instances.
         pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_create_and_sign,
         _UniffiConverterString.lower(doc_type),
-        _UniffiConverterMapStringMapStringBytes.lower(namespaces),
+        _UniffiConverterMapStringMapStringString.lower(namespaces),
         _UniffiConverterString.lower(holder_jwk),
         _UniffiConverterString.lower(iaca_cert_perm),
         _UniffiConverterString.lower(iaca_key_perm))
@@ -1870,6 +1895,28 @@ class Mdoc:
 
         return _UniffiConverterTypeUuid.lift(
             _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_id,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+    def issuer_signed_b64(self, ) -> "str":
+        """
+        Serialize as an ISO 18013-5 §8.3 compliant IssuerSigned structure (base64url, no padding).
+
+        Unlike [`Mdoc::stringify`], which serializes the internal `Document` struct
+        with snake_case CBOR keys (`issuer_auth`, `namespaces`), this method
+        serializes an [`IssuerSigned`] value using the camelCase keys required
+        by ISO 18013-5 §8.3 (`issuerAuth`, `nameSpaces`) and the correct
+        map-of-lists namespace representation (`NonEmptyVec<IssuerSignedItemBytes>`).
+
+        This is the correct format for use in OpenID4VCI mso_mdoc credential issuance
+        and ISO 18013-5 presentation.
+        """
+
+        return _UniffiConverterString.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeMdocEncodingError,_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_issuer_signed_b64,self._uniffi_clone_pointer(),)
         )
 
 
@@ -3873,6 +3920,39 @@ class _UniffiConverterMapStringBool(_UniffiConverterRustBuffer):
 
 
 
+class _UniffiConverterMapStringString(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, items):
+        for (key, value) in items.items():
+            _UniffiConverterString.check_lower(key)
+            _UniffiConverterString.check_lower(value)
+
+    @classmethod
+    def write(cls, items, buf):
+        buf.write_i32(len(items))
+        for (key, value) in items.items():
+            _UniffiConverterString.write(key, buf)
+            _UniffiConverterString.write(value, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative map size")
+
+        # It would be nice to use a dict comprehension,
+        # but in Python 3.7 and before the evaluation order is not according to spec,
+        # so we we're reading the value before the key.
+        # This loop makes the order explicit: first reading the key, then the value.
+        d = {}
+        for i in range(count):
+            key = _UniffiConverterString.read(buf)
+            val = _UniffiConverterString.read(buf)
+            d[key] = val
+        return d
+
+
+
 class _UniffiConverterMapStringBytes(_UniffiConverterRustBuffer):
     @classmethod
     def check_lower(cls, items):
@@ -4005,19 +4085,19 @@ class _UniffiConverterMapStringMapStringBool(_UniffiConverterRustBuffer):
 
 
 
-class _UniffiConverterMapStringMapStringBytes(_UniffiConverterRustBuffer):
+class _UniffiConverterMapStringMapStringString(_UniffiConverterRustBuffer):
     @classmethod
     def check_lower(cls, items):
         for (key, value) in items.items():
             _UniffiConverterString.check_lower(key)
-            _UniffiConverterMapStringBytes.check_lower(value)
+            _UniffiConverterMapStringString.check_lower(value)
 
     @classmethod
     def write(cls, items, buf):
         buf.write_i32(len(items))
         for (key, value) in items.items():
             _UniffiConverterString.write(key, buf)
-            _UniffiConverterMapStringBytes.write(value, buf)
+            _UniffiConverterMapStringString.write(value, buf)
 
     @classmethod
     def read(cls, buf):
@@ -4032,7 +4112,7 @@ class _UniffiConverterMapStringMapStringBytes(_UniffiConverterRustBuffer):
         d = {}
         for i in range(count):
             key = _UniffiConverterString.read(buf)
-            val = _UniffiConverterMapStringBytes.read(buf)
+            val = _UniffiConverterMapStringString.read(buf)
             d[key] = val
         return d
 

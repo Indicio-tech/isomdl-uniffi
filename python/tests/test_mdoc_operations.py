@@ -171,9 +171,5 @@ def test_issuer_signed_b64_iso_compliant_keys(test_mdl):
     assert len(top["nameSpaces"]) > 0, "nameSpaces must not be empty"
     for ns, items in top["nameSpaces"].items():
         assert isinstance(items, list), (
-            f"Namespace '{ns}' value must be a CBOR array (ISO §8.3), "
-            f"got {type(items).__name__}"
+            f"Namespace '{ns}' value must be a CBOR array (ISO §8.3), got {type(items).__name__}"
         )
-
-
-

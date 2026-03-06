@@ -11,14 +11,13 @@
 
 use std::{
     collections::{BTreeMap, HashMap},
-    io::Cursor,
     sync::Arc,
     time::Duration,
 };
 
 use anyhow::{Context, Result};
 use base64::prelude::*;
-use ciborium::{Value, from_reader};
+use ciborium::Value;
 use coset::Label;
 use isomdl::{
     definitions::{
@@ -125,7 +124,7 @@ impl Mdoc {
     #[uniffi::constructor]
     pub fn create_and_sign(
         doc_type: String,
-        namespaces: HashMap<String, HashMap<String, Vec<u8>>>,
+        namespaces: HashMap<String, HashMap<String, String>>,
         holder_jwk: String,
         iaca_cert_perm: String,
         iaca_key_perm: String,
@@ -656,19 +655,57 @@ fn prepare_builder(
         .device_key_info(device_key_info))
 }
 
+/// Convert a [`serde_json::Value`] to an equivalent [`ciborium::Value`].
+///
+/// Used to translate JSON-encoded element values (supplied by callers) into
+/// CBOR values that the isomdl namespace builder expects.
+fn json_to_cbor(json: serde_json::Value) -> Value {
+    match json {
+        serde_json::Value::Null => Value::Null,
+        serde_json::Value::Bool(b) => Value::Bool(b),
+        serde_json::Value::Number(n) => {
+            if let Some(i) = n.as_i64() {
+                Value::Integer(i.into())
+            } else if let Some(f) = n.as_f64() {
+                Value::Float(f)
+            } else {
+                Value::Float(0.0)
+            }
+        }
+        serde_json::Value::String(s) => Value::Text(s),
+        serde_json::Value::Array(arr) => {
+            Value::Array(arr.into_iter().map(json_to_cbor).collect())
+        }
+        serde_json::Value::Object(obj) => Value::Map(
+            obj.into_iter()
+                .map(|(k, v)| (Value::Text(k), json_to_cbor(v)))
+                .collect(),
+        ),
+    }
+}
+
+/// Convert a caller-supplied namespace map (element identifier → JSON string)
+/// into the BTreeMap<String, BTreeMap<String, ciborium::Value>> form that
+/// [`prepare_builder`] requires.
+///
+/// Accepting JSON strings instead of raw CBOR bytes removes the need for
+/// callers to depend on a CBOR library (e.g. `cbor2` in Python) just to
+/// encode individual element values.
 fn convert_namespaces(
-    input: HashMap<String, HashMap<String, Vec<u8>>>,
+    input: HashMap<String, HashMap<String, String>>,
 ) -> Result<BTreeMap<String, BTreeMap<String, Value>>, MdocInitError> {
     let mut outer = BTreeMap::new();
 
     for (namespace, inner_map) in input {
         let mut inner_btree = BTreeMap::new();
-        for (key, vec_bytes) in inner_map {
-            let mut cursor = Cursor::new(vec_bytes);
-            let value: Value = from_reader(&mut cursor).map_err(|_e| {
-                MdocInitError::DocumentCborDecoding("Error decoding CBOR value".to_owned())
-            })?;
-            inner_btree.insert(key, value);
+        for (key, json_str) in inner_map {
+            let json_val: serde_json::Value =
+                serde_json::from_str(&json_str).map_err(|_| {
+                    MdocInitError::DocumentCborDecoding(format!(
+                        "Invalid JSON for element '{key}': {json_str:?}"
+                    ))
+                })?;
+            inner_btree.insert(key, json_to_cbor(json_val));
         }
         outer.insert(namespace, inner_btree);
     }
@@ -1030,12 +1067,13 @@ mod tests {
         })
         .to_string();
 
-        // 4. Sample Data (Generic Namespace)
+        // 4. Sample Data (Generic Namespace) — element values are JSON strings
         let mut namespaces = HashMap::new();
         let mut custom_ns = HashMap::new();
-        let mut cursor = Cursor::new(Vec::new());
-        ciborium::into_writer(&Value::Text("custom-value".to_string()), &mut cursor).unwrap();
-        custom_ns.insert("custom-element".to_string(), cursor.into_inner());
+        custom_ns.insert(
+            "custom-element".to_string(),
+            serde_json::to_string("custom-value").unwrap(),
+        );
         namespaces.insert("com.example.custom".to_string(), custom_ns);
 
         // 5. Call function
@@ -1090,9 +1128,11 @@ mod tests {
 
         let mut namespaces = HashMap::new();
         let mut ns_items = HashMap::new();
-        let mut cursor = Cursor::new(Vec::new());
-        ciborium::into_writer(&Value::Text("Alice".to_string()), &mut cursor).unwrap();
-        ns_items.insert("given_name".to_string(), cursor.into_inner());
+        // Element values are JSON strings — no CBOR library needed at call site
+        ns_items.insert(
+            "given_name".to_string(),
+            serde_json::to_string("Alice").unwrap(),
+        );
         namespaces.insert("org.example.test".to_string(), ns_items);
 
         let mdoc = Mdoc::create_and_sign(

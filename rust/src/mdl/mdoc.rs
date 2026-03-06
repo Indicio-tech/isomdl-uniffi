@@ -362,8 +362,8 @@ impl Mdoc {
             .into_iter()
             .map(|(ns, element_map)| {
                 let items: Vec<_> = element_map.into_inner().into_values().collect();
-                let vec = NonEmptyVec::maybe_new(items)
-                    .ok_or(MdocEncodingError::SerializationError)?;
+                let vec =
+                    NonEmptyVec::maybe_new(items).ok_or(MdocEncodingError::SerializationError)?;
                 Ok((ns, vec))
             })
             .collect::<Result<std::collections::BTreeMap<_, _>, MdocEncodingError>>()?;
@@ -673,9 +673,7 @@ fn json_to_cbor(json: serde_json::Value) -> Value {
             }
         }
         serde_json::Value::String(s) => Value::Text(s),
-        serde_json::Value::Array(arr) => {
-            Value::Array(arr.into_iter().map(json_to_cbor).collect())
-        }
+        serde_json::Value::Array(arr) => Value::Array(arr.into_iter().map(json_to_cbor).collect()),
         serde_json::Value::Object(obj) => Value::Map(
             obj.into_iter()
                 .map(|(k, v)| (Value::Text(k), json_to_cbor(v)))
@@ -699,12 +697,11 @@ fn convert_namespaces(
     for (namespace, inner_map) in input {
         let mut inner_btree = BTreeMap::new();
         for (key, json_str) in inner_map {
-            let json_val: serde_json::Value =
-                serde_json::from_str(&json_str).map_err(|_| {
-                    MdocInitError::DocumentCborDecoding(format!(
-                        "Invalid JSON for element '{key}': {json_str:?}"
-                    ))
-                })?;
+            let json_val: serde_json::Value = serde_json::from_str(&json_str).map_err(|_| {
+                MdocInitError::DocumentCborDecoding(format!(
+                    "Invalid JSON for element '{key}': {json_str:?}"
+                ))
+            })?;
             inner_btree.insert(key, json_to_cbor(json_val));
         }
         outer.insert(namespace, inner_btree);
@@ -1104,8 +1101,7 @@ mod tests {
         // Setup: mirrors test_create_and_sign with a generic namespace
         let issuer_key = SigningKey::random(&mut OsRng);
         let issuer_key_pem = issuer_key.to_pkcs8_pem(LineEnding::LF).unwrap().to_string();
-        let spki =
-            SubjectPublicKeyInfoOwned::from_key(issuer_key.verifying_key().clone()).unwrap();
+        let spki = SubjectPublicKeyInfoOwned::from_key(issuer_key.verifying_key().clone()).unwrap();
         let cert = CertificateBuilder::new(
             Profile::Root,
             SerialNumber::from(1u64),
@@ -1123,8 +1119,8 @@ mod tests {
         let point = holder_key.verifying_key().to_encoded_point(false);
         let x = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(point.x().unwrap());
         let y = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(point.y().unwrap());
-        let holder_jwk = serde_json::json!({"kty": "EC", "crv": "P-256", "x": x, "y": y})
-            .to_string();
+        let holder_jwk =
+            serde_json::json!({"kty": "EC", "crv": "P-256", "x": x, "y": y}).to_string();
 
         let mut namespaces = HashMap::new();
         let mut ns_items = HashMap::new();
@@ -1151,8 +1147,8 @@ mod tests {
         let cbor_bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
             .decode(&b64)
             .expect("base64url decode failed");
-        let value: Value = ciborium::from_reader(std::io::Cursor::new(&cbor_bytes))
-            .expect("CBOR parse failed");
+        let value: Value =
+            ciborium::from_reader(std::io::Cursor::new(&cbor_bytes)).expect("CBOR parse failed");
 
         let Value::Map(top_pairs) = value else {
             panic!("Expected CBOR map at top level");

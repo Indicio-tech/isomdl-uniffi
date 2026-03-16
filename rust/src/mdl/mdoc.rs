@@ -614,7 +614,7 @@ fn prepare_builder(
         .device_key_info(device_key_info))
 }
 
-fn convert_namespaces(
+pub fn convert_namespaces(
     input: HashMap<String, HashMap<String, Vec<u8>>>,
 ) -> Result<BTreeMap<String, BTreeMap<String, Value>>, MdocInitError> {
     let mut outer = BTreeMap::new();

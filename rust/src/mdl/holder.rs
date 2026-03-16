@@ -45,6 +45,7 @@ struct InProcessRecord {
 
 #[uniffi::export]
 impl MdlPresentationSession {
+    
     /// Begin the mDL presentation process for the holder by passing in the credential
     /// to be presented in the form of an [Mdoc] object.
     ///

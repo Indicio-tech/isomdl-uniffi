@@ -10,6 +10,7 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 import gobley.gradle.cargo.dsl.jvm
+import gobley.gradle.cargo.dsl.android
 import gobley.gradle.GobleyHost
 import gobley.gradle.Variant
 import gobley.gradle.cargo.dsl.linux
@@ -21,15 +22,15 @@ import java.util.Properties
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
-    id("dev.gobley.cargo") version "0.2.0"
-    id("dev.gobley.uniffi") version "0.2.0"
+    id("dev.gobley.cargo") version "0.3.7"
+    id("dev.gobley.uniffi") version "0.3.7"
     kotlin("plugin.atomicfu") version libs.versions.kotlin
     kotlin("plugin.serialization") version "2.1.20"
     id("maven-publish")
 }
 
 group = "tech.indicio"
-version = "0.0.1"
+version = "0.0.2"
 
 val localProperties = Properties().apply {
     val file = rootProject.file("local.properties")
@@ -40,6 +41,7 @@ val localProperties = Properties().apply {
 
 publishing {
     repositories{
+        mavenLocal()
         maven {
             name = "github"
             setUrl("https://maven.pkg.github.com/indicio-tech/isomdl-uniffi")
@@ -56,30 +58,44 @@ cargo {
     nativeVariant = Variant.Release
     packageDirectory = layout.projectDirectory.dir("src/commonMain/rust/")
 
-    if(GobleyHost.Platform.MacOS.isCurrent){
-        val home = System.getProperty("user.home")
-        val crossFile = File("$home/.cargo/bin/cross")
-        builds{
-            linux{
-                variants{
+    builds{
+        if (GobleyHost.Platform.MacOS.isCurrent) {
+            val home = System.getProperty("user.home")
+            val crossFile = File("$home/.cargo/bin/cross")
+            linux {
+                variants {
                     buildTaskProvider.configure {
-                        cargo = crossFile
+                        this@configure.cargo = crossFile
                     }
                 }
             }
         }
-    }
 
-    builds.jvm{
-        if(GobleyHost.Platform.MacOS.isCurrent){
-            embedRustLibrary = when (rustTarget){
-                RustWindowsTarget.X64 -> false
-                RustWindowsTarget.Arm64 -> false
-                else -> true
+        jvm{
+            if(GobleyHost.Platform.MacOS.isCurrent){
+                embedRustLibrary = when (rustTarget){
+                    RustWindowsTarget.X64 -> false
+                    RustWindowsTarget.Arm64 -> false
+                    else -> true
+                }
+                if (rustTarget == RustPosixTarget.MinGWX64) {
+                    variants {
+                        dynamicLibraries.set(listOf("isomdl_uniffi.dll"))
+                    }
+                }
+
+                RustPosixTarget.linuxTargets.forEach{
+                    if(rustTarget == it && GobleyHost.Platform.MacOS.isCurrent){
+                        embedRustLibrary = false
+                    }
+                }
             }
-            if (rustTarget == RustPosixTarget.MinGWX64) {
-                variants {
-                    dynamicLibraries.set(listOf("isomdl_uniffi.dll"))
+        }
+
+        android{
+            variants{
+                buildTaskProvider.configure {
+                    additionalEnvironment.put("RUSTFLAGS", "-C link-args=-Wl,-z,max-page-size=16384")
                 }
             }
         }

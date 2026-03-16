@@ -11,6 +11,7 @@
 
 use std::{
     collections::{BTreeMap, HashMap},
+    io::Cursor,
     sync::Arc,
     time::Duration,
 };
@@ -132,7 +133,7 @@ impl Mdoc {
         let pub_key: PublicKey =
             PublicKey::from_jwk_str(&holder_jwk).map_err(|_e| MdocInitError::InvalidJwk)?;
 
-        let namespaces = convert_namespaces(namespaces)?;
+        let namespaces = convert_namespaces_json(namespaces)?;
         let builder = prepare_builder(pub_key, namespaces, doc_type).map_err(|e| {
             MdocInitError::GeneralConstructionError(format!("prepare_builder: {e}"))
         })?;
@@ -972,7 +973,7 @@ fn json_to_cbor(json: serde_json::Value) -> Value {
 /// Accepting JSON strings instead of raw CBOR bytes removes the need for
 /// callers to depend on a CBOR library (e.g. `cbor2` in Python) just to
 /// encode individual element values.
-fn convert_namespaces(
+fn convert_namespaces_json(
     input: HashMap<String, HashMap<String, String>>,
 ) -> Result<BTreeMap<String, BTreeMap<String, Value>>, MdocInitError> {
     let mut outer = BTreeMap::new();
@@ -986,6 +987,31 @@ fn convert_namespaces(
                 ))
             })?;
             inner_btree.insert(key, json_to_cbor(json_val));
+        }
+        outer.insert(namespace, inner_btree);
+    }
+
+    Ok(outer)
+}
+
+/// Convert a namespace map of raw CBOR-encoded bytes into the
+/// BTreeMap<String, BTreeMap<String, ciborium::Value>> form used internally.
+///
+/// Used by the OID4VP holder path where namespace values arrive as
+/// pre-encoded CBOR bytes from the mDL presentation.
+pub fn convert_namespaces(
+    input: HashMap<String, HashMap<String, Vec<u8>>>,
+) -> Result<BTreeMap<String, BTreeMap<String, Value>>, MdocInitError> {
+    let mut outer = BTreeMap::new();
+
+    for (namespace, inner_map) in input {
+        let mut inner_btree = BTreeMap::new();
+        for (key, vec_bytes) in inner_map {
+            let mut cursor = Cursor::new(vec_bytes);
+            let value: Value = ciborium::from_reader(&mut cursor).map_err(|_e| {
+                MdocInitError::DocumentCborDecoding("Error decoding CBOR value".to_owned())
+            })?;
+            inner_btree.insert(key, value);
         }
         outer.insert(namespace, inner_btree);
     }

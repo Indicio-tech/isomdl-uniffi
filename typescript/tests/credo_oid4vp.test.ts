@@ -57,7 +57,7 @@ describe('Credo OID4VP Compatibility Tests', () => {
             subject: "C=US, CN=Test DS",
             issuer: rootCert.subject,
             notBefore: new Date("2024-01-01"),
-            notAfter: new Date("2026-01-01"),
+            notAfter: new Date("2034-01-01"),
             signingAlgorithm: alg,
             publicKey: dsKeyPair.publicKey,
             signingKey: rootKeyPair.privateKey,

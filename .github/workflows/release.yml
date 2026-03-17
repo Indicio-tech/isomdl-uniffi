@@ -52,8 +52,13 @@ jobs:
             #### Python Bindings
             Download the appropriate wheel file for your platform and install:
             ```bash
-            uv pip install isomdl_uniffi-${{ steps.get-version.outputs.version }}-*.whl
+            pip install https://github.com/Indicio-tech/isomdl-uniffi/releases/download/v${{ steps.get-version.outputs.version }}/isomdl_uniffi-${{ steps.get-version.outputs.version }}-<platform>.whl
             ```
+
+            Or browse available wheels below and install the one matching your platform:
+            - **Linux (x86_64)**: `*-manylinux_2_17_x86_64.manylinux2014_x86_64.whl`
+            - **macOS (Intel/Apple Silicon)**: `*-macosx_11_0_arm64.macosx_11_0_x86_64.macosx_11_0_universal2.whl`
+            - **Windows (x86_64)**: `*-win_amd64.whl`
 
             #### Rust Crate
             ```toml
@@ -64,13 +69,17 @@ jobs:
           prerelease: false
 
   build-python-wheels:
-    name: Build Python Wheels
+    name: Build Python Wheels (${{ matrix.platform.os }})
     needs: create-release
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.platform.runner }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ['3.9', '3.10', '3.11', '3.12']
+        platform:
+          - { os: "linux", runner: "ubuntu-latest", target: "x86_64-unknown-linux-gnu", manylinux: "2_17" }
+          - { os: "macos-intel", runner: "macos-15-intel", target: "x86_64-apple-darwin" }
+          - { os: "macos-arm", runner: "macos-latest", target: "aarch64-apple-darwin" }
+          - { os: "windows", runner: "windows-latest", target: "x86_64-pc-windows-msvc" }
 
     steps:
       - name: Checkout code
@@ -79,81 +88,68 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: '3.x'
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v3
+      - name: Build wheels (Linux/Windows)
+        if: matrix.platform.os == 'linux' || matrix.platform.os == 'windows'
+        uses: PyO3/maturin-action@v1
         with:
-          enable-cache: true
-          cache-suffix: py${{ matrix.python-version }}
+          target: ${{ matrix.platform.target }}
+          args: --release --out dist --interpreter python3.9 python3.10 python3.11 python3.12
+          sccache: 'true'
+          manylinux: ${{ matrix.platform.os == 'linux' && format('auto', matrix.platform.manylinux) || 'auto' }}
+          working-directory: python
 
-      - name: Cache Rust dependencies
-        uses: actions/cache@v4
+      - name: Build wheels (macOS)
+        if: matrix.platform.os == 'macos-intel' || matrix.platform.os == 'macos-arm'
+        uses: PyO3/maturin-action@v1
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
+          target: ${{ matrix.platform.target }}
+          args: --release --out dist --interpreter python3.9 python3.10 python3.11 python3.12
+          sccache: 'true'
+          working-directory: python
 
-      - name: Install build dependencies
-        run: |
-          uv pip install --system wheel setuptools build
-
-      - name: Build Rust crate
-        run: |
-          cd rust
-          cargo build --release
-
-      - name: Build Python bindings
+      - name: List built wheels
         shell: bash
         run: |
-          chmod +x python/precommit/build-bindings.sh
-          ./python/precommit/build-bindings.sh
-
-      - name: Create Python package
-        run: |
-          # Copy generated bindings to package directory
-          mkdir -p isomdl_uniffi
-          cp rust/out/python/*.py isomdl_uniffi/ || echo "No Python files to copy"
-          cp rust/out/python/*.so isomdl_uniffi/ 2>/dev/null || echo "No .so files to copy"
-          cp rust/out/python/*.dylib isomdl_uniffi/ 2>/dev/null || echo "No .dylib files to copy"
-          cp rust/out/python/*.dll isomdl_uniffi/ 2>/dev/null || echo "No .dll files to copy"
-
-          # Update version in pyproject.toml
-          sed -i.bak 's/version = "0.1.0"/version = "${{ needs.create-release.outputs.version }}"/' pyproject.toml
-
-          # Build wheel
-          uv build
-
-      - name: Debug built wheels
-        run: |
           echo "🔍 Built wheels:"
-          ls -la dist/
-          echo "🔍 Wheel details:"
-          file dist/*.whl 2>/dev/null || echo "No wheels found"
+          ls -lh python/dist/
 
-      - name: Upload wheel to release
-        uses: softprops/action-gh-release@v2
+      - name: Upload wheels as artifacts
+        uses: actions/upload-artifact@v4
         with:
-          files: dist/*.whl
-          tag_name: ${{ github.ref }}
+          name: wheels-${{ matrix.platform.os }}
+          path: python/dist/*.whl
+          if-no-files-found: error
+
+  upload-wheels-to-release:
+    name: Upload Wheels to GitHub Release
+    needs: [create-release, build-python-wheels]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all wheel artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: wheels-*
+          path: dist
+          merge-multiple: true
+
+      - name: List all wheels
+        run: |
+          echo "📦 All built wheels:"
+          ls -lh dist/
+
+      - name: Upload wheels to release
+        run: |
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
+          for whl in dist/*.whl; do
+            echo "Uploading $whl..."
+            gh release upload "$TAG_NAME" "$whl" --clobber --repo "$GITHUB_REPOSITORY"
+          done
+          echo "✅ All wheels uploaded"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Publish to PyPI
-        continue-on-error: true
-        run: |
-          echo "📦 Publishing to PyPI..."
-          if [ -z "$UV_PUBLISH_TOKEN" ]; then
-            echo "⚠️  PYPI_TOKEN not configured - skipping PyPI publishing"
-            echo "   To enable PyPI publishing, add PYPI_TOKEN secret to repository settings"
-            exit 0
-          fi
-          uv publish
-        env:
-          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}

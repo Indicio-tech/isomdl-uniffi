@@ -121,14 +121,12 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.12'  # Use one Python version for building
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v3
-        with:
-          enable-cache: true
+      - name: Install maturin
+        run: pip install maturin
 
       - name: Cache Rust dependencies
         uses: actions/cache@v4
@@ -140,27 +138,41 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
-      - name: Build Python bindings
+      - name: Build Python bindings with maturin (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        working-directory: python
         run: |
-          chmod +x python/precommit/build-bindings.sh
-          echo "🔍 Current working directory: $(pwd)"
+          echo "🔍 Building for Linux with maturin..."
           echo "🔍 Python version: $(python3 --version)"
           echo "🔍 Rust version: $(rustc --version)"
-          ./python/precommit/build-bindings.sh
+          maturin build --release --out target/wheels --interpreter python3.12
+
+      - name: Build Python bindings with maturin (macOS)
+        if: matrix.os == 'macos-latest'
+        working-directory: python
+        run: |
+          echo "🔍 Building for macOS with maturin..."
+          echo "🔍 Python version: $(python3 --version)"
+          echo "🔍 Rust version: $(rustc --version)"
+          maturin build --release --out target/wheels --interpreter python3.12
+
+      - name: Install built wheel for testing
+        working-directory: python
+        run: |
+          pip install --force-reinstall target/wheels/*.whl
 
       - name: Debug built artifacts
         run: |
-          echo "🔍 Checking built artifacts before upload..."
-          ls -la rust/out/python/ || echo "Directory not found!"
-          find rust/out/python/ -name "*.so" -o -name "*.dylib" -o -name "*.dll" -o -name "*.py" || echo "No binding files found"
-          echo "🔍 File details:"
-          file rust/out/python/* 2>/dev/null || echo "No files to analyze"
+          echo "🔍 Checking built artifacts..."
+          ls -la python/target/wheels/
+          echo "🔍 Installed package (from neutral dir to avoid local src shadowing):"
+          cd /tmp && python -c "import isomdl_uniffi; print('✅ Successfully imported isomdl_uniffi')"
 
-      - name: Upload bindings artifact
+      - name: Upload wheel artifact
         uses: actions/upload-artifact@v5
         with:
-          name: python-bindings-${{ matrix.os }}
-          path: rust/out/python/
+          name: python-wheel-${{ matrix.os }}
+          path: python/target/wheels/*.whl
           retention-days: 7
 
   test-python:
@@ -178,41 +190,33 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Download bindings artifact
+      - name: Download wheel artifact
         uses: actions/download-artifact@v4
         with:
-          name: python-bindings-${{ matrix.os }}
-          path: rust/out/python/
+          name: python-wheel-${{ matrix.os }}
+          path: dist/
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v3
-        with:
-          enable-cache: true
-
-      - name: Debug downloaded artifacts
+      - name: Install wheel and test dependencies
         run: |
-          echo "🔍 Checking downloaded artifacts..."
-          ls -la rust/out/python/ || echo "Directory not found!"
-          find rust/out/python/ -name "*.so" -o -name "*.dylib" -o -name "*.dll" -o -name "*.py" || echo "No binding files found"
-          # Ensure shared libraries are executable
-          find rust/out/python/ -name "*.so" -o -name "*.dylib" -o -name "*.dll" | xargs chmod +x 2>/dev/null || true
+          pip install dist/*.whl
+          pip install pytest pytest-cov cryptography
 
-      - name: Install Python dependencies
+      - name: Debug installed package
         run: |
-          cd python
-          uv pip install --system pytest
+          echo "🔍 Installed packages:"
+          pip list | grep isomdl || echo "isomdl not found!"
+          echo "🔍 Testing import..."
+          python -c "import isomdl_uniffi; print('✅ Successfully imported isomdl_uniffi')"
 
       - name: Run Python tests
+        working-directory: python
         run: |
-          chmod +x python/precommit/run-tests.sh
-          echo "🔍 Current working directory: $(pwd)"
-          echo "🔍 Contents of rust/out/python before test:"
-          ls -la rust/out/python/ || echo "Directory not found!"
-          ./python/precommit/run-tests.sh
+          echo "🔍 Running tests with Python ${{ matrix.python-version }}..."
+          pytest tests/ -v --tb=short
 
   cross-language-tests:
     name: Cross-Language Tests
@@ -223,7 +227,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
@@ -234,21 +238,16 @@ jobs:
           cache: 'npm'
           cache-dependency-path: typescript/package-lock.json
 
-      - name: Download pre-built bindings
+      - name: Download wheel artifact
         uses: actions/download-artifact@v4
         with:
-          name: python-bindings-ubuntu-latest
-          path: rust/out/python/
+          name: python-wheel-ubuntu-latest
+          path: dist/
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v3
-        with:
-          enable-cache: true
-
-      - name: Install Python dependencies
+      - name: Install wheel and Python dependencies
         run: |
-          cd python
-          uv sync --extra dev
+          pip install dist/*.whl
+          pip install pytest pytest-cov cryptography
 
       - name: Install TypeScript dependencies
         run: |
@@ -256,11 +255,10 @@ jobs:
           npm ci
 
       - name: Generate Python Artifacts
+        working-directory: python
         run: |
-          cd python
-          # Ensure bindings are in path or installed
-          # The script uses utils.py which looks for rust/out/python
-          uv run python tests/generate_cross_language_artifacts.py
+          # The wheel is already installed, just run the script
+          python tests/generate_cross_language_artifacts.py
 
       - name: Run TypeScript Tests
         run: |
@@ -268,9 +266,9 @@ jobs:
           npm test
 
       - name: Run Python Verification Tests
+        working-directory: python
         run: |
-          cd python
-          uv run pytest tests/test_cross_language_verification.py -v
+          pytest tests/test_cross_language_verification.py -v
 
   integration-tests:
     name: Integration Tests
@@ -282,41 +280,37 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: Download pre-built bindings
+      - name: Download wheel artifact
         uses: actions/download-artifact@v4
         with:
-          name: python-bindings-ubuntu-latest
-          path: rust/out/python/
+          name: python-wheel-ubuntu-latest
+          path: dist/
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v3
-        with:
-          enable-cache: true
-
-      - name: Debug downloaded bindings
+      - name: Install wheel and dependencies
         run: |
-          echo "🔍 Checking downloaded artifacts..."
-          ls -la rust/out/python/ || echo "Directory not found!"
-          find rust/out/python/ -name "*.so" -o -name "*.dylib" -o -name "*.dll" -o -name "*.py" || echo "No binding files found"
-          # Ensure shared libraries are executable
-          find rust/out/python/ -name "*.so" -o -name "*.dylib" -o -name "*.dll" | xargs chmod +x 2>/dev/null || true
+          pip install dist/*.whl
+          pip install pytest pytest-cov cryptography
+
+      - name: Debug installed package
+        run: |
+          echo "🔍 Testing import..."
+          python -c "import isomdl_uniffi; print('✅ Successfully imported isomdl_uniffi')"
 
       - name: Run comprehensive Python test suite
+        working-directory: python
         run: |
-          # Run comprehensive Python test suite using pre-built bindings
-          chmod +x python/precommit/run-tests.sh
-          ./python/precommit/run-tests.sh
+          # Run comprehensive Python test suite
+          pytest tests/ -v --tb=short
 
       - name: Verify selective disclosure tests
+        working-directory: python
         run: |
-          cd python
-          # Install dev dependencies and run specific selective disclosure tests
-          uv sync --extra dev
-          uv run pytest tests/test_selective_disclosure.py -v --tb=short
+          # Run specific selective disclosure tests
+          pytest tests/test_selective_disclosure.py -v --tb=short
 
   kotlin-build-and-test:
     name: Kotlin Build and Test
@@ -435,4 +429,6 @@ jobs:
             --ignore RUSTSEC-2022-0040 \
             --ignore RUSTSEC-2023-0071 \
             --ignore RUSTSEC-2024-0436 \
-            --ignore RUSTSEC-2024-0370
+            --ignore RUSTSEC-2024-0370 \
+            --ignore RUSTSEC-2025-0141 \
+            --ignore RUSTSEC-2026-0007

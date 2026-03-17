@@ -11,14 +11,13 @@
 
 use std::{
     collections::{BTreeMap, HashMap},
-    io::Cursor,
     sync::Arc,
     time::Duration,
 };
 
 use anyhow::{Context, Result};
 use base64::prelude::*;
-use ciborium::{Value, from_reader};
+use ciborium::Value;
 use coset::Label;
 use isomdl::{
     definitions::{
@@ -125,7 +124,7 @@ impl Mdoc {
     #[uniffi::constructor]
     pub fn create_and_sign(
         doc_type: String,
-        namespaces: HashMap<String, HashMap<String, Vec<u8>>>,
+        namespaces: HashMap<String, HashMap<String, String>>,
         holder_jwk: String,
         iaca_cert_perm: String,
         iaca_key_perm: String,
@@ -134,30 +133,35 @@ impl Mdoc {
             PublicKey::from_jwk_str(&holder_jwk).map_err(|_e| MdocInitError::InvalidJwk)?;
 
         let namespaces = convert_namespaces(namespaces)?;
-        let builder = prepare_builder(pub_key, namespaces, doc_type)
-            .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+        let builder = prepare_builder(pub_key, namespaces, doc_type).map_err(|e| {
+            MdocInitError::GeneralConstructionError(format!("prepare_builder: {e}"))
+        })?;
 
         let (certificate, iaca_certs, signer) =
-            setup_certificate_chain(iaca_cert_perm, iaca_key_perm)
-                .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+            setup_certificate_chain(iaca_cert_perm, iaca_key_perm, None).map_err(|e| {
+                MdocInitError::GeneralConstructionError(format!("certificate chain: {e}"))
+            })?;
 
-        let mut x5chain_builder = X5Chain::builder()
-            .with_certificate(certificate)
-            .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+        let mut x5chain_builder =
+            X5Chain::builder()
+                .with_certificate(certificate)
+                .map_err(|e| {
+                    MdocInitError::GeneralConstructionError(format!("x5chain certificate: {e}"))
+                })?;
 
         for cert in iaca_certs {
-            x5chain_builder = x5chain_builder
-                .with_certificate(cert)
-                .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+            x5chain_builder = x5chain_builder.with_certificate(cert).map_err(|e| {
+                MdocInitError::GeneralConstructionError(format!("x5chain intermediate: {e}"))
+            })?;
         }
 
         let x5chain = x5chain_builder
             .build()
-            .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+            .map_err(|e| MdocInitError::GeneralConstructionError(format!("x5chain build: {e}")))?;
 
         let mdoc = builder
             .issue::<p256::ecdsa::SigningKey, p256::ecdsa::Signature>(x5chain, signer)
-            .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+            .map_err(|e| MdocInitError::GeneralConstructionError(format!("issue: {e}")))?;
 
         let namespaces = NonEmptyMap::maybe_new(
             mdoc.namespaces
@@ -171,12 +175,16 @@ impl Mdoc {
                             .map(|element| (element.as_ref().element_identifier.clone(), element))
                             .collect(),
                     )
-                    .ok_or(MdocInitError::GeneralConstructionError)?;
+                    .ok_or(MdocInitError::GeneralConstructionError(
+                        "empty namespace elements".into(),
+                    ))?;
                     Ok((namespace, inner_map))
                 })
                 .collect::<Result<_, MdocInitError>>()?,
         )
-        .ok_or(MdocInitError::GeneralConstructionError)?;
+        .ok_or(MdocInitError::GeneralConstructionError(
+            "empty namespaces".into(),
+        ))?;
 
         let doc = Document {
             id: Default::default(),
@@ -205,49 +213,62 @@ impl Mdoc {
         let mut namespaces = BTreeMap::new();
 
         // Parse mDL items
-        let json_value: serde_json::Value = serde_json::from_str(&mdl_items)
-            .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+        let json_value: serde_json::Value = serde_json::from_str(&mdl_items).map_err(|e| {
+            MdocInitError::GeneralConstructionError(format!("mdl_items JSON parse: {e}"))
+        })?;
         let mdl_data = OrgIso1801351::from_json(&json_value)
-            .map_err(|_e| MdocInitError::GeneralConstructionError)?
+            .map_err(|e| {
+                MdocInitError::GeneralConstructionError(format!(
+                    "mDL namespace parse (org.iso.18013.5.1): {e}"
+                ))
+            })?
             .to_ns_map();
         namespaces.insert("org.iso.18013.5.1".to_string(), mdl_data);
 
         // Parse AAMVA items if present
         if let Some(aamva_json) = aamva_items {
-            let json_value: serde_json::Value = serde_json::from_str(&aamva_json)
-                .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+            let json_value: serde_json::Value = serde_json::from_str(&aamva_json).map_err(|e| {
+                MdocInitError::GeneralConstructionError(format!("aamva JSON parse: {e}"))
+            })?;
             let aamva_data = OrgIso1801351Aamva::from_json(&json_value)
-                .map_err(|_e| MdocInitError::GeneralConstructionError)?
+                .map_err(|e| {
+                    MdocInitError::GeneralConstructionError(format!("AAMVA namespace parse: {e}"))
+                })?
                 .to_ns_map();
             namespaces.insert("org.iso.18013.5.1.aamva".to_string(), aamva_data);
         }
 
         let doc_type = "org.iso.18013.5.1.mDL".to_string();
 
-        let builder = prepare_builder(pub_key, namespaces, doc_type)
-            .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+        let builder = prepare_builder(pub_key, namespaces, doc_type).map_err(|e| {
+            MdocInitError::GeneralConstructionError(format!("prepare_builder: {e}"))
+        })?;
 
         let (certificate, iaca_certs, signer) =
-            setup_certificate_chain(iaca_cert_pem, iaca_key_pem)
-                .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+            setup_certificate_chain(iaca_cert_pem, iaca_key_pem, None).map_err(|e| {
+                MdocInitError::GeneralConstructionError(format!("certificate chain: {e}"))
+            })?;
 
-        let mut x5chain_builder = X5Chain::builder()
-            .with_certificate(certificate)
-            .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+        let mut x5chain_builder =
+            X5Chain::builder()
+                .with_certificate(certificate)
+                .map_err(|e| {
+                    MdocInitError::GeneralConstructionError(format!("x5chain certificate: {e}"))
+                })?;
 
         for cert in iaca_certs {
-            x5chain_builder = x5chain_builder
-                .with_certificate(cert)
-                .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+            x5chain_builder = x5chain_builder.with_certificate(cert).map_err(|e| {
+                MdocInitError::GeneralConstructionError(format!("x5chain intermediate: {e}"))
+            })?;
         }
 
         let x5chain = x5chain_builder
             .build()
-            .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+            .map_err(|e| MdocInitError::GeneralConstructionError(format!("x5chain build: {e}")))?;
 
         let mdoc = builder
             .issue::<p256::ecdsa::SigningKey, p256::ecdsa::Signature>(x5chain, signer)
-            .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+            .map_err(|e| MdocInitError::GeneralConstructionError(format!("issue: {e}")))?;
 
         let namespaces = NonEmptyMap::maybe_new(
             mdoc.namespaces
@@ -261,12 +282,16 @@ impl Mdoc {
                             .map(|element| (element.as_ref().element_identifier.clone(), element))
                             .collect(),
                     )
-                    .ok_or(MdocInitError::GeneralConstructionError)?;
+                    .ok_or(MdocInitError::GeneralConstructionError(
+                        "empty namespace elements".into(),
+                    ))?;
                     Ok((namespace, inner_map))
                 })
                 .collect::<Result<_, MdocInitError>>()?,
         )
-        .ok_or(MdocInitError::GeneralConstructionError)?;
+        .ok_or(MdocInitError::GeneralConstructionError(
+            "empty namespaces".into(),
+        ))?;
 
         let doc = Document {
             id: Default::default(),
@@ -335,6 +360,48 @@ impl Mdoc {
             Ok(it) => Ok(it),
             Err(_e) => Err(MdocEncodingError::SerializationError),
         }
+    }
+
+    /// Serialize as an ISO 18013-5 §8.3 compliant IssuerSigned structure (base64url, no padding).
+    ///
+    /// Unlike [`Mdoc::stringify`], which serializes the internal `Document` struct
+    /// with snake_case CBOR keys (`issuer_auth`, `namespaces`), this method
+    /// serializes an [`IssuerSigned`] value using the camelCase keys required
+    /// by ISO 18013-5 §8.3 (`issuerAuth`, `nameSpaces`) and the correct
+    /// map-of-lists namespace representation (`NonEmptyVec<IssuerSignedItemBytes>`).
+    ///
+    /// This is the correct format for use in OpenID4VCI mso_mdoc credential issuance
+    /// and ISO 18013-5 presentation.
+    pub fn issuer_signed_b64(&self) -> Result<String, MdocEncodingError> {
+        use isomdl::definitions::helpers::NonEmptyVec;
+
+        // Document.namespaces: NonEmptyMap<String, NonEmptyMap<ElementIdentifier, IssuerSignedItemBytes>>
+        // IssuerSigned.namespaces: Option<NonEmptyMap<String, NonEmptyVec<IssuerSignedItemBytes>>>
+        //
+        // The element identifier is embedded in each IssuerSignedItem, so we drop
+        // the map keys and collect just the values into a NonEmptyVec.
+        let converted = self
+            .inner
+            .namespaces
+            .clone()
+            .into_inner()
+            .into_iter()
+            .map(|(ns, element_map)| {
+                let items: Vec<_> = element_map.into_inner().into_values().collect();
+                let vec =
+                    NonEmptyVec::maybe_new(items).ok_or(MdocEncodingError::SerializationError)?;
+                Ok((ns, vec))
+            })
+            .collect::<Result<std::collections::BTreeMap<_, _>, MdocEncodingError>>()?;
+
+        let issuer_signed = IssuerSigned {
+            namespaces: NonEmptyMap::maybe_new(converted),
+            issuer_auth: self.inner.issuer_auth.clone(),
+        };
+
+        let cbor_bytes = isomdl::cbor::to_vec(&issuer_signed)
+            .map_err(|_| MdocEncodingError::SerializationError)?;
+        Ok(BASE64_URL_SAFE_NO_PAD.encode(cbor_bytes))
     }
 
     /// Verify the issuer signature of this mdoc credential.
@@ -492,12 +559,18 @@ impl Mdoc {
                     .map(|i| (i.as_ref().element_identifier.clone(), i))
                     .collect::<BTreeMap<_, _>>()
                     .try_into()
-                    .map_err(|_| MdocInitError::GeneralConstructionError)?;
+                    .map_err(|_| {
+                        MdocInitError::GeneralConstructionError(
+                            "empty namespace elements in IssuerSigned".into(),
+                        )
+                    })?;
                 Ok((k, m))
             })
             .collect::<Result<BTreeMap<_, _>, MdocInitError>>()?
             .try_into()
-            .map_err(|_| MdocInitError::GeneralConstructionError)?;
+            .map_err(|_| {
+                MdocInitError::GeneralConstructionError("empty namespaces in IssuerSigned".into())
+            })?;
 
         let mso: Tag24<Mso> = isomdl::cbor::from_slice(
             issuer_auth
@@ -539,8 +612,8 @@ pub enum MdocInitError {
     DocumentUtf8Decoding,
     #[error("failed to parse JWK")]
     InvalidJwk,
-    #[error("failed to construct mdoc")]
-    GeneralConstructionError,
+    #[error("failed to construct mdoc: {0}")]
+    GeneralConstructionError(String),
 }
 
 #[derive(Debug, uniffi::Error, thiserror::Error)]
@@ -614,19 +687,54 @@ fn prepare_builder(
         .device_key_info(device_key_info))
 }
 
+/// Convert a [`serde_json::Value`] to an equivalent [`ciborium::Value`].
+///
+/// Used to translate JSON-encoded element values (supplied by callers) into
+/// CBOR values that the isomdl namespace builder expects.
+fn json_to_cbor(json: serde_json::Value) -> Value {
+    match json {
+        serde_json::Value::Null => Value::Null,
+        serde_json::Value::Bool(b) => Value::Bool(b),
+        serde_json::Value::Number(n) => {
+            if let Some(i) = n.as_i64() {
+                Value::Integer(i.into())
+            } else if let Some(f) = n.as_f64() {
+                Value::Float(f)
+            } else {
+                Value::Float(0.0)
+            }
+        }
+        serde_json::Value::String(s) => Value::Text(s),
+        serde_json::Value::Array(arr) => Value::Array(arr.into_iter().map(json_to_cbor).collect()),
+        serde_json::Value::Object(obj) => Value::Map(
+            obj.into_iter()
+                .map(|(k, v)| (Value::Text(k), json_to_cbor(v)))
+                .collect(),
+        ),
+    }
+}
+
+/// Convert a caller-supplied namespace map (element identifier → JSON string)
+/// into the BTreeMap<String, BTreeMap<String, ciborium::Value>> form that
+/// [`prepare_builder`] requires.
+///
+/// Accepting JSON strings instead of raw CBOR bytes removes the need for
+/// callers to depend on a CBOR library (e.g. `cbor2` in Python) just to
+/// encode individual element values.
 fn convert_namespaces(
-    input: HashMap<String, HashMap<String, Vec<u8>>>,
+    input: HashMap<String, HashMap<String, String>>,
 ) -> Result<BTreeMap<String, BTreeMap<String, Value>>, MdocInitError> {
     let mut outer = BTreeMap::new();
 
     for (namespace, inner_map) in input {
         let mut inner_btree = BTreeMap::new();
-        for (key, vec_bytes) in inner_map {
-            let mut cursor = Cursor::new(vec_bytes);
-            let value: Value = from_reader(&mut cursor).map_err(|_e| {
-                MdocInitError::DocumentCborDecoding("Error decoding CBOR value".to_owned())
+        for (key, json_str) in inner_map {
+            let json_val: serde_json::Value = serde_json::from_str(&json_str).map_err(|_| {
+                MdocInitError::DocumentCborDecoding(format!(
+                    "Invalid JSON for element '{key}': {json_str:?}"
+                ))
             })?;
-            inner_btree.insert(key, value);
+            inner_btree.insert(key, json_to_cbor(json_val));
         }
         outer.insert(namespace, inner_btree);
     }
@@ -828,11 +936,11 @@ mod tests {
 
         let verification = result.unwrap();
         assert!(verification.verified, "Signature should be valid");
-        // Note: setup_certificate_chain creates an intermediate "SpruceID Test DS" certificate
+        // Note: setup_certificate_chain creates an intermediate "Test DS" certificate
         // signed by the provided IACA cert, so the common name is from the DS cert, not IACA
         assert_eq!(
             verification.common_name,
-            Some("SpruceID Test DS".to_string()),
+            Some("Test DS".to_string()),
             "Common name should match DS certificate"
         );
         assert!(verification.error.is_none(), "No error expected");
@@ -988,12 +1096,13 @@ mod tests {
         })
         .to_string();
 
-        // 4. Sample Data (Generic Namespace)
+        // 4. Sample Data (Generic Namespace) — element values are JSON strings
         let mut namespaces = HashMap::new();
         let mut custom_ns = HashMap::new();
-        let mut cursor = Cursor::new(Vec::new());
-        ciborium::into_writer(&Value::Text("custom-value".to_string()), &mut cursor).unwrap();
-        custom_ns.insert("custom-element".to_string(), cursor.into_inner());
+        custom_ns.insert(
+            "custom-element".to_string(),
+            serde_json::to_string("custom-value").unwrap(),
+        );
         namespaces.insert("com.example.custom".to_string(), custom_ns);
 
         // 5. Call function
@@ -1017,6 +1126,121 @@ mod tests {
             .find(|e| e.identifier == "custom-element")
             .expect("Element not found");
         assert!(element.value.as_ref().unwrap().contains("custom-value"));
+    }
+
+    #[test]
+    fn test_issuer_signed_b64_iso_keys() {
+        // Setup: mirrors test_create_and_sign with a generic namespace
+        let issuer_key = SigningKey::random(&mut OsRng);
+        let issuer_key_pem = issuer_key.to_pkcs8_pem(LineEnding::LF).unwrap().to_string();
+        let spki = SubjectPublicKeyInfoOwned::from_key(issuer_key.verifying_key().clone()).unwrap();
+        let cert = CertificateBuilder::new(
+            Profile::Root,
+            SerialNumber::from(1u64),
+            Validity::from_now(Duration::from_secs(3600)).unwrap(),
+            "CN=Test Issuer".parse().unwrap(),
+            spki,
+            &issuer_key,
+        )
+        .unwrap()
+        .build::<p256::ecdsa::DerSignature>()
+        .unwrap();
+        let cert_pem = cert.to_pem(LineEnding::LF).unwrap();
+
+        let holder_key = SigningKey::random(&mut OsRng);
+        let point = holder_key.verifying_key().to_encoded_point(false);
+        let x = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(point.x().unwrap());
+        let y = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(point.y().unwrap());
+        let holder_jwk =
+            serde_json::json!({"kty": "EC", "crv": "P-256", "x": x, "y": y}).to_string();
+
+        let mut namespaces = HashMap::new();
+        let mut ns_items = HashMap::new();
+        // Element values are JSON strings — no CBOR library needed at call site
+        ns_items.insert(
+            "given_name".to_string(),
+            serde_json::to_string("Alice").unwrap(),
+        );
+        namespaces.insert("org.example.test".to_string(), ns_items);
+
+        let mdoc = Mdoc::create_and_sign(
+            "org.example.test.doc".to_string(),
+            namespaces,
+            holder_jwk,
+            cert_pem,
+            issuer_key_pem,
+        )
+        .expect("create_and_sign failed");
+
+        // Exercise: serialize as ISO 18013-5 §8.3 compliant IssuerSigned
+        let b64 = mdoc.issuer_signed_b64().expect("issuer_signed_b64 failed");
+
+        // Decode base64url and parse as CBOR
+        let cbor_bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
+            .decode(&b64)
+            .expect("base64url decode failed");
+        let value: Value =
+            ciborium::from_reader(std::io::Cursor::new(&cbor_bytes)).expect("CBOR parse failed");
+
+        let Value::Map(top_pairs) = value else {
+            panic!("Expected CBOR map at top level");
+        };
+
+        // Collect text keys for readable assertions
+        let keys: Vec<String> = top_pairs
+            .iter()
+            .filter_map(|(k, _)| {
+                if let Value::Text(s) = k {
+                    Some(s.clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        // ISO 18013-5 §8.3 requires camelCase keys in IssuerSigned
+        assert!(
+            keys.contains(&"issuerAuth".to_string()),
+            "Expected 'issuerAuth' (ISO §8.3), got keys: {keys:?}"
+        );
+        assert!(
+            keys.contains(&"nameSpaces".to_string()),
+            "Expected 'nameSpaces' (ISO §8.3), got keys: {keys:?}"
+        );
+        assert!(
+            !keys.contains(&"issuer_auth".to_string()),
+            "Prohibited snake_case 'issuer_auth' present in CBOR output: {keys:?}"
+        );
+        assert!(
+            !keys.contains(&"namespaces".to_string()),
+            "Prohibited snake_case 'namespaces' present in CBOR output: {keys:?}"
+        );
+
+        // ISO 18013-5 §8.3: nameSpaces values must be CBOR arrays (NonEmptyVec<IssuerSignedItemBytes>)
+        let ns_val = top_pairs
+            .iter()
+            .find(|(k, _)| k == &Value::Text("nameSpaces".to_string()))
+            .map(|(_, v)| v)
+            .expect("nameSpaces key unexpectedly missing");
+        let Value::Map(ns_map) = ns_val else {
+            panic!("Expected nameSpaces to be a CBOR map of namespace -> [items]");
+        };
+        assert!(!ns_map.is_empty(), "nameSpaces must not be empty");
+        for (_, items_val) in ns_map {
+            assert!(
+                matches!(items_val, Value::Array(_)),
+                "Each namespace value must be a CBOR array (ISO §8.3), got: {items_val:?}"
+            );
+        }
+
+        // Bonus: round-trip — the b64 must be parseable by Mdoc::new_from_base64url_encoded_issuer_signed
+        let key_alias = KeyAlias("test-alias".to_string());
+        let parsed = Mdoc::new_from_base64url_encoded_issuer_signed(b64.clone(), key_alias);
+        assert!(
+            parsed.is_ok(),
+            "issuer_signed_b64 output must be parseable by new_from_base64url_encoded_issuer_signed: {:?}",
+            parsed.err()
+        );
     }
 
     #[test]
@@ -1159,9 +1383,6 @@ mod tests {
         let verification = result_chain.unwrap();
         assert!(verification.verified);
         // Common name should be the Ephemeral DS created by setup_certificate_chain
-        assert_eq!(
-            verification.common_name,
-            Some("SpruceID Test DS".to_string())
-        );
+        assert_eq!(verification.common_name, Some("Test DS".to_string()));
     }
 }

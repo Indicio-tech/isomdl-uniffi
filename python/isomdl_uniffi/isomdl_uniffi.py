@@ -3185,8 +3185,16 @@ class MdocInitError:  # type: ignore
             return "MdocInitError.InvalidJwk({})".format(str(self))
     _UniffiTempMdocInitError.InvalidJwk = InvalidJwk # type: ignore
     class GeneralConstructionError(_UniffiTempMdocInitError):
-        def __init__(self):
-            pass
+        def __init__(self, *values):
+            if len(values) != 1:
+                raise TypeError(f"Expected 1 arguments, found {len(values)}")
+            if not isinstance(values[0], str):
+                raise TypeError(f"unexpected type for tuple element 0 - expected 'str', got '{type(values[0])}'")
+            super().__init__(", ".join(map(repr, values)))
+            self._values = values
+
+        def __getitem__(self, index):
+            return self._values[index]
 
         def __repr__(self):
             return "MdocInitError.GeneralConstructionError({})".format(str(self))
@@ -3230,6 +3238,7 @@ class _UniffiConverterTypeMdocInitError(_UniffiConverterRustBuffer):
             )
         if variant == 10:
             return MdocInitError.GeneralConstructionError(
+                _UniffiConverterString.read(buf),
             )
         raise InternalError("Raw enum value doesn't match any cases")
 
@@ -3255,6 +3264,7 @@ class _UniffiConverterTypeMdocInitError(_UniffiConverterRustBuffer):
         if isinstance(value, MdocInitError.InvalidJwk):
             return
         if isinstance(value, MdocInitError.GeneralConstructionError):
+            _UniffiConverterString.check_lower(value._values[0])
             return
 
     @staticmethod
@@ -3280,6 +3290,7 @@ class _UniffiConverterTypeMdocInitError(_UniffiConverterRustBuffer):
             buf.write_i32(9)
         if isinstance(value, MdocInitError.GeneralConstructionError):
             buf.write_i32(10)
+            _UniffiConverterString.write(value._values[0], buf)
 
 
 # MdocVerificationError

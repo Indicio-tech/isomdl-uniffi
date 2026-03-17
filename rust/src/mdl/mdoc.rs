@@ -133,30 +133,35 @@ impl Mdoc {
             PublicKey::from_jwk_str(&holder_jwk).map_err(|_e| MdocInitError::InvalidJwk)?;
 
         let namespaces = convert_namespaces(namespaces)?;
-        let builder = prepare_builder(pub_key, namespaces, doc_type)
-            .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+        let builder = prepare_builder(pub_key, namespaces, doc_type).map_err(|e| {
+            MdocInitError::GeneralConstructionError(format!("prepare_builder: {e}"))
+        })?;
 
         let (certificate, iaca_certs, signer) =
-            setup_certificate_chain(iaca_cert_perm, iaca_key_perm, None)
-                .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+            setup_certificate_chain(iaca_cert_perm, iaca_key_perm, None).map_err(|e| {
+                MdocInitError::GeneralConstructionError(format!("certificate chain: {e}"))
+            })?;
 
-        let mut x5chain_builder = X5Chain::builder()
-            .with_certificate(certificate)
-            .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+        let mut x5chain_builder =
+            X5Chain::builder()
+                .with_certificate(certificate)
+                .map_err(|e| {
+                    MdocInitError::GeneralConstructionError(format!("x5chain certificate: {e}"))
+                })?;
 
         for cert in iaca_certs {
-            x5chain_builder = x5chain_builder
-                .with_certificate(cert)
-                .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+            x5chain_builder = x5chain_builder.with_certificate(cert).map_err(|e| {
+                MdocInitError::GeneralConstructionError(format!("x5chain intermediate: {e}"))
+            })?;
         }
 
         let x5chain = x5chain_builder
             .build()
-            .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+            .map_err(|e| MdocInitError::GeneralConstructionError(format!("x5chain build: {e}")))?;
 
         let mdoc = builder
             .issue::<p256::ecdsa::SigningKey, p256::ecdsa::Signature>(x5chain, signer)
-            .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+            .map_err(|e| MdocInitError::GeneralConstructionError(format!("issue: {e}")))?;
 
         let namespaces = NonEmptyMap::maybe_new(
             mdoc.namespaces
@@ -170,12 +175,16 @@ impl Mdoc {
                             .map(|element| (element.as_ref().element_identifier.clone(), element))
                             .collect(),
                     )
-                    .ok_or(MdocInitError::GeneralConstructionError)?;
+                    .ok_or(MdocInitError::GeneralConstructionError(
+                        "empty namespace elements".into(),
+                    ))?;
                     Ok((namespace, inner_map))
                 })
                 .collect::<Result<_, MdocInitError>>()?,
         )
-        .ok_or(MdocInitError::GeneralConstructionError)?;
+        .ok_or(MdocInitError::GeneralConstructionError(
+            "empty namespaces".into(),
+        ))?;
 
         let doc = Document {
             id: Default::default(),
@@ -204,49 +213,62 @@ impl Mdoc {
         let mut namespaces = BTreeMap::new();
 
         // Parse mDL items
-        let json_value: serde_json::Value = serde_json::from_str(&mdl_items)
-            .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+        let json_value: serde_json::Value = serde_json::from_str(&mdl_items).map_err(|e| {
+            MdocInitError::GeneralConstructionError(format!("mdl_items JSON parse: {e}"))
+        })?;
         let mdl_data = OrgIso1801351::from_json(&json_value)
-            .map_err(|_e| MdocInitError::GeneralConstructionError)?
+            .map_err(|e| {
+                MdocInitError::GeneralConstructionError(format!(
+                    "mDL namespace parse (org.iso.18013.5.1): {e}"
+                ))
+            })?
             .to_ns_map();
         namespaces.insert("org.iso.18013.5.1".to_string(), mdl_data);
 
         // Parse AAMVA items if present
         if let Some(aamva_json) = aamva_items {
-            let json_value: serde_json::Value = serde_json::from_str(&aamva_json)
-                .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+            let json_value: serde_json::Value = serde_json::from_str(&aamva_json).map_err(|e| {
+                MdocInitError::GeneralConstructionError(format!("aamva JSON parse: {e}"))
+            })?;
             let aamva_data = OrgIso1801351Aamva::from_json(&json_value)
-                .map_err(|_e| MdocInitError::GeneralConstructionError)?
+                .map_err(|e| {
+                    MdocInitError::GeneralConstructionError(format!("AAMVA namespace parse: {e}"))
+                })?
                 .to_ns_map();
             namespaces.insert("org.iso.18013.5.1.aamva".to_string(), aamva_data);
         }
 
         let doc_type = "org.iso.18013.5.1.mDL".to_string();
 
-        let builder = prepare_builder(pub_key, namespaces, doc_type)
-            .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+        let builder = prepare_builder(pub_key, namespaces, doc_type).map_err(|e| {
+            MdocInitError::GeneralConstructionError(format!("prepare_builder: {e}"))
+        })?;
 
         let (certificate, iaca_certs, signer) =
-            setup_certificate_chain(iaca_cert_pem, iaca_key_pem, None)
-                .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+            setup_certificate_chain(iaca_cert_pem, iaca_key_pem, None).map_err(|e| {
+                MdocInitError::GeneralConstructionError(format!("certificate chain: {e}"))
+            })?;
 
-        let mut x5chain_builder = X5Chain::builder()
-            .with_certificate(certificate)
-            .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+        let mut x5chain_builder =
+            X5Chain::builder()
+                .with_certificate(certificate)
+                .map_err(|e| {
+                    MdocInitError::GeneralConstructionError(format!("x5chain certificate: {e}"))
+                })?;
 
         for cert in iaca_certs {
-            x5chain_builder = x5chain_builder
-                .with_certificate(cert)
-                .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+            x5chain_builder = x5chain_builder.with_certificate(cert).map_err(|e| {
+                MdocInitError::GeneralConstructionError(format!("x5chain intermediate: {e}"))
+            })?;
         }
 
         let x5chain = x5chain_builder
             .build()
-            .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+            .map_err(|e| MdocInitError::GeneralConstructionError(format!("x5chain build: {e}")))?;
 
         let mdoc = builder
             .issue::<p256::ecdsa::SigningKey, p256::ecdsa::Signature>(x5chain, signer)
-            .map_err(|_e| MdocInitError::GeneralConstructionError)?;
+            .map_err(|e| MdocInitError::GeneralConstructionError(format!("issue: {e}")))?;
 
         let namespaces = NonEmptyMap::maybe_new(
             mdoc.namespaces
@@ -260,12 +282,16 @@ impl Mdoc {
                             .map(|element| (element.as_ref().element_identifier.clone(), element))
                             .collect(),
                     )
-                    .ok_or(MdocInitError::GeneralConstructionError)?;
+                    .ok_or(MdocInitError::GeneralConstructionError(
+                        "empty namespace elements".into(),
+                    ))?;
                     Ok((namespace, inner_map))
                 })
                 .collect::<Result<_, MdocInitError>>()?,
         )
-        .ok_or(MdocInitError::GeneralConstructionError)?;
+        .ok_or(MdocInitError::GeneralConstructionError(
+            "empty namespaces".into(),
+        ))?;
 
         let doc = Document {
             id: Default::default(),
@@ -533,12 +559,18 @@ impl Mdoc {
                     .map(|i| (i.as_ref().element_identifier.clone(), i))
                     .collect::<BTreeMap<_, _>>()
                     .try_into()
-                    .map_err(|_| MdocInitError::GeneralConstructionError)?;
+                    .map_err(|_| {
+                        MdocInitError::GeneralConstructionError(
+                            "empty namespace elements in IssuerSigned".into(),
+                        )
+                    })?;
                 Ok((k, m))
             })
             .collect::<Result<BTreeMap<_, _>, MdocInitError>>()?
             .try_into()
-            .map_err(|_| MdocInitError::GeneralConstructionError)?;
+            .map_err(|_| {
+                MdocInitError::GeneralConstructionError("empty namespaces in IssuerSigned".into())
+            })?;
 
         let mso: Tag24<Mso> = isomdl::cbor::from_slice(
             issuer_auth
@@ -580,8 +612,8 @@ pub enum MdocInitError {
     DocumentUtf8Decoding,
     #[error("failed to parse JWK")]
     InvalidJwk,
-    #[error("failed to construct mdoc")]
-    GeneralConstructionError,
+    #[error("failed to construct mdoc: {0}")]
+    GeneralConstructionError(String),
 }
 
 #[derive(Debug, uniffi::Error, thiserror::Error)]

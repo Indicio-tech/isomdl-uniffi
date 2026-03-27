@@ -49,7 +49,7 @@ uuid = "1.16.0"
 x509-cert = { version = "0.2.5", features = ["hazmat", "builder", "pem"] }
 
 [dev-dependencies]
-rand_core = "0.6"
+rand_core = "0.9"
 
 [[bin]]
 name = "uniffi-bindgen"

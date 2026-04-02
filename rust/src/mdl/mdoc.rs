@@ -688,9 +688,9 @@ impl PreparedMdoc {
         })?;
 
         let algorithm = parse_signature_algorithm(&signature_algorithm)?;
-        let prepared = builder.prepare(algorithm).map_err(|e| {
-            MdocInitError::GeneralConstructionError(format!("prepare: {e}"))
-        })?;
+        let prepared = builder
+            .prepare(algorithm)
+            .map_err(|e| MdocInitError::GeneralConstructionError(format!("prepare: {e}")))?;
 
         Ok(Arc::new(Self {
             inner: std::sync::Mutex::new(Some(prepared)),
@@ -737,10 +737,9 @@ impl PreparedMdoc {
 
         // Parse AAMVA items if present
         if let Some(aamva_json) = aamva_items {
-            let json_value: serde_json::Value =
-                serde_json::from_str(&aamva_json).map_err(|e| {
-                    MdocInitError::GeneralConstructionError(format!("aamva JSON parse: {e}"))
-                })?;
+            let json_value: serde_json::Value = serde_json::from_str(&aamva_json).map_err(|e| {
+                MdocInitError::GeneralConstructionError(format!("aamva JSON parse: {e}"))
+            })?;
             let aamva_data = OrgIso1801351Aamva::from_json(&json_value)
                 .map_err(|e| {
                     MdocInitError::GeneralConstructionError(format!("AAMVA namespace parse: {e}"))
@@ -755,9 +754,9 @@ impl PreparedMdoc {
         })?;
 
         let algorithm = parse_signature_algorithm(&signature_algorithm)?;
-        let prepared = builder.prepare(algorithm).map_err(|e| {
-            MdocInitError::GeneralConstructionError(format!("prepare: {e}"))
-        })?;
+        let prepared = builder
+            .prepare(algorithm)
+            .map_err(|e| MdocInitError::GeneralConstructionError(format!("prepare: {e}")))?;
 
         Ok(Arc::new(Self {
             inner: std::sync::Mutex::new(Some(prepared)),
@@ -766,9 +765,10 @@ impl PreparedMdoc {
 
     /// Returns the bytes that must be signed by the issuer's key.
     pub fn signature_payload(&self) -> Result<Vec<u8>, MdocInitError> {
-        let guard = self.inner.lock().map_err(|_| {
-            MdocInitError::GeneralConstructionError("lock poisoned".into())
-        })?;
+        let guard = self
+            .inner
+            .lock()
+            .map_err(|_| MdocInitError::GeneralConstructionError("lock poisoned".into()))?;
         let prepared = guard.as_ref().ok_or_else(|| {
             MdocInitError::GeneralConstructionError(
                 "PreparedMdoc already consumed by complete()".into(),
@@ -1694,7 +1694,7 @@ mod tests {
         assert!(!payload.is_empty(), "signature payload should be non-empty");
 
         // 7. Sign externally with the DS key
-        use p256::ecdsa::{signature::Signer, Signature};
+        use p256::ecdsa::{Signature, signature::Signer};
         let signature: Signature = ds_key.sign(&payload);
 
         // 8. Complete
@@ -1762,7 +1762,7 @@ mod tests {
         .expect("prepare failed");
 
         let payload = prepared.signature_payload().expect("payload failed");
-        use p256::ecdsa::{signature::Signer, Signature};
+        use p256::ecdsa::{Signature, signature::Signer};
         let signature: Signature = ds_key.sign(&payload);
 
         let mdoc = prepared
@@ -1781,10 +1781,7 @@ mod tests {
 
         // The cert was self-signed with CN=Test Issuer, used directly (no
         // intermediate DS cert generation), so the common name should match.
-        assert_eq!(
-            verification.common_name,
-            Some("Test Issuer".to_string()),
-        );
+        assert_eq!(verification.common_name, Some("Test Issuer".to_string()),);
     }
 
     #[test]

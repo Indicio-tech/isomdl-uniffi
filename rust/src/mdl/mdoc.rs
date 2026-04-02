@@ -697,6 +697,73 @@ impl PreparedMdoc {
         }))
     }
 
+    /// Prepare an mDL (`org.iso.18013.5.1.mDL`) document for external signing.
+    ///
+    /// Unlike [`PreparedMdoc::new()`], which uses a generic JSON→CBOR conversion,
+    /// this constructor uses the ISO 18013-5 typed namespace builder
+    /// (`OrgIso1801351`) to ensure correct CBOR field types (e.g. `birth_date`
+    /// encoded as a CBOR `full-date`, not a plain text string).
+    ///
+    /// * `mdl_items` — JSON object string with mDL namespace elements.
+    /// * `aamva_items` — Optional JSON object string with AAMVA namespace elements.
+    /// * `holder_jwk` — P-256 JWK of the holder's device key.
+    /// * `signature_algorithm` — one of `"ES256"`, `"ES384"`, `"ES512"`.
+    #[uniffi::constructor]
+    pub fn new_mdl(
+        mdl_items: String,
+        aamva_items: Option<String>,
+        holder_jwk: String,
+        signature_algorithm: String,
+    ) -> Result<Arc<Self>, MdocInitError> {
+        let pub_key: PublicKey =
+            PublicKey::from_jwk_str(&holder_jwk).map_err(|_e| MdocInitError::InvalidJwk)?;
+
+        let mut namespaces = BTreeMap::new();
+
+        // Parse mDL items using the typed mDL parser (OrgIso1801351::from_json),
+        // same as create_and_sign_mdl.  This ensures CBOR field types are correct
+        // (e.g. birth_date as tdate rather than a plain text string).
+        let json_value: serde_json::Value = serde_json::from_str(&mdl_items).map_err(|e| {
+            MdocInitError::GeneralConstructionError(format!("mdl_items JSON parse: {e}"))
+        })?;
+        let mdl_data = OrgIso1801351::from_json(&json_value)
+            .map_err(|e| {
+                MdocInitError::GeneralConstructionError(format!(
+                    "mDL namespace parse (org.iso.18013.5.1): {e}"
+                ))
+            })?
+            .to_ns_map();
+        namespaces.insert("org.iso.18013.5.1".to_string(), mdl_data);
+
+        // Parse AAMVA items if present
+        if let Some(aamva_json) = aamva_items {
+            let json_value: serde_json::Value =
+                serde_json::from_str(&aamva_json).map_err(|e| {
+                    MdocInitError::GeneralConstructionError(format!("aamva JSON parse: {e}"))
+                })?;
+            let aamva_data = OrgIso1801351Aamva::from_json(&json_value)
+                .map_err(|e| {
+                    MdocInitError::GeneralConstructionError(format!("AAMVA namespace parse: {e}"))
+                })?
+                .to_ns_map();
+            namespaces.insert("org.iso.18013.5.1.aamva".to_string(), aamva_data);
+        }
+
+        let doc_type = "org.iso.18013.5.1.mDL".to_string();
+        let builder = prepare_builder(pub_key, namespaces, doc_type).map_err(|e| {
+            MdocInitError::GeneralConstructionError(format!("prepare_builder: {e}"))
+        })?;
+
+        let algorithm = parse_signature_algorithm(&signature_algorithm)?;
+        let prepared = builder.prepare(algorithm).map_err(|e| {
+            MdocInitError::GeneralConstructionError(format!("prepare: {e}"))
+        })?;
+
+        Ok(Arc::new(Self {
+            inner: std::sync::Mutex::new(Some(prepared)),
+        }))
+    }
+
     /// Returns the bytes that must be signed by the issuer's key.
     pub fn signature_payload(&self) -> Result<Vec<u8>, MdocInitError> {
         let guard = self.inner.lock().map_err(|_| {

@@ -474,6 +474,12 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_isomdl_uniffi_checksum_func_verify_oid4vp_response() != 1253:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_isomdl_uniffi_checksum_method_mdocoid4vpsession_build_device_response() != 42662:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_isomdl_uniffi_checksum_method_mdocoid4vpsession_finish_device_response() != 54839:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_isomdl_uniffi_checksum_method_mdocoid4vpsession_parse_authorization_request() != 33925:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_isomdl_uniffi_checksum_method_mdlpresentationsession_generate_response() != 18706:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_isomdl_uniffi_checksum_method_mdlpresentationsession_get_ble_ident() != 27464:
@@ -506,6 +512,14 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_isomdl_uniffi_checksum_method_p256keypair_sign() != 44060:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_isomdl_uniffi_checksum_method_preparedmdoc_complete() != 48153:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_isomdl_uniffi_checksum_method_preparedmdoc_signature_payload() != 10293:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_isomdl_uniffi_checksum_method_unsignedoidvpresponse_get_signature_payload() != 26034:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_isomdl_uniffi_checksum_constructor_mdocoid4vpsession_new() != 37965:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_isomdl_uniffi_checksum_constructor_mdlpresentationsession_new() != 1270:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_create_and_sign() != 347:
@@ -521,6 +535,10 @@ def _uniffi_check_api_checksums(lib):
     if lib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_new_from_base64url_encoded_issuer_signed() != 55023:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_isomdl_uniffi_checksum_constructor_p256keypair_new() != 41043:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_isomdl_uniffi_checksum_constructor_preparedmdoc_new() != 34079:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_isomdl_uniffi_checksum_constructor_preparedmdoc_new_mdl() != 4761:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
 
 # A ctypes library to expose the extern-C FFI definitions.
@@ -648,6 +666,41 @@ _UniffiLib.uniffi_isomdl_uniffi_fn_free_mdlsessionmanager.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_isomdl_uniffi_fn_free_mdlsessionmanager.restype = None
+_UniffiLib.uniffi_isomdl_uniffi_fn_clone_mdocoid4vpsession.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_isomdl_uniffi_fn_clone_mdocoid4vpsession.restype = ctypes.c_void_p
+_UniffiLib.uniffi_isomdl_uniffi_fn_free_mdocoid4vpsession.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_isomdl_uniffi_fn_free_mdocoid4vpsession.restype = None
+_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdocoid4vpsession_new.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdocoid4vpsession_new.restype = ctypes.c_void_p
+_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdocoid4vpsession_build_device_response.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdocoid4vpsession_build_device_response.restype = ctypes.c_void_p
+_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdocoid4vpsession_finish_device_response.argtypes = (
+    ctypes.c_void_p,
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdocoid4vpsession_finish_device_response.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdocoid4vpsession_parse_authorization_request.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdocoid4vpsession_parse_authorization_request.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_isomdl_uniffi_fn_clone_mdlpresentationsession.argtypes = (
     ctypes.c_void_p,
     ctypes.POINTER(_UniffiRustCallStatus),
@@ -815,6 +868,59 @@ _UniffiLib.uniffi_isomdl_uniffi_fn_method_p256keypair_sign.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_isomdl_uniffi_fn_method_p256keypair_sign.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_isomdl_uniffi_fn_clone_preparedmdoc.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_isomdl_uniffi_fn_clone_preparedmdoc.restype = ctypes.c_void_p
+_UniffiLib.uniffi_isomdl_uniffi_fn_free_preparedmdoc.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_isomdl_uniffi_fn_free_preparedmdoc.restype = None
+_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_preparedmdoc_new.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_preparedmdoc_new.restype = ctypes.c_void_p
+_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_preparedmdoc_new_mdl.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_preparedmdoc_new_mdl.restype = ctypes.c_void_p
+_UniffiLib.uniffi_isomdl_uniffi_fn_method_preparedmdoc_complete.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_isomdl_uniffi_fn_method_preparedmdoc_complete.restype = ctypes.c_void_p
+_UniffiLib.uniffi_isomdl_uniffi_fn_method_preparedmdoc_signature_payload.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_isomdl_uniffi_fn_method_preparedmdoc_signature_payload.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_isomdl_uniffi_fn_clone_unsignedoidvpresponse.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_isomdl_uniffi_fn_clone_unsignedoidvpresponse.restype = ctypes.c_void_p
+_UniffiLib.uniffi_isomdl_uniffi_fn_free_unsignedoidvpresponse.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_isomdl_uniffi_fn_free_unsignedoidvpresponse.restype = None
+_UniffiLib.uniffi_isomdl_uniffi_fn_method_unsignedoidvpresponse_get_signature_payload.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_isomdl_uniffi_fn_method_unsignedoidvpresponse_get_signature_payload.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_isomdl_uniffi_fn_func_establish_session.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
@@ -1147,6 +1253,15 @@ _UniffiLib.uniffi_isomdl_uniffi_checksum_func_verified_response_as_json_string.r
 _UniffiLib.uniffi_isomdl_uniffi_checksum_func_verify_oid4vp_response.argtypes = (
 )
 _UniffiLib.uniffi_isomdl_uniffi_checksum_func_verify_oid4vp_response.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdocoid4vpsession_build_device_response.argtypes = (
+)
+_UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdocoid4vpsession_build_device_response.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdocoid4vpsession_finish_device_response.argtypes = (
+)
+_UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdocoid4vpsession_finish_device_response.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdocoid4vpsession_parse_authorization_request.argtypes = (
+)
+_UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdocoid4vpsession_parse_authorization_request.restype = ctypes.c_uint16
 _UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdlpresentationsession_generate_response.argtypes = (
 )
 _UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdlpresentationsession_generate_response.restype = ctypes.c_uint16
@@ -1195,6 +1310,18 @@ _UniffiLib.uniffi_isomdl_uniffi_checksum_method_p256keypair_public_jwk.restype =
 _UniffiLib.uniffi_isomdl_uniffi_checksum_method_p256keypair_sign.argtypes = (
 )
 _UniffiLib.uniffi_isomdl_uniffi_checksum_method_p256keypair_sign.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_uniffi_checksum_method_preparedmdoc_complete.argtypes = (
+)
+_UniffiLib.uniffi_isomdl_uniffi_checksum_method_preparedmdoc_complete.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_uniffi_checksum_method_preparedmdoc_signature_payload.argtypes = (
+)
+_UniffiLib.uniffi_isomdl_uniffi_checksum_method_preparedmdoc_signature_payload.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_uniffi_checksum_method_unsignedoidvpresponse_get_signature_payload.argtypes = (
+)
+_UniffiLib.uniffi_isomdl_uniffi_checksum_method_unsignedoidvpresponse_get_signature_payload.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdocoid4vpsession_new.argtypes = (
+)
+_UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdocoid4vpsession_new.restype = ctypes.c_uint16
 _UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdlpresentationsession_new.argtypes = (
 )
 _UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdlpresentationsession_new.restype = ctypes.c_uint16
@@ -1219,6 +1346,12 @@ _UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_new_from_base64url_enc
 _UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_p256keypair_new.argtypes = (
 )
 _UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_p256keypair_new.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_preparedmdoc_new.argtypes = (
+)
+_UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_preparedmdoc_new.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_preparedmdoc_new_mdl.argtypes = (
+)
+_UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_preparedmdoc_new_mdl.restype = ctypes.c_uint16
 _UniffiLib.ffi_isomdl_uniffi_uniffi_contract_version.argtypes = (
 )
 _UniffiLib.ffi_isomdl_uniffi_uniffi_contract_version.restype = ctypes.c_uint32
@@ -1314,6 +1447,12 @@ class _UniffiConverterBytes(_UniffiConverterRustBuffer):
     def write(value, buf):
         buf.write_i32(len(value))
         buf.write(value)
+
+
+
+
+
+
 
 
 
@@ -1651,6 +1790,57 @@ class _UniffiConverterTypeMdlReaderVerifiedData(_UniffiConverterRustBuffer):
         _UniffiConverterTypeAuthenticationStatus.write(value.issuer_authentication, buf)
         _UniffiConverterTypeAuthenticationStatus.write(value.device_authentication, buf)
         _UniffiConverterOptionalString.write(value.errors, buf)
+
+
+class ParsedOid4vpRequest:
+    """
+    The result of parsing an OID4VP authorisation request.
+    """
+
+    session_transcript_json: "str"
+    """
+    JSON-serialised `OID4VPSessionTranscript` ready to pass to
+    `MDocOid4vpSession::build_device_response`.
+    """
+
+    permitted_namespaces: "dict[str, dict[str, bytes]]"
+    """
+    Map of `namespace → { element_identifier → CBOR-encoded placeholder }`
+    ready to pass as `permitted_namespaces` to `build_device_response`.
+    Values are CBOR-null placeholders; only the keys are used for filtering.
+    """
+
+    def __init__(self, *, session_transcript_json: "str", permitted_namespaces: "dict[str, dict[str, bytes]]"):
+        self.session_transcript_json = session_transcript_json
+        self.permitted_namespaces = permitted_namespaces
+
+    def __str__(self):
+        return "ParsedOid4vpRequest(session_transcript_json={}, permitted_namespaces={})".format(self.session_transcript_json, self.permitted_namespaces)
+
+    def __eq__(self, other):
+        if self.session_transcript_json != other.session_transcript_json:
+            return False
+        if self.permitted_namespaces != other.permitted_namespaces:
+            return False
+        return True
+
+class _UniffiConverterTypeParsedOid4vpRequest(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        return ParsedOid4vpRequest(
+            session_transcript_json=_UniffiConverterString.read(buf),
+            permitted_namespaces=_UniffiConverterMapStringMapStringBytes.read(buf),
+        )
+
+    @staticmethod
+    def check_lower(value):
+        _UniffiConverterString.check_lower(value.session_transcript_json)
+        _UniffiConverterMapStringMapStringBytes.check_lower(value.permitted_namespaces)
+
+    @staticmethod
+    def write(value, buf):
+        _UniffiConverterString.write(value.session_transcript_json, buf)
+        _UniffiConverterMapStringMapStringBytes.write(value.permitted_namespaces, buf)
 
 
 
@@ -2404,8 +2594,16 @@ class MdocInitError:  # type: ignore
             return "MdocInitError.InvalidJwk({})".format(str(self))
     _UniffiTempMdocInitError.InvalidJwk = InvalidJwk # type: ignore
     class GeneralConstructionError(_UniffiTempMdocInitError):
-        def __init__(self):
-            pass
+        def __init__(self, *values):
+            if len(values) != 1:
+                raise TypeError(f"Expected 1 arguments, found {len(values)}")
+            if not isinstance(values[0], str):
+                raise TypeError(f"unexpected type for tuple element 0 - expected 'str', got '{type(values[0])}'")
+            super().__init__(", ".join(map(repr, values)))
+            self._values = values
+
+        def __getitem__(self, index):
+            return self._values[index]
 
         def __repr__(self):
             return "MdocInitError.GeneralConstructionError({})".format(str(self))
@@ -2449,6 +2647,7 @@ class _UniffiConverterTypeMdocInitError(_UniffiConverterRustBuffer):
             )
         if variant == 10:
             return MdocInitError.GeneralConstructionError(
+                _UniffiConverterString.read(buf),
             )
         raise InternalError("Raw enum value doesn't match any cases")
 
@@ -2474,6 +2673,7 @@ class _UniffiConverterTypeMdocInitError(_UniffiConverterRustBuffer):
         if isinstance(value, MdocInitError.InvalidJwk):
             return
         if isinstance(value, MdocInitError.GeneralConstructionError):
+            _UniffiConverterString.check_lower(value._values[0])
             return
 
     @staticmethod
@@ -2499,6 +2699,7 @@ class _UniffiConverterTypeMdocInitError(_UniffiConverterRustBuffer):
             buf.write_i32(9)
         if isinstance(value, MdocInitError.GeneralConstructionError):
             buf.write_i32(10)
+            _UniffiConverterString.write(value._values[0], buf)
 
 
 # MdocVerificationError
@@ -3337,6 +3538,39 @@ class _UniffiConverterMapStringMapStringString(_UniffiConverterRustBuffer):
 
 
 
+class _UniffiConverterMapStringMapStringBytes(_UniffiConverterRustBuffer):
+    @classmethod
+    def check_lower(cls, items):
+        for (key, value) in items.items():
+            _UniffiConverterString.check_lower(key)
+            _UniffiConverterMapStringBytes.check_lower(value)
+
+    @classmethod
+    def write(cls, items, buf):
+        buf.write_i32(len(items))
+        for (key, value) in items.items():
+            _UniffiConverterString.write(key, buf)
+            _UniffiConverterMapStringBytes.write(value, buf)
+
+    @classmethod
+    def read(cls, buf):
+        count = buf.read_i32()
+        if count < 0:
+            raise InternalError("Unexpected negative map size")
+
+        # It would be nice to use a dict comprehension,
+        # but in Python 3.7 and before the evaluation order is not according to spec,
+        # so we we're reading the value before the key.
+        # This loop makes the order explicit: first reading the key, then the value.
+        d = {}
+        for i in range(count):
+            key = _UniffiConverterString.read(buf)
+            val = _UniffiConverterMapStringBytes.read(buf)
+            d[key] = val
+        return d
+
+
+
 class _UniffiConverterMapStringMapStringTypeMDocItem(_UniffiConverterRustBuffer):
     @classmethod
     def check_lower(cls, items):
@@ -3556,6 +3790,161 @@ class _UniffiConverterTypeInProcessRecord:
 
     @classmethod
     def write(cls, value: InProcessRecordProtocol, buf: _UniffiRustBuffer):
+        buf.write_u64(cls.lower(value))
+class MDocOid4vpSessionProtocol(typing.Protocol):
+    def build_device_response(self, permitted_namespaces: "dict[str, dict[str, bytes]]",session_transcript: "str"):
+        """
+        * Prepares a unsigned oid4vp response
+        """
+
+        raise NotImplementedError
+    def finish_device_response(self, unsigned_response: "UnsignedOidvpResponse",signed_payload: "bytes"):
+        """
+        * Finish constructing the device response by passing the signed payload and the unsigned
+             * response returned from `build_device_response`. Returns the CBOR-encoded `DeviceResponse`
+             * bytes, which can be passed directly to `verify_oid4vp_response` or base64url-encoded as
+             * the `vp_token` in the OID4VP POST body.
+             * The signed payload should be the signature bytes from signing the payload returned by
+             * `get_signature_payload` on the unsigned response.
+        """
+
+        raise NotImplementedError
+    def parse_authorization_request(self, request_json: "str"):
+        """
+        Parses an OID4VP 1.0 authorisation request JSON string and returns a
+        ready-to-use session transcript and permitted-namespaces map.
+
+        The session transcript is built from `client_id`, `nonce`, and
+        `response_uri` following OpenID4VP Appendix B.2.6.1.
+
+        `permitted_namespaces` is derived from
+        `presentation_definition.input_descriptors[].constraints.fields[].path`
+        where each path has the form `$['namespace']['element_identifier']`.
+        """
+
+        raise NotImplementedError
+# MDocOid4vpSession is a Rust-only trait - it's a wrapper around a Rust implementation.
+class MDocOid4vpSession():
+    _pointer: ctypes.c_void_p
+    def __init__(self, mdoc: "Mdoc"):
+        _UniffiConverterTypeMdoc.check_lower(mdoc)
+        
+        self._pointer = _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdocoid4vpsession_new,
+        _UniffiConverterTypeMdoc.lower(mdoc))
+
+    def __del__(self):
+        # In case of partial initialization of instances.
+        pointer = getattr(self, "_pointer", None)
+        if pointer is not None:
+            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_free_mdocoid4vpsession, pointer)
+
+    def _uniffi_clone_pointer(self):
+        return _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_clone_mdocoid4vpsession, self._pointer)
+
+    # Used by alternative constructors or any methods which return this type.
+    @classmethod
+    def _make_instance_(cls, pointer):
+        # Lightly yucky way to bypass the usual __init__ logic
+        # and just create a new instance with the required pointer.
+        inst = cls.__new__(cls)
+        inst._pointer = pointer
+        return inst
+
+
+    def build_device_response(self, permitted_namespaces: "dict[str, dict[str, bytes]]",session_transcript: "str") -> "UnsignedOidvpResponse":
+        """
+        * Prepares a unsigned oid4vp response
+        """
+
+        _UniffiConverterMapStringMapStringBytes.check_lower(permitted_namespaces)
+        
+        _UniffiConverterString.check_lower(session_transcript)
+        
+        return _UniffiConverterTypeUnsignedOidvpResponse.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeResponseError,_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdocoid4vpsession_build_device_response,self._uniffi_clone_pointer(),
+        _UniffiConverterMapStringMapStringBytes.lower(permitted_namespaces),
+        _UniffiConverterString.lower(session_transcript))
+        )
+
+
+
+
+
+    def finish_device_response(self, unsigned_response: "UnsignedOidvpResponse",signed_payload: "bytes") -> "bytes":
+        """
+        * Finish constructing the device response by passing the signed payload and the unsigned
+             * response returned from `build_device_response`. Returns the CBOR-encoded `DeviceResponse`
+             * bytes, which can be passed directly to `verify_oid4vp_response` or base64url-encoded as
+             * the `vp_token` in the OID4VP POST body.
+             * The signed payload should be the signature bytes from signing the payload returned by
+             * `get_signature_payload` on the unsigned response.
+        """
+
+        _UniffiConverterTypeUnsignedOidvpResponse.check_lower(unsigned_response)
+        
+        _UniffiConverterBytes.check_lower(signed_payload)
+        
+        return _UniffiConverterBytes.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeSignatureError,_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdocoid4vpsession_finish_device_response,self._uniffi_clone_pointer(),
+        _UniffiConverterTypeUnsignedOidvpResponse.lower(unsigned_response),
+        _UniffiConverterBytes.lower(signed_payload))
+        )
+
+
+
+
+
+    def parse_authorization_request(self, request_json: "str") -> "ParsedOid4vpRequest":
+        """
+        Parses an OID4VP 1.0 authorisation request JSON string and returns a
+        ready-to-use session transcript and permitted-namespaces map.
+
+        The session transcript is built from `client_id`, `nonce`, and
+        `response_uri` following OpenID4VP Appendix B.2.6.1.
+
+        `permitted_namespaces` is derived from
+        `presentation_definition.input_descriptors[].constraints.fields[].path`
+        where each path has the form `$['namespace']['element_identifier']`.
+        """
+
+        _UniffiConverterString.check_lower(request_json)
+        
+        return _UniffiConverterTypeParsedOid4vpRequest.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeResponseError,_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdocoid4vpsession_parse_authorization_request,self._uniffi_clone_pointer(),
+        _UniffiConverterString.lower(request_json))
+        )
+
+
+
+
+
+
+class _UniffiConverterTypeMDocOid4vpSession:
+
+    @staticmethod
+    def lift(value: int):
+        return MDocOid4vpSession._make_instance_(value)
+
+    @staticmethod
+    def check_lower(value: MDocOid4vpSession):
+        if not isinstance(value, MDocOid4vpSession):
+            raise TypeError("Expected MDocOid4vpSession instance, {} found".format(type(value).__name__))
+
+    @staticmethod
+    def lower(value: MDocOid4vpSessionProtocol):
+        if not isinstance(value, MDocOid4vpSession):
+            raise TypeError("Expected MDocOid4vpSession instance, {} found".format(type(value).__name__))
+        return value._uniffi_clone_pointer()
+
+    @classmethod
+    def read(cls, buf: _UniffiRustBuffer):
+        ptr = buf.read_u64()
+        if ptr == 0:
+            raise InternalError("Raw pointer value was null")
+        return cls.lift(ptr)
+
+    @classmethod
+    def write(cls, value: MDocOid4vpSessionProtocol, buf: _UniffiRustBuffer):
         buf.write_u64(cls.lower(value))
 class MdlPresentationSessionProtocol(typing.Protocol):
     def generate_response(self, permitted_items: "dict[str, dict[str, typing.List[str]]]"):
@@ -4272,6 +4661,266 @@ class _UniffiConverterTypeP256KeyPair:
     @classmethod
     def write(cls, value: P256KeyPairProtocol, buf: _UniffiRustBuffer):
         buf.write_u64(cls.lower(value))
+class PreparedMdocProtocol(typing.Protocol):
+    """
+    A prepared (unsigned) mDoc, ready for external signing.
+
+    Created by [`PreparedMdoc::new()`]. Call [`signature_payload()`](Self::signature_payload)
+    to obtain the bytes that must be signed, then supply the signature and
+    certificate chain to [`complete()`](Self::complete) to produce the final
+    signed [`Mdoc`].
+    """
+
+    def complete(self, certificate_chain_pem: "str",signature: "bytes"):
+        """
+        Supply the signature and certificate chain PEM to finalize the mDoc.
+
+        `certificate_chain_pem` should contain the signing (leaf) certificate
+        first, followed by any intermediate certificates. `signature` should be
+        the raw signature bytes produced by signing [`signature_payload()`] with
+        the issuer's private key.
+
+        This method consumes the inner prepared data; calling it twice will fail.
+        """
+
+        raise NotImplementedError
+    def signature_payload(self, ):
+        """
+        Returns the bytes that must be signed by the issuer's key.
+        """
+
+        raise NotImplementedError
+# PreparedMdoc is a Rust-only trait - it's a wrapper around a Rust implementation.
+class PreparedMdoc():
+    """
+    A prepared (unsigned) mDoc, ready for external signing.
+
+    Created by [`PreparedMdoc::new()`]. Call [`signature_payload()`](Self::signature_payload)
+    to obtain the bytes that must be signed, then supply the signature and
+    certificate chain to [`complete()`](Self::complete) to produce the final
+    signed [`Mdoc`].
+    """
+
+    _pointer: ctypes.c_void_p
+    def __init__(self, doc_type: "str",namespaces: "dict[str, dict[str, str]]",holder_jwk: "str",signature_algorithm: "str"):
+        """
+        Prepare an mDoc for external signing.
+
+        The returned object holds the partially-constructed mDoc. Use
+        [`signature_payload()`] to get the bytes that must be signed by the
+        issuer key, then call [`complete()`] with the raw signature and
+        PEM-encoded certificate chain to finalize the mDoc.
+
+        `signature_algorithm` must be one of: `"ES256"`, `"ES384"`, `"ES512"`.
+        `namespaces` maps namespace → (element_identifier → JSON-encoded value).
+        """
+
+        _UniffiConverterString.check_lower(doc_type)
+        
+        _UniffiConverterMapStringMapStringString.check_lower(namespaces)
+        
+        _UniffiConverterString.check_lower(holder_jwk)
+        
+        _UniffiConverterString.check_lower(signature_algorithm)
+        
+        self._pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_preparedmdoc_new,
+        _UniffiConverterString.lower(doc_type),
+        _UniffiConverterMapStringMapStringString.lower(namespaces),
+        _UniffiConverterString.lower(holder_jwk),
+        _UniffiConverterString.lower(signature_algorithm))
+
+    def __del__(self):
+        # In case of partial initialization of instances.
+        pointer = getattr(self, "_pointer", None)
+        if pointer is not None:
+            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_free_preparedmdoc, pointer)
+
+    def _uniffi_clone_pointer(self):
+        return _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_clone_preparedmdoc, self._pointer)
+
+    # Used by alternative constructors or any methods which return this type.
+    @classmethod
+    def _make_instance_(cls, pointer):
+        # Lightly yucky way to bypass the usual __init__ logic
+        # and just create a new instance with the required pointer.
+        inst = cls.__new__(cls)
+        inst._pointer = pointer
+        return inst
+    @classmethod
+    def new_mdl(cls, mdl_items: "str",aamva_items: "typing.Optional[str]",holder_jwk: "str",signature_algorithm: "str"):
+        """
+        Prepare an mDL (`org.iso.18013.5.1.mDL`) document for external signing.
+
+        Unlike [`PreparedMdoc::new()`], which uses a generic JSON→CBOR conversion,
+        this constructor uses the ISO 18013-5 typed namespace builder
+        (`OrgIso1801351`) to ensure correct CBOR field types (e.g. `birth_date`
+        encoded as a CBOR `full-date`, not a plain text string).
+
+        * `mdl_items` — JSON object string with mDL namespace elements.
+        * `aamva_items` — Optional JSON object string with AAMVA namespace elements.
+        * `holder_jwk` — P-256 JWK of the holder's device key.
+        * `signature_algorithm` — one of `"ES256"`, `"ES384"`, `"ES512"`.
+        """
+
+        _UniffiConverterString.check_lower(mdl_items)
+        
+        _UniffiConverterOptionalString.check_lower(aamva_items)
+        
+        _UniffiConverterString.check_lower(holder_jwk)
+        
+        _UniffiConverterString.check_lower(signature_algorithm)
+        
+        # Call the (fallible) function before creating any half-baked object instances.
+        pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_preparedmdoc_new_mdl,
+        _UniffiConverterString.lower(mdl_items),
+        _UniffiConverterOptionalString.lower(aamva_items),
+        _UniffiConverterString.lower(holder_jwk),
+        _UniffiConverterString.lower(signature_algorithm))
+        return cls._make_instance_(pointer)
+
+
+
+    def complete(self, certificate_chain_pem: "str",signature: "bytes") -> "Mdoc":
+        """
+        Supply the signature and certificate chain PEM to finalize the mDoc.
+
+        `certificate_chain_pem` should contain the signing (leaf) certificate
+        first, followed by any intermediate certificates. `signature` should be
+        the raw signature bytes produced by signing [`signature_payload()`] with
+        the issuer's private key.
+
+        This method consumes the inner prepared data; calling it twice will fail.
+        """
+
+        _UniffiConverterString.check_lower(certificate_chain_pem)
+        
+        _UniffiConverterBytes.check_lower(signature)
+        
+        return _UniffiConverterTypeMdoc.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_uniffi_fn_method_preparedmdoc_complete,self._uniffi_clone_pointer(),
+        _UniffiConverterString.lower(certificate_chain_pem),
+        _UniffiConverterBytes.lower(signature))
+        )
+
+
+
+
+
+    def signature_payload(self, ) -> "bytes":
+        """
+        Returns the bytes that must be signed by the issuer's key.
+        """
+
+        return _UniffiConverterBytes.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_uniffi_fn_method_preparedmdoc_signature_payload,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+
+class _UniffiConverterTypePreparedMdoc:
+
+    @staticmethod
+    def lift(value: int):
+        return PreparedMdoc._make_instance_(value)
+
+    @staticmethod
+    def check_lower(value: PreparedMdoc):
+        if not isinstance(value, PreparedMdoc):
+            raise TypeError("Expected PreparedMdoc instance, {} found".format(type(value).__name__))
+
+    @staticmethod
+    def lower(value: PreparedMdocProtocol):
+        if not isinstance(value, PreparedMdoc):
+            raise TypeError("Expected PreparedMdoc instance, {} found".format(type(value).__name__))
+        return value._uniffi_clone_pointer()
+
+    @classmethod
+    def read(cls, buf: _UniffiRustBuffer):
+        ptr = buf.read_u64()
+        if ptr == 0:
+            raise InternalError("Raw pointer value was null")
+        return cls.lift(ptr)
+
+    @classmethod
+    def write(cls, value: PreparedMdocProtocol, buf: _UniffiRustBuffer):
+        buf.write_u64(cls.lower(value))
+class UnsignedOidvpResponseProtocol(typing.Protocol):
+    def get_signature_payload(self, ):
+        """
+        * Returns the payload that should be signed for the OID4VP response. This is the bytes that should be signed in the COSE_Sign1 structure.
+        """
+
+        raise NotImplementedError
+# UnsignedOidvpResponse is a Rust-only trait - it's a wrapper around a Rust implementation.
+class UnsignedOidvpResponse():
+    _pointer: ctypes.c_void_p
+    
+    def __init__(self, *args, **kwargs):
+        raise ValueError("This class has no default constructor")
+
+    def __del__(self):
+        # In case of partial initialization of instances.
+        pointer = getattr(self, "_pointer", None)
+        if pointer is not None:
+            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_free_unsignedoidvpresponse, pointer)
+
+    def _uniffi_clone_pointer(self):
+        return _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_clone_unsignedoidvpresponse, self._pointer)
+
+    # Used by alternative constructors or any methods which return this type.
+    @classmethod
+    def _make_instance_(cls, pointer):
+        # Lightly yucky way to bypass the usual __init__ logic
+        # and just create a new instance with the required pointer.
+        inst = cls.__new__(cls)
+        inst._pointer = pointer
+        return inst
+
+
+    def get_signature_payload(self, ) -> "bytes":
+        """
+        * Returns the payload that should be signed for the OID4VP response. This is the bytes that should be signed in the COSE_Sign1 structure.
+        """
+
+        return _UniffiConverterBytes.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_method_unsignedoidvpresponse_get_signature_payload,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+
+class _UniffiConverterTypeUnsignedOidvpResponse:
+
+    @staticmethod
+    def lift(value: int):
+        return UnsignedOidvpResponse._make_instance_(value)
+
+    @staticmethod
+    def check_lower(value: UnsignedOidvpResponse):
+        if not isinstance(value, UnsignedOidvpResponse):
+            raise TypeError("Expected UnsignedOidvpResponse instance, {} found".format(type(value).__name__))
+
+    @staticmethod
+    def lower(value: UnsignedOidvpResponseProtocol):
+        if not isinstance(value, UnsignedOidvpResponse):
+            raise TypeError("Expected UnsignedOidvpResponse instance, {} found".format(type(value).__name__))
+        return value._uniffi_clone_pointer()
+
+    @classmethod
+    def read(cls, buf: _UniffiRustBuffer):
+        ptr = buf.read_u64()
+        if ptr == 0:
+            raise InternalError("Raw pointer value was null")
+        return cls.lift(ptr)
+
+    @classmethod
+    def write(cls, value: UnsignedOidvpResponseProtocol, buf: _UniffiRustBuffer):
+        buf.write_u64(cls.lower(value))
 KeyAlias = str
 Namespace = str
 Uuid = str
@@ -4378,6 +5027,7 @@ __all__ = [
     "MdlReaderResponseData",
     "MdlReaderSessionData",
     "MdlReaderVerifiedData",
+    "ParsedOid4vpRequest",
     "establish_session",
     "generate_test_mdl",
     "handle_response",
@@ -4387,8 +5037,11 @@ __all__ = [
     "verify_oid4vp_response",
     "InProcessRecord",
     "MdlSessionManager",
+    "MDocOid4vpSession",
     "MdlPresentationSession",
     "Mdoc",
     "P256KeyPair",
+    "PreparedMdoc",
+    "UnsignedOidvpResponse",
 ]
 

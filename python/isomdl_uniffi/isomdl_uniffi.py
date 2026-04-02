@@ -453,7 +453,7 @@ def _uniffi_load_indirect():
 
 def _uniffi_check_contract_api_version(lib):
     # Get the bindings contract version from our ComponentInterface
-    bindings_contract_version = 26
+    bindings_contract_version = 29
     # Get the scaffolding contract version by calling the into the dylib
     scaffolding_contract_version = lib.ffi_isomdl_uniffi_uniffi_contract_version()
     if bindings_contract_version != scaffolding_contract_version:
@@ -506,10 +506,6 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_isomdl_uniffi_checksum_method_p256keypair_sign() != 44060:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_method_preparedmdoc_complete() != 48153:
-        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_method_preparedmdoc_signature_payload() != 10293:
-        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_isomdl_uniffi_checksum_constructor_mdlpresentationsession_new() != 1270:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_create_and_sign() != 347:
@@ -525,8 +521,6 @@ def _uniffi_check_api_checksums(lib):
     if lib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_new_from_base64url_encoded_issuer_signed() != 55023:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_isomdl_uniffi_checksum_constructor_p256keypair_new() != 41043:
-        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_constructor_preparedmdoc_new() != 34079:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
 
 # A ctypes library to expose the extern-C FFI definitions.
@@ -821,36 +815,6 @@ _UniffiLib.uniffi_isomdl_uniffi_fn_method_p256keypair_sign.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_isomdl_uniffi_fn_method_p256keypair_sign.restype = _UniffiRustBuffer
-_UniffiLib.uniffi_isomdl_uniffi_fn_clone_preparedmdoc.argtypes = (
-    ctypes.c_void_p,
-    ctypes.POINTER(_UniffiRustCallStatus),
-)
-_UniffiLib.uniffi_isomdl_uniffi_fn_clone_preparedmdoc.restype = ctypes.c_void_p
-_UniffiLib.uniffi_isomdl_uniffi_fn_free_preparedmdoc.argtypes = (
-    ctypes.c_void_p,
-    ctypes.POINTER(_UniffiRustCallStatus),
-)
-_UniffiLib.uniffi_isomdl_uniffi_fn_free_preparedmdoc.restype = None
-_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_preparedmdoc_new.argtypes = (
-    _UniffiRustBuffer,
-    _UniffiRustBuffer,
-    _UniffiRustBuffer,
-    _UniffiRustBuffer,
-    ctypes.POINTER(_UniffiRustCallStatus),
-)
-_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_preparedmdoc_new.restype = ctypes.c_void_p
-_UniffiLib.uniffi_isomdl_uniffi_fn_method_preparedmdoc_complete.argtypes = (
-    ctypes.c_void_p,
-    _UniffiRustBuffer,
-    _UniffiRustBuffer,
-    ctypes.POINTER(_UniffiRustCallStatus),
-)
-_UniffiLib.uniffi_isomdl_uniffi_fn_method_preparedmdoc_complete.restype = ctypes.c_void_p
-_UniffiLib.uniffi_isomdl_uniffi_fn_method_preparedmdoc_signature_payload.argtypes = (
-    ctypes.c_void_p,
-    ctypes.POINTER(_UniffiRustCallStatus),
-)
-_UniffiLib.uniffi_isomdl_uniffi_fn_method_preparedmdoc_signature_payload.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_isomdl_uniffi_fn_func_establish_session.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
@@ -1231,12 +1195,6 @@ _UniffiLib.uniffi_isomdl_uniffi_checksum_method_p256keypair_public_jwk.restype =
 _UniffiLib.uniffi_isomdl_uniffi_checksum_method_p256keypair_sign.argtypes = (
 )
 _UniffiLib.uniffi_isomdl_uniffi_checksum_method_p256keypair_sign.restype = ctypes.c_uint16
-_UniffiLib.uniffi_isomdl_uniffi_checksum_method_preparedmdoc_complete.argtypes = (
-)
-_UniffiLib.uniffi_isomdl_uniffi_checksum_method_preparedmdoc_complete.restype = ctypes.c_uint16
-_UniffiLib.uniffi_isomdl_uniffi_checksum_method_preparedmdoc_signature_payload.argtypes = (
-)
-_UniffiLib.uniffi_isomdl_uniffi_checksum_method_preparedmdoc_signature_payload.restype = ctypes.c_uint16
 _UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdlpresentationsession_new.argtypes = (
 )
 _UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdlpresentationsession_new.restype = ctypes.c_uint16
@@ -1261,9 +1219,6 @@ _UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_new_from_base64url_enc
 _UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_p256keypair_new.argtypes = (
 )
 _UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_p256keypair_new.restype = ctypes.c_uint16
-_UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_preparedmdoc_new.argtypes = (
-)
-_UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_preparedmdoc_new.restype = ctypes.c_uint16
 _UniffiLib.ffi_isomdl_uniffi_uniffi_contract_version.argtypes = (
 )
 _UniffiLib.ffi_isomdl_uniffi_uniffi_contract_version.restype = ctypes.c_uint32
@@ -1362,952 +1317,13 @@ class _UniffiConverterBytes(_UniffiConverterRustBuffer):
 
 
 
-class InProcessRecordProtocol(typing.Protocol):
-    pass
 
 
-class InProcessRecord:
-    _pointer: ctypes.c_void_p
-    
-    def __init__(self, *args, **kwargs):
-        raise ValueError("This class has no default constructor")
 
-    def __del__(self):
-        # In case of partial initialization of instances.
-        pointer = getattr(self, "_pointer", None)
-        if pointer is not None:
-            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_free_inprocessrecord, pointer)
 
-    def _uniffi_clone_pointer(self):
-        return _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_clone_inprocessrecord, self._pointer)
 
-    # Used by alternative constructors or any methods which return this type.
-    @classmethod
-    def _make_instance_(cls, pointer):
-        # Lightly yucky way to bypass the usual __init__ logic
-        # and just create a new instance with the required pointer.
-        inst = cls.__new__(cls)
-        inst._pointer = pointer
-        return inst
 
 
-
-class _UniffiConverterTypeInProcessRecord:
-
-    @staticmethod
-    def lift(value: int):
-        return InProcessRecord._make_instance_(value)
-
-    @staticmethod
-    def check_lower(value: InProcessRecord):
-        if not isinstance(value, InProcessRecord):
-            raise TypeError("Expected InProcessRecord instance, {} found".format(type(value).__name__))
-
-    @staticmethod
-    def lower(value: InProcessRecordProtocol):
-        if not isinstance(value, InProcessRecord):
-            raise TypeError("Expected InProcessRecord instance, {} found".format(type(value).__name__))
-        return value._uniffi_clone_pointer()
-
-    @classmethod
-    def read(cls, buf: _UniffiRustBuffer):
-        ptr = buf.read_u64()
-        if ptr == 0:
-            raise InternalError("Raw pointer value was null")
-        return cls.lift(ptr)
-
-    @classmethod
-    def write(cls, value: InProcessRecordProtocol, buf: _UniffiRustBuffer):
-        buf.write_u64(cls.lower(value))
-
-
-
-class MdlPresentationSessionProtocol(typing.Protocol):
-    def generate_response(self, permitted_items: "dict[str, dict[str, typing.List[str]]]"):
-        """
-        Constructs the response to be sent from the holder to the reader containing
-        the items of information the user has consented to share.
-
-        Takes a HashMap of items the user has authorized the app to share, as well
-        as the id of a key stored in the key manager to be used to sign the response.
-        Returns a byte array containing the signed response to be returned to the
-        reader.
-        """
-
-        raise NotImplementedError
-    def get_ble_ident(self, ):
-        """
-        Returns the BLE identification
-        """
-
-        raise NotImplementedError
-    def get_qr_code_uri(self, ):
-        """
-        Returns the generated QR code
-        """
-
-        raise NotImplementedError
-    def handle_request(self, request: "bytes"):
-        """
-        Handle a request from a reader that is seeking information from the mDL holder.
-
-        Takes the raw bytes received from the reader by the holder over the transmission
-        technology. Returns a Vector of information items requested by the reader, or an
-        error.
-        """
-
-        raise NotImplementedError
-    def submit_response(self, signature: "bytes"):
-        raise NotImplementedError
-    def terminate_session(self, ):
-        """
-        Terminates the mDL exchange session.
-
-        Returns the termination message to be transmitted to the reader.
-        """
-
-        raise NotImplementedError
-
-
-class MdlPresentationSession:
-    _pointer: ctypes.c_void_p
-    def __init__(self, mdoc: "Mdoc",uuid: "str"):
-        """
-        Begin the mDL presentation process for the holder by passing in the credential
-        to be presented in the form of an [Mdoc] object.
-
-        Initializes the presentation session for an ISO 18013-5 mDL and stores
-        the session state object in the device storage_manager.
-
-        Arguments:
-        mdoc: the Mdoc to be presented, as an [Mdoc] object
-        uuid: the Bluetooth Low Energy Client Central Mode UUID to be used
-
-        Returns:
-        A Result, with the `Ok` containing a tuple consisting of an enum representing
-        the state of the presentation, a String containing the QR code URI, and a
-        String containing the BLE ident.
-
-        """
-
-        _UniffiConverterTypeMdoc.check_lower(mdoc)
-        
-        _UniffiConverterString.check_lower(uuid)
-        
-        self._pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeSessionError,_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdlpresentationsession_new,
-        _UniffiConverterTypeMdoc.lower(mdoc),
-        _UniffiConverterString.lower(uuid))
-
-    def __del__(self):
-        # In case of partial initialization of instances.
-        pointer = getattr(self, "_pointer", None)
-        if pointer is not None:
-            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_free_mdlpresentationsession, pointer)
-
-    def _uniffi_clone_pointer(self):
-        return _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_clone_mdlpresentationsession, self._pointer)
-
-    # Used by alternative constructors or any methods which return this type.
-    @classmethod
-    def _make_instance_(cls, pointer):
-        # Lightly yucky way to bypass the usual __init__ logic
-        # and just create a new instance with the required pointer.
-        inst = cls.__new__(cls)
-        inst._pointer = pointer
-        return inst
-
-
-    def generate_response(self, permitted_items: "dict[str, dict[str, typing.List[str]]]") -> "bytes":
-        """
-        Constructs the response to be sent from the holder to the reader containing
-        the items of information the user has consented to share.
-
-        Takes a HashMap of items the user has authorized the app to share, as well
-        as the id of a key stored in the key manager to be used to sign the response.
-        Returns a byte array containing the signed response to be returned to the
-        reader.
-        """
-
-        _UniffiConverterMapStringMapStringSequenceString.check_lower(permitted_items)
-        
-        return _UniffiConverterBytes.lift(
-            _uniffi_rust_call_with_error(_UniffiConverterTypeSignatureError,_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdlpresentationsession_generate_response,self._uniffi_clone_pointer(),
-        _UniffiConverterMapStringMapStringSequenceString.lower(permitted_items))
-        )
-
-
-
-
-
-    def get_ble_ident(self, ) -> "bytes":
-        """
-        Returns the BLE identification
-        """
-
-        return _UniffiConverterBytes.lift(
-            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdlpresentationsession_get_ble_ident,self._uniffi_clone_pointer(),)
-        )
-
-
-
-
-
-    def get_qr_code_uri(self, ) -> "str":
-        """
-        Returns the generated QR code
-        """
-
-        return _UniffiConverterString.lift(
-            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdlpresentationsession_get_qr_code_uri,self._uniffi_clone_pointer(),)
-        )
-
-
-
-
-
-    def handle_request(self, request: "bytes") -> "typing.List[ItemsRequest]":
-        """
-        Handle a request from a reader that is seeking information from the mDL holder.
-
-        Takes the raw bytes received from the reader by the holder over the transmission
-        technology. Returns a Vector of information items requested by the reader, or an
-        error.
-        """
-
-        _UniffiConverterBytes.check_lower(request)
-        
-        return _UniffiConverterSequenceTypeItemsRequest.lift(
-            _uniffi_rust_call_with_error(_UniffiConverterTypeRequestError,_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdlpresentationsession_handle_request,self._uniffi_clone_pointer(),
-        _UniffiConverterBytes.lower(request))
-        )
-
-
-
-
-
-    def submit_response(self, signature: "bytes") -> "bytes":
-        _UniffiConverterBytes.check_lower(signature)
-        
-        return _UniffiConverterBytes.lift(
-            _uniffi_rust_call_with_error(_UniffiConverterTypeSignatureError,_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdlpresentationsession_submit_response,self._uniffi_clone_pointer(),
-        _UniffiConverterBytes.lower(signature))
-        )
-
-
-
-
-
-    def terminate_session(self, ) -> "bytes":
-        """
-        Terminates the mDL exchange session.
-
-        Returns the termination message to be transmitted to the reader.
-        """
-
-        return _UniffiConverterBytes.lift(
-            _uniffi_rust_call_with_error(_UniffiConverterTypeTerminationError,_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdlpresentationsession_terminate_session,self._uniffi_clone_pointer(),)
-        )
-
-
-
-
-
-
-class _UniffiConverterTypeMdlPresentationSession:
-
-    @staticmethod
-    def lift(value: int):
-        return MdlPresentationSession._make_instance_(value)
-
-    @staticmethod
-    def check_lower(value: MdlPresentationSession):
-        if not isinstance(value, MdlPresentationSession):
-            raise TypeError("Expected MdlPresentationSession instance, {} found".format(type(value).__name__))
-
-    @staticmethod
-    def lower(value: MdlPresentationSessionProtocol):
-        if not isinstance(value, MdlPresentationSession):
-            raise TypeError("Expected MdlPresentationSession instance, {} found".format(type(value).__name__))
-        return value._uniffi_clone_pointer()
-
-    @classmethod
-    def read(cls, buf: _UniffiRustBuffer):
-        ptr = buf.read_u64()
-        if ptr == 0:
-            raise InternalError("Raw pointer value was null")
-        return cls.lift(ptr)
-
-    @classmethod
-    def write(cls, value: MdlPresentationSessionProtocol, buf: _UniffiRustBuffer):
-        buf.write_u64(cls.lower(value))
-
-
-
-class MdlSessionManagerProtocol(typing.Protocol):
-    pass
-
-
-class MdlSessionManager:
-    _pointer: ctypes.c_void_p
-    
-    def __init__(self, *args, **kwargs):
-        raise ValueError("This class has no default constructor")
-
-    def __del__(self):
-        # In case of partial initialization of instances.
-        pointer = getattr(self, "_pointer", None)
-        if pointer is not None:
-            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_free_mdlsessionmanager, pointer)
-
-    def _uniffi_clone_pointer(self):
-        return _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_clone_mdlsessionmanager, self._pointer)
-
-    # Used by alternative constructors or any methods which return this type.
-    @classmethod
-    def _make_instance_(cls, pointer):
-        # Lightly yucky way to bypass the usual __init__ logic
-        # and just create a new instance with the required pointer.
-        inst = cls.__new__(cls)
-        inst._pointer = pointer
-        return inst
-
-
-
-class _UniffiConverterTypeMdlSessionManager:
-
-    @staticmethod
-    def lift(value: int):
-        return MdlSessionManager._make_instance_(value)
-
-    @staticmethod
-    def check_lower(value: MdlSessionManager):
-        if not isinstance(value, MdlSessionManager):
-            raise TypeError("Expected MdlSessionManager instance, {} found".format(type(value).__name__))
-
-    @staticmethod
-    def lower(value: MdlSessionManagerProtocol):
-        if not isinstance(value, MdlSessionManager):
-            raise TypeError("Expected MdlSessionManager instance, {} found".format(type(value).__name__))
-        return value._uniffi_clone_pointer()
-
-    @classmethod
-    def read(cls, buf: _UniffiRustBuffer):
-        ptr = buf.read_u64()
-        if ptr == 0:
-            raise InternalError("Raw pointer value was null")
-        return cls.lift(ptr)
-
-    @classmethod
-    def write(cls, value: MdlSessionManagerProtocol, buf: _UniffiRustBuffer):
-        buf.write_u64(cls.lower(value))
-
-
-
-class MdocProtocol(typing.Protocol):
-    def details(self, ):
-        """
-        Simple representation of mdoc namespace and data elements for display in the UI.
-        """
-
-        raise NotImplementedError
-    def doctype(self, ):
-        """
-        The document type of this mdoc, for example `org.iso.18013.5.1.mDL`.
-        """
-
-        raise NotImplementedError
-    def id(self, ):
-        """
-        The local ID of this credential.
-        """
-
-        raise NotImplementedError
-    def issuer_signed_b64(self, ):
-        """
-        Serialize as an ISO 18013-5 §8.3 compliant IssuerSigned structure (base64url, no padding).
-
-        Unlike [`Mdoc::stringify`], which serializes the internal `Document` struct
-        with snake_case CBOR keys (`issuer_auth`, `namespaces`), this method
-        serializes an [`IssuerSigned`] value using the camelCase keys required
-        by ISO 18013-5 §8.3 (`issuerAuth`, `nameSpaces`) and the correct
-        map-of-lists namespace representation (`NonEmptyVec<IssuerSignedItemBytes>`).
-
-        This is the correct format for use in OpenID4VCI mso_mdoc credential issuance
-        and ISO 18013-5 presentation.
-        """
-
-        raise NotImplementedError
-    def json(self, ):
-        """
-        Serialize as JSON
-        """
-
-        raise NotImplementedError
-    def key_alias(self, ):
-        raise NotImplementedError
-    def stringify(self, ):
-        """
-        Serialize to CBOR
-        """
-
-        raise NotImplementedError
-    def verify_issuer_signature(self, trust_anchors: "typing.Optional[typing.List[str]]",use_intermediate_chaining: "bool"):
-        """
-        Verify the issuer signature of this mdoc credential.
-
-        This method extracts the X5Chain from the issuer_auth header, validates it
-        against the provided trust anchors, and verifies the COSE_Sign1 signature.
-
-        # Arguments
-        * `trust_anchors` - Optional list of PEM-encoded trust anchor certificates.
-        If not provided, X5Chain validation is skipped but signature verification
-        is still performed using the certificate in the X5Chain.
-        * `use_intermediate_chaining` - If true, the verifier will attempt to build a trust path
-        using intermediate certificates found in the X5Chain header. If false, only the
-        certificates explicitly provided in `trust_anchors` are trusted.
-
-        # Returns
-        * `Ok(IssuerVerificationResult)` - The verification result with verified status
-        and optional common name from the issuer certificate.
-        * `Err(MdocVerificationError)` - If verification fails due to missing/invalid
-        X5Chain or signature verification failure.
-        """
-
-        raise NotImplementedError
-
-
-class Mdoc:
-    _pointer: ctypes.c_void_p
-    
-    def __init__(self, *args, **kwargs):
-        raise ValueError("This class has no default constructor")
-
-    def __del__(self):
-        # In case of partial initialization of instances.
-        pointer = getattr(self, "_pointer", None)
-        if pointer is not None:
-            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_free_mdoc, pointer)
-
-    def _uniffi_clone_pointer(self):
-        return _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_clone_mdoc, self._pointer)
-
-    # Used by alternative constructors or any methods which return this type.
-    @classmethod
-    def _make_instance_(cls, pointer):
-        # Lightly yucky way to bypass the usual __init__ logic
-        # and just create a new instance with the required pointer.
-        inst = cls.__new__(cls)
-        inst._pointer = pointer
-        return inst
-    @classmethod
-    def create_and_sign(cls, doc_type: "str",namespaces: "dict[str, dict[str, str]]",holder_jwk: "str",iaca_cert_perm: "str",iaca_key_perm: "str"):
-        _UniffiConverterString.check_lower(doc_type)
-        
-        _UniffiConverterMapStringMapStringString.check_lower(namespaces)
-        
-        _UniffiConverterString.check_lower(holder_jwk)
-        
-        _UniffiConverterString.check_lower(iaca_cert_perm)
-        
-        _UniffiConverterString.check_lower(iaca_key_perm)
-        
-        # Call the (fallible) function before creating any half-baked object instances.
-        pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_create_and_sign,
-        _UniffiConverterString.lower(doc_type),
-        _UniffiConverterMapStringMapStringString.lower(namespaces),
-        _UniffiConverterString.lower(holder_jwk),
-        _UniffiConverterString.lower(iaca_cert_perm),
-        _UniffiConverterString.lower(iaca_key_perm))
-        return cls._make_instance_(pointer)
-
-    @classmethod
-    def create_and_sign_mdl(cls, mdl_items: "str",aamva_items: "typing.Optional[str]",holder_jwk: "str",iaca_cert_pem: "str",iaca_key_pem: "str"):
-        _UniffiConverterString.check_lower(mdl_items)
-        
-        _UniffiConverterOptionalString.check_lower(aamva_items)
-        
-        _UniffiConverterString.check_lower(holder_jwk)
-        
-        _UniffiConverterString.check_lower(iaca_cert_pem)
-        
-        _UniffiConverterString.check_lower(iaca_key_pem)
-        
-        # Call the (fallible) function before creating any half-baked object instances.
-        pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_create_and_sign_mdl,
-        _UniffiConverterString.lower(mdl_items),
-        _UniffiConverterOptionalString.lower(aamva_items),
-        _UniffiConverterString.lower(holder_jwk),
-        _UniffiConverterString.lower(iaca_cert_pem),
-        _UniffiConverterString.lower(iaca_key_pem))
-        return cls._make_instance_(pointer)
-
-    @classmethod
-    def from_cbor_encoded_document(cls, cbor_encoded_document: "bytes",key_alias: "KeyAlias"):
-        """
-        Construct a SpruceKit MDoc from a cbor-encoded
-        [spruceid/isomdl `Document`](https://github.com/spruceid/isomdl/blob/main/src/presentation/device.rs#L145-L152)
-        """
-
-        _UniffiConverterBytes.check_lower(cbor_encoded_document)
-        
-        _UniffiConverterTypeKeyAlias.check_lower(key_alias)
-        
-        # Call the (fallible) function before creating any half-baked object instances.
-        pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_from_cbor_encoded_document,
-        _UniffiConverterBytes.lower(cbor_encoded_document),
-        _UniffiConverterTypeKeyAlias.lower(key_alias))
-        return cls._make_instance_(pointer)
-
-    @classmethod
-    def from_string(cls, stringified_document: "str"):
-        """
-        Parse an MDoc from a stringified document with a default key alias.
-        This is a convenience method for parsing mdocs where the key alias is not critical.
-        """
-
-        _UniffiConverterString.check_lower(stringified_document)
-        
-        # Call the (fallible) function before creating any half-baked object instances.
-        pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_from_string,
-        _UniffiConverterString.lower(stringified_document))
-        return cls._make_instance_(pointer)
-
-    @classmethod
-    def from_stringified_document(cls, stringified_document: "str",key_alias: "KeyAlias"):
-        """
-        Compatibility feature: construct an MDoc from a
-        [stringified spruceid/isomdl `Document`](https://github.com/spruceid/isomdl/blob/main/src/presentation/mod.rs#L100)
-        """
-
-        _UniffiConverterString.check_lower(stringified_document)
-        
-        _UniffiConverterTypeKeyAlias.check_lower(key_alias)
-        
-        # Call the (fallible) function before creating any half-baked object instances.
-        pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_from_stringified_document,
-        _UniffiConverterString.lower(stringified_document),
-        _UniffiConverterTypeKeyAlias.lower(key_alias))
-        return cls._make_instance_(pointer)
-
-    @classmethod
-    def new_from_base64url_encoded_issuer_signed(cls, base64url_encoded_issuer_signed: "str",key_alias: "KeyAlias"):
-        """
-        Construct a new MDoc from base64url-encoded IssuerSigned.
-        """
-
-        _UniffiConverterString.check_lower(base64url_encoded_issuer_signed)
-        
-        _UniffiConverterTypeKeyAlias.check_lower(key_alias)
-        
-        # Call the (fallible) function before creating any half-baked object instances.
-        pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_new_from_base64url_encoded_issuer_signed,
-        _UniffiConverterString.lower(base64url_encoded_issuer_signed),
-        _UniffiConverterTypeKeyAlias.lower(key_alias))
-        return cls._make_instance_(pointer)
-
-
-
-    def details(self, ) -> "dict[Namespace, typing.List[Element]]":
-        """
-        Simple representation of mdoc namespace and data elements for display in the UI.
-        """
-
-        return _UniffiConverterMapTypeNamespaceSequenceTypeElement.lift(
-            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_details,self._uniffi_clone_pointer(),)
-        )
-
-
-
-
-
-    def doctype(self, ) -> "str":
-        """
-        The document type of this mdoc, for example `org.iso.18013.5.1.mDL`.
-        """
-
-        return _UniffiConverterString.lift(
-            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_doctype,self._uniffi_clone_pointer(),)
-        )
-
-
-
-
-
-    def id(self, ) -> "Uuid":
-        """
-        The local ID of this credential.
-        """
-
-        return _UniffiConverterTypeUuid.lift(
-            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_id,self._uniffi_clone_pointer(),)
-        )
-
-
-
-
-
-    def issuer_signed_b64(self, ) -> "str":
-        """
-        Serialize as an ISO 18013-5 §8.3 compliant IssuerSigned structure (base64url, no padding).
-
-        Unlike [`Mdoc::stringify`], which serializes the internal `Document` struct
-        with snake_case CBOR keys (`issuer_auth`, `namespaces`), this method
-        serializes an [`IssuerSigned`] value using the camelCase keys required
-        by ISO 18013-5 §8.3 (`issuerAuth`, `nameSpaces`) and the correct
-        map-of-lists namespace representation (`NonEmptyVec<IssuerSignedItemBytes>`).
-
-        This is the correct format for use in OpenID4VCI mso_mdoc credential issuance
-        and ISO 18013-5 presentation.
-        """
-
-        return _UniffiConverterString.lift(
-            _uniffi_rust_call_with_error(_UniffiConverterTypeMdocEncodingError,_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_issuer_signed_b64,self._uniffi_clone_pointer(),)
-        )
-
-
-
-
-
-    def json(self, ) -> "str":
-        """
-        Serialize as JSON
-        """
-
-        return _UniffiConverterString.lift(
-            _uniffi_rust_call_with_error(_UniffiConverterTypeMdocEncodingError,_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_json,self._uniffi_clone_pointer(),)
-        )
-
-
-
-
-
-    def key_alias(self, ) -> "KeyAlias":
-        return _UniffiConverterTypeKeyAlias.lift(
-            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_key_alias,self._uniffi_clone_pointer(),)
-        )
-
-
-
-
-
-    def stringify(self, ) -> "str":
-        """
-        Serialize to CBOR
-        """
-
-        return _UniffiConverterString.lift(
-            _uniffi_rust_call_with_error(_UniffiConverterTypeMdocEncodingError,_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_stringify,self._uniffi_clone_pointer(),)
-        )
-
-
-
-
-
-    def verify_issuer_signature(self, trust_anchors: "typing.Optional[typing.List[str]]",use_intermediate_chaining: "bool") -> "IssuerVerificationResult":
-        """
-        Verify the issuer signature of this mdoc credential.
-
-        This method extracts the X5Chain from the issuer_auth header, validates it
-        against the provided trust anchors, and verifies the COSE_Sign1 signature.
-
-        # Arguments
-        * `trust_anchors` - Optional list of PEM-encoded trust anchor certificates.
-        If not provided, X5Chain validation is skipped but signature verification
-        is still performed using the certificate in the X5Chain.
-        * `use_intermediate_chaining` - If true, the verifier will attempt to build a trust path
-        using intermediate certificates found in the X5Chain header. If false, only the
-        certificates explicitly provided in `trust_anchors` are trusted.
-
-        # Returns
-        * `Ok(IssuerVerificationResult)` - The verification result with verified status
-        and optional common name from the issuer certificate.
-        * `Err(MdocVerificationError)` - If verification fails due to missing/invalid
-        X5Chain or signature verification failure.
-        """
-
-        _UniffiConverterOptionalSequenceString.check_lower(trust_anchors)
-        
-        _UniffiConverterBool.check_lower(use_intermediate_chaining)
-        
-        return _UniffiConverterTypeIssuerVerificationResult.lift(
-            _uniffi_rust_call_with_error(_UniffiConverterTypeMdocVerificationError,_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_verify_issuer_signature,self._uniffi_clone_pointer(),
-        _UniffiConverterOptionalSequenceString.lower(trust_anchors),
-        _UniffiConverterBool.lower(use_intermediate_chaining))
-        )
-
-
-
-
-
-
-class _UniffiConverterTypeMdoc:
-
-    @staticmethod
-    def lift(value: int):
-        return Mdoc._make_instance_(value)
-
-    @staticmethod
-    def check_lower(value: Mdoc):
-        if not isinstance(value, Mdoc):
-            raise TypeError("Expected Mdoc instance, {} found".format(type(value).__name__))
-
-    @staticmethod
-    def lower(value: MdocProtocol):
-        if not isinstance(value, Mdoc):
-            raise TypeError("Expected Mdoc instance, {} found".format(type(value).__name__))
-        return value._uniffi_clone_pointer()
-
-    @classmethod
-    def read(cls, buf: _UniffiRustBuffer):
-        ptr = buf.read_u64()
-        if ptr == 0:
-            raise InternalError("Raw pointer value was null")
-        return cls.lift(ptr)
-
-    @classmethod
-    def write(cls, value: MdocProtocol, buf: _UniffiRustBuffer):
-        buf.write_u64(cls.lower(value))
-
-
-
-class P256KeyPairProtocol(typing.Protocol):
-    def public_jwk(self, ):
-        raise NotImplementedError
-    def sign(self, msg: "bytes"):
-        raise NotImplementedError
-
-
-class P256KeyPair:
-    _pointer: ctypes.c_void_p
-    def __init__(self, ):
-        self._pointer = _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_p256keypair_new,)
-
-    def __del__(self):
-        # In case of partial initialization of instances.
-        pointer = getattr(self, "_pointer", None)
-        if pointer is not None:
-            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_free_p256keypair, pointer)
-
-    def _uniffi_clone_pointer(self):
-        return _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_clone_p256keypair, self._pointer)
-
-    # Used by alternative constructors or any methods which return this type.
-    @classmethod
-    def _make_instance_(cls, pointer):
-        # Lightly yucky way to bypass the usual __init__ logic
-        # and just create a new instance with the required pointer.
-        inst = cls.__new__(cls)
-        inst._pointer = pointer
-        return inst
-
-
-    def public_jwk(self, ) -> "str":
-        return _UniffiConverterString.lift(
-            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_method_p256keypair_public_jwk,self._uniffi_clone_pointer(),)
-        )
-
-
-
-
-
-    def sign(self, msg: "bytes") -> "bytes":
-        _UniffiConverterBytes.check_lower(msg)
-        
-        return _UniffiConverterBytes.lift(
-            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_method_p256keypair_sign,self._uniffi_clone_pointer(),
-        _UniffiConverterBytes.lower(msg))
-        )
-
-
-
-
-
-
-class _UniffiConverterTypeP256KeyPair:
-
-    @staticmethod
-    def lift(value: int):
-        return P256KeyPair._make_instance_(value)
-
-    @staticmethod
-    def check_lower(value: P256KeyPair):
-        if not isinstance(value, P256KeyPair):
-            raise TypeError("Expected P256KeyPair instance, {} found".format(type(value).__name__))
-
-    @staticmethod
-    def lower(value: P256KeyPairProtocol):
-        if not isinstance(value, P256KeyPair):
-            raise TypeError("Expected P256KeyPair instance, {} found".format(type(value).__name__))
-        return value._uniffi_clone_pointer()
-
-    @classmethod
-    def read(cls, buf: _UniffiRustBuffer):
-        ptr = buf.read_u64()
-        if ptr == 0:
-            raise InternalError("Raw pointer value was null")
-        return cls.lift(ptr)
-
-    @classmethod
-    def write(cls, value: P256KeyPairProtocol, buf: _UniffiRustBuffer):
-        buf.write_u64(cls.lower(value))
-
-
-
-class PreparedMdocProtocol(typing.Protocol):
-    """
-    A prepared (unsigned) mDoc, ready for external signing.
-
-    Created by [`PreparedMdoc::new()`]. Call [`signature_payload()`](Self::signature_payload)
-    to obtain the bytes that must be signed, then supply the signature and
-    certificate chain to [`complete()`](Self::complete) to produce the final
-    signed [`Mdoc`].
-    """
-
-    def complete(self, certificate_chain_pem: "str",signature: "bytes"):
-        """
-        Supply the signature and certificate chain PEM to finalize the mDoc.
-
-        `certificate_chain_pem` should contain the signing (leaf) certificate
-        first, followed by any intermediate certificates. `signature` should be
-        the raw signature bytes produced by signing [`signature_payload()`] with
-        the issuer's private key.
-
-        This method consumes the inner prepared data; calling it twice will fail.
-        """
-
-        raise NotImplementedError
-    def signature_payload(self, ):
-        """
-        Returns the bytes that must be signed by the issuer's key.
-        """
-
-        raise NotImplementedError
-
-
-class PreparedMdoc:
-    """
-    A prepared (unsigned) mDoc, ready for external signing.
-
-    Created by [`PreparedMdoc::new()`]. Call [`signature_payload()`](Self::signature_payload)
-    to obtain the bytes that must be signed, then supply the signature and
-    certificate chain to [`complete()`](Self::complete) to produce the final
-    signed [`Mdoc`].
-    """
-
-    _pointer: ctypes.c_void_p
-    def __init__(self, doc_type: "str",namespaces: "dict[str, dict[str, str]]",holder_jwk: "str",signature_algorithm: "str"):
-        """
-        Prepare an mDoc for external signing.
-
-        The returned object holds the partially-constructed mDoc. Use
-        [`signature_payload()`] to get the bytes that must be signed by the
-        issuer key, then call [`complete()`] with the raw signature and
-        PEM-encoded certificate chain to finalize the mDoc.
-
-        `signature_algorithm` must be one of: `"ES256"`, `"ES384"`, `"ES512"`.
-        `namespaces` maps namespace → (element_identifier → JSON-encoded value).
-        """
-
-        _UniffiConverterString.check_lower(doc_type)
-        
-        _UniffiConverterMapStringMapStringString.check_lower(namespaces)
-        
-        _UniffiConverterString.check_lower(holder_jwk)
-        
-        _UniffiConverterString.check_lower(signature_algorithm)
-        
-        self._pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_preparedmdoc_new,
-        _UniffiConverterString.lower(doc_type),
-        _UniffiConverterMapStringMapStringString.lower(namespaces),
-        _UniffiConverterString.lower(holder_jwk),
-        _UniffiConverterString.lower(signature_algorithm))
-
-    def __del__(self):
-        # In case of partial initialization of instances.
-        pointer = getattr(self, "_pointer", None)
-        if pointer is not None:
-            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_free_preparedmdoc, pointer)
-
-    def _uniffi_clone_pointer(self):
-        return _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_clone_preparedmdoc, self._pointer)
-
-    # Used by alternative constructors or any methods which return this type.
-    @classmethod
-    def _make_instance_(cls, pointer):
-        # Lightly yucky way to bypass the usual __init__ logic
-        # and just create a new instance with the required pointer.
-        inst = cls.__new__(cls)
-        inst._pointer = pointer
-        return inst
-
-
-    def complete(self, certificate_chain_pem: "str",signature: "bytes") -> "Mdoc":
-        """
-        Supply the signature and certificate chain PEM to finalize the mDoc.
-
-        `certificate_chain_pem` should contain the signing (leaf) certificate
-        first, followed by any intermediate certificates. `signature` should be
-        the raw signature bytes produced by signing [`signature_payload()`] with
-        the issuer's private key.
-
-        This method consumes the inner prepared data; calling it twice will fail.
-        """
-
-        _UniffiConverterString.check_lower(certificate_chain_pem)
-        
-        _UniffiConverterBytes.check_lower(signature)
-        
-        return _UniffiConverterTypeMdoc.lift(
-            _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_uniffi_fn_method_preparedmdoc_complete,self._uniffi_clone_pointer(),
-        _UniffiConverterString.lower(certificate_chain_pem),
-        _UniffiConverterBytes.lower(signature))
-        )
-
-
-
-
-
-    def signature_payload(self, ) -> "bytes":
-        """
-        Returns the bytes that must be signed by the issuer's key.
-        """
-
-        return _UniffiConverterBytes.lift(
-            _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_uniffi_fn_method_preparedmdoc_signature_payload,self._uniffi_clone_pointer(),)
-        )
-
-
-
-
-
-
-class _UniffiConverterTypePreparedMdoc:
-
-    @staticmethod
-    def lift(value: int):
-        return PreparedMdoc._make_instance_(value)
-
-    @staticmethod
-    def check_lower(value: PreparedMdoc):
-        if not isinstance(value, PreparedMdoc):
-            raise TypeError("Expected PreparedMdoc instance, {} found".format(type(value).__name__))
-
-    @staticmethod
-    def lower(value: PreparedMdocProtocol):
-        if not isinstance(value, PreparedMdoc):
-            raise TypeError("Expected PreparedMdoc instance, {} found".format(type(value).__name__))
-        return value._uniffi_clone_pointer()
-
-    @classmethod
-    def read(cls, buf: _UniffiRustBuffer):
-        ptr = buf.read_u64()
-        if ptr == 0:
-            raise InternalError("Raw pointer value was null")
-        return cls.lift(ptr)
-
-    @classmethod
-    def write(cls, value: PreparedMdocProtocol, buf: _UniffiRustBuffer):
-        buf.write_u64(cls.lower(value))
 
 
 class Element:
@@ -2805,8 +1821,6 @@ class MDocItem:
         def __init__(self, *values):
             if len(values) != 1:
                 raise TypeError(f"Expected 1 arguments, found {len(values)}")
-            if not isinstance(values[0], str):
-                raise TypeError(f"unexpected type for tuple element 0 - expected 'str', got '{type(values[0])}'")
             self._values = values
 
         def __getitem__(self, index):
@@ -2816,15 +1830,13 @@ class MDocItem:
             return f"MDocItem.TEXT{self._values!r}"
 
         def __eq__(self, other):
-            if not other.is_text():
+            if not other.is_TEXT():
                 return False
             return self._values == other._values
     class BOOL:
         def __init__(self, *values):
             if len(values) != 1:
                 raise TypeError(f"Expected 1 arguments, found {len(values)}")
-            if not isinstance(values[0], bool):
-                raise TypeError(f"unexpected type for tuple element 0 - expected 'bool', got '{type(values[0])}'")
             self._values = values
 
         def __getitem__(self, index):
@@ -2834,15 +1846,13 @@ class MDocItem:
             return f"MDocItem.BOOL{self._values!r}"
 
         def __eq__(self, other):
-            if not other.is_bool():
+            if not other.is_BOOL():
                 return False
             return self._values == other._values
     class INTEGER:
         def __init__(self, *values):
             if len(values) != 1:
                 raise TypeError(f"Expected 1 arguments, found {len(values)}")
-            if not isinstance(values[0], int):
-                raise TypeError(f"unexpected type for tuple element 0 - expected 'int', got '{type(values[0])}'")
             self._values = values
 
         def __getitem__(self, index):
@@ -2852,15 +1862,13 @@ class MDocItem:
             return f"MDocItem.INTEGER{self._values!r}"
 
         def __eq__(self, other):
-            if not other.is_integer():
+            if not other.is_INTEGER():
                 return False
             return self._values == other._values
     class ITEM_MAP:
         def __init__(self, *values):
             if len(values) != 1:
                 raise TypeError(f"Expected 1 arguments, found {len(values)}")
-            if not isinstance(values[0], dict):
-                raise TypeError(f"unexpected type for tuple element 0 - expected 'dict[str, MDocItem]', got '{type(values[0])}'")
             self._values = values
 
         def __getitem__(self, index):
@@ -2870,15 +1878,13 @@ class MDocItem:
             return f"MDocItem.ITEM_MAP{self._values!r}"
 
         def __eq__(self, other):
-            if not other.is_item_map():
+            if not other.is_ITEM_MAP():
                 return False
             return self._values == other._values
     class ARRAY:
         def __init__(self, *values):
             if len(values) != 1:
                 raise TypeError(f"Expected 1 arguments, found {len(values)}")
-            if not isinstance(values[0], list):
-                raise TypeError(f"unexpected type for tuple element 0 - expected 'typing.List[MDocItem]', got '{type(values[0])}'")
             self._values = values
 
         def __getitem__(self, index):
@@ -2888,21 +1894,31 @@ class MDocItem:
             return f"MDocItem.ARRAY{self._values!r}"
 
         def __eq__(self, other):
-            if not other.is_array():
+            if not other.is_ARRAY():
                 return False
             return self._values == other._values
     
 
-    # For each variant, we have an `is_NAME` method for easily checking
+    # For each variant, we have `is_NAME` and `is_name` methods for easily checking
     # whether an instance is that variant.
+    def is_TEXT(self) -> bool:
+        return isinstance(self, MDocItem.TEXT)
     def is_text(self) -> bool:
         return isinstance(self, MDocItem.TEXT)
+    def is_BOOL(self) -> bool:
+        return isinstance(self, MDocItem.BOOL)
     def is_bool(self) -> bool:
         return isinstance(self, MDocItem.BOOL)
+    def is_INTEGER(self) -> bool:
+        return isinstance(self, MDocItem.INTEGER)
     def is_integer(self) -> bool:
         return isinstance(self, MDocItem.INTEGER)
+    def is_ITEM_MAP(self) -> bool:
+        return isinstance(self, MDocItem.ITEM_MAP)
     def is_item_map(self) -> bool:
         return isinstance(self, MDocItem.ITEM_MAP)
+    def is_ARRAY(self) -> bool:
+        return isinstance(self, MDocItem.ARRAY)
     def is_array(self) -> bool:
         return isinstance(self, MDocItem.ARRAY)
     
@@ -2947,38 +1963,38 @@ class _UniffiConverterTypeMDocItem(_UniffiConverterRustBuffer):
 
     @staticmethod
     def check_lower(value):
-        if value.is_text():
+        if value.is_TEXT():
             _UniffiConverterString.check_lower(value._values[0])
             return
-        if value.is_bool():
+        if value.is_BOOL():
             _UniffiConverterBool.check_lower(value._values[0])
             return
-        if value.is_integer():
+        if value.is_INTEGER():
             _UniffiConverterInt64.check_lower(value._values[0])
             return
-        if value.is_item_map():
+        if value.is_ITEM_MAP():
             _UniffiConverterMapStringTypeMDocItem.check_lower(value._values[0])
             return
-        if value.is_array():
+        if value.is_ARRAY():
             _UniffiConverterSequenceTypeMDocItem.check_lower(value._values[0])
             return
         raise ValueError(value)
 
     @staticmethod
     def write(value, buf):
-        if value.is_text():
+        if value.is_TEXT():
             buf.write_i32(1)
             _UniffiConverterString.write(value._values[0], buf)
-        if value.is_bool():
+        if value.is_BOOL():
             buf.write_i32(2)
             _UniffiConverterBool.write(value._values[0], buf)
-        if value.is_integer():
+        if value.is_INTEGER():
             buf.write_i32(3)
             _UniffiConverterInt64.write(value._values[0], buf)
-        if value.is_item_map():
+        if value.is_ITEM_MAP():
             buf.write_i32(4)
             _UniffiConverterMapStringTypeMDocItem.write(value._values[0], buf)
-        if value.is_array():
+        if value.is_ARRAY():
             buf.write_i32(5)
             _UniffiConverterSequenceTypeMDocItem.write(value._values[0], buf)
 
@@ -3388,16 +2404,8 @@ class MdocInitError:  # type: ignore
             return "MdocInitError.InvalidJwk({})".format(str(self))
     _UniffiTempMdocInitError.InvalidJwk = InvalidJwk # type: ignore
     class GeneralConstructionError(_UniffiTempMdocInitError):
-        def __init__(self, *values):
-            if len(values) != 1:
-                raise TypeError(f"Expected 1 arguments, found {len(values)}")
-            if not isinstance(values[0], str):
-                raise TypeError(f"unexpected type for tuple element 0 - expected 'str', got '{type(values[0])}'")
-            super().__init__(", ".join(map(repr, values)))
-            self._values = values
-
-        def __getitem__(self, index):
-            return self._values[index]
+        def __init__(self):
+            pass
 
         def __repr__(self):
             return "MdocInitError.GeneralConstructionError({})".format(str(self))
@@ -3441,7 +2449,6 @@ class _UniffiConverterTypeMdocInitError(_UniffiConverterRustBuffer):
             )
         if variant == 10:
             return MdocInitError.GeneralConstructionError(
-                _UniffiConverterString.read(buf),
             )
         raise InternalError("Raw enum value doesn't match any cases")
 
@@ -3467,7 +2474,6 @@ class _UniffiConverterTypeMdocInitError(_UniffiConverterRustBuffer):
         if isinstance(value, MdocInitError.InvalidJwk):
             return
         if isinstance(value, MdocInitError.GeneralConstructionError):
-            _UniffiConverterString.check_lower(value._values[0])
             return
 
     @staticmethod
@@ -3493,7 +2499,6 @@ class _UniffiConverterTypeMdocInitError(_UniffiConverterRustBuffer):
             buf.write_i32(9)
         if isinstance(value, MdocInitError.GeneralConstructionError):
             buf.write_i32(10)
-            _UniffiConverterString.write(value._values[0], buf)
 
 
 # MdocVerificationError
@@ -4494,6 +3499,779 @@ class _UniffiConverterTypeUuid:
     @staticmethod
     def lower(value):
         return _UniffiConverterString.lower(value)
+
+# objects.
+class InProcessRecordProtocol(typing.Protocol):
+    pass
+# InProcessRecord is a Rust-only trait - it's a wrapper around a Rust implementation.
+class InProcessRecord():
+    _pointer: ctypes.c_void_p
+    
+    def __init__(self, *args, **kwargs):
+        raise ValueError("This class has no default constructor")
+
+    def __del__(self):
+        # In case of partial initialization of instances.
+        pointer = getattr(self, "_pointer", None)
+        if pointer is not None:
+            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_free_inprocessrecord, pointer)
+
+    def _uniffi_clone_pointer(self):
+        return _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_clone_inprocessrecord, self._pointer)
+
+    # Used by alternative constructors or any methods which return this type.
+    @classmethod
+    def _make_instance_(cls, pointer):
+        # Lightly yucky way to bypass the usual __init__ logic
+        # and just create a new instance with the required pointer.
+        inst = cls.__new__(cls)
+        inst._pointer = pointer
+        return inst
+
+
+
+class _UniffiConverterTypeInProcessRecord:
+
+    @staticmethod
+    def lift(value: int):
+        return InProcessRecord._make_instance_(value)
+
+    @staticmethod
+    def check_lower(value: InProcessRecord):
+        if not isinstance(value, InProcessRecord):
+            raise TypeError("Expected InProcessRecord instance, {} found".format(type(value).__name__))
+
+    @staticmethod
+    def lower(value: InProcessRecordProtocol):
+        if not isinstance(value, InProcessRecord):
+            raise TypeError("Expected InProcessRecord instance, {} found".format(type(value).__name__))
+        return value._uniffi_clone_pointer()
+
+    @classmethod
+    def read(cls, buf: _UniffiRustBuffer):
+        ptr = buf.read_u64()
+        if ptr == 0:
+            raise InternalError("Raw pointer value was null")
+        return cls.lift(ptr)
+
+    @classmethod
+    def write(cls, value: InProcessRecordProtocol, buf: _UniffiRustBuffer):
+        buf.write_u64(cls.lower(value))
+class MdlPresentationSessionProtocol(typing.Protocol):
+    def generate_response(self, permitted_items: "dict[str, dict[str, typing.List[str]]]"):
+        """
+        Constructs the response to be sent from the holder to the reader containing
+        the items of information the user has consented to share.
+
+        Takes a HashMap of items the user has authorized the app to share, as well
+        as the id of a key stored in the key manager to be used to sign the response.
+        Returns a byte array containing the signed response to be returned to the
+        reader.
+        """
+
+        raise NotImplementedError
+    def get_ble_ident(self, ):
+        """
+        Returns the BLE identification
+        """
+
+        raise NotImplementedError
+    def get_qr_code_uri(self, ):
+        """
+        Returns the generated QR code
+        """
+
+        raise NotImplementedError
+    def handle_request(self, request: "bytes"):
+        """
+        Handle a request from a reader that is seeking information from the mDL holder.
+
+        Takes the raw bytes received from the reader by the holder over the transmission
+        technology. Returns a Vector of information items requested by the reader, or an
+        error.
+        """
+
+        raise NotImplementedError
+    def submit_response(self, signature: "bytes"):
+        raise NotImplementedError
+    def terminate_session(self, ):
+        """
+        Terminates the mDL exchange session.
+
+        Returns the termination message to be transmitted to the reader.
+        """
+
+        raise NotImplementedError
+# MdlPresentationSession is a Rust-only trait - it's a wrapper around a Rust implementation.
+class MdlPresentationSession():
+    _pointer: ctypes.c_void_p
+    def __init__(self, mdoc: "Mdoc",uuid: "str"):
+        """
+        Begin the mDL presentation process for the holder by passing in the credential
+        to be presented in the form of an [Mdoc] object.
+
+        Initializes the presentation session for an ISO 18013-5 mDL and stores
+        the session state object in the device storage_manager.
+
+        Arguments:
+        mdoc: the Mdoc to be presented, as an [Mdoc] object
+        uuid: the Bluetooth Low Energy Client Central Mode UUID to be used
+
+        Returns:
+        A Result, with the `Ok` containing a tuple consisting of an enum representing
+        the state of the presentation, a String containing the QR code URI, and a
+        String containing the BLE ident.
+
+        """
+
+        _UniffiConverterTypeMdoc.check_lower(mdoc)
+        
+        _UniffiConverterString.check_lower(uuid)
+        
+        self._pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeSessionError,_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdlpresentationsession_new,
+        _UniffiConverterTypeMdoc.lower(mdoc),
+        _UniffiConverterString.lower(uuid))
+
+    def __del__(self):
+        # In case of partial initialization of instances.
+        pointer = getattr(self, "_pointer", None)
+        if pointer is not None:
+            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_free_mdlpresentationsession, pointer)
+
+    def _uniffi_clone_pointer(self):
+        return _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_clone_mdlpresentationsession, self._pointer)
+
+    # Used by alternative constructors or any methods which return this type.
+    @classmethod
+    def _make_instance_(cls, pointer):
+        # Lightly yucky way to bypass the usual __init__ logic
+        # and just create a new instance with the required pointer.
+        inst = cls.__new__(cls)
+        inst._pointer = pointer
+        return inst
+
+
+    def generate_response(self, permitted_items: "dict[str, dict[str, typing.List[str]]]") -> "bytes":
+        """
+        Constructs the response to be sent from the holder to the reader containing
+        the items of information the user has consented to share.
+
+        Takes a HashMap of items the user has authorized the app to share, as well
+        as the id of a key stored in the key manager to be used to sign the response.
+        Returns a byte array containing the signed response to be returned to the
+        reader.
+        """
+
+        _UniffiConverterMapStringMapStringSequenceString.check_lower(permitted_items)
+        
+        return _UniffiConverterBytes.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeSignatureError,_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdlpresentationsession_generate_response,self._uniffi_clone_pointer(),
+        _UniffiConverterMapStringMapStringSequenceString.lower(permitted_items))
+        )
+
+
+
+
+
+    def get_ble_ident(self, ) -> "bytes":
+        """
+        Returns the BLE identification
+        """
+
+        return _UniffiConverterBytes.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdlpresentationsession_get_ble_ident,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+    def get_qr_code_uri(self, ) -> "str":
+        """
+        Returns the generated QR code
+        """
+
+        return _UniffiConverterString.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdlpresentationsession_get_qr_code_uri,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+    def handle_request(self, request: "bytes") -> "typing.List[ItemsRequest]":
+        """
+        Handle a request from a reader that is seeking information from the mDL holder.
+
+        Takes the raw bytes received from the reader by the holder over the transmission
+        technology. Returns a Vector of information items requested by the reader, or an
+        error.
+        """
+
+        _UniffiConverterBytes.check_lower(request)
+        
+        return _UniffiConverterSequenceTypeItemsRequest.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeRequestError,_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdlpresentationsession_handle_request,self._uniffi_clone_pointer(),
+        _UniffiConverterBytes.lower(request))
+        )
+
+
+
+
+
+    def submit_response(self, signature: "bytes") -> "bytes":
+        _UniffiConverterBytes.check_lower(signature)
+        
+        return _UniffiConverterBytes.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeSignatureError,_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdlpresentationsession_submit_response,self._uniffi_clone_pointer(),
+        _UniffiConverterBytes.lower(signature))
+        )
+
+
+
+
+
+    def terminate_session(self, ) -> "bytes":
+        """
+        Terminates the mDL exchange session.
+
+        Returns the termination message to be transmitted to the reader.
+        """
+
+        return _UniffiConverterBytes.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeTerminationError,_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdlpresentationsession_terminate_session,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+
+class _UniffiConverterTypeMdlPresentationSession:
+
+    @staticmethod
+    def lift(value: int):
+        return MdlPresentationSession._make_instance_(value)
+
+    @staticmethod
+    def check_lower(value: MdlPresentationSession):
+        if not isinstance(value, MdlPresentationSession):
+            raise TypeError("Expected MdlPresentationSession instance, {} found".format(type(value).__name__))
+
+    @staticmethod
+    def lower(value: MdlPresentationSessionProtocol):
+        if not isinstance(value, MdlPresentationSession):
+            raise TypeError("Expected MdlPresentationSession instance, {} found".format(type(value).__name__))
+        return value._uniffi_clone_pointer()
+
+    @classmethod
+    def read(cls, buf: _UniffiRustBuffer):
+        ptr = buf.read_u64()
+        if ptr == 0:
+            raise InternalError("Raw pointer value was null")
+        return cls.lift(ptr)
+
+    @classmethod
+    def write(cls, value: MdlPresentationSessionProtocol, buf: _UniffiRustBuffer):
+        buf.write_u64(cls.lower(value))
+class MdlSessionManagerProtocol(typing.Protocol):
+    pass
+# MdlSessionManager is a Rust-only trait - it's a wrapper around a Rust implementation.
+class MdlSessionManager():
+    _pointer: ctypes.c_void_p
+    
+    def __init__(self, *args, **kwargs):
+        raise ValueError("This class has no default constructor")
+
+    def __del__(self):
+        # In case of partial initialization of instances.
+        pointer = getattr(self, "_pointer", None)
+        if pointer is not None:
+            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_free_mdlsessionmanager, pointer)
+
+    def _uniffi_clone_pointer(self):
+        return _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_clone_mdlsessionmanager, self._pointer)
+
+    # Used by alternative constructors or any methods which return this type.
+    @classmethod
+    def _make_instance_(cls, pointer):
+        # Lightly yucky way to bypass the usual __init__ logic
+        # and just create a new instance with the required pointer.
+        inst = cls.__new__(cls)
+        inst._pointer = pointer
+        return inst
+
+
+
+class _UniffiConverterTypeMdlSessionManager:
+
+    @staticmethod
+    def lift(value: int):
+        return MdlSessionManager._make_instance_(value)
+
+    @staticmethod
+    def check_lower(value: MdlSessionManager):
+        if not isinstance(value, MdlSessionManager):
+            raise TypeError("Expected MdlSessionManager instance, {} found".format(type(value).__name__))
+
+    @staticmethod
+    def lower(value: MdlSessionManagerProtocol):
+        if not isinstance(value, MdlSessionManager):
+            raise TypeError("Expected MdlSessionManager instance, {} found".format(type(value).__name__))
+        return value._uniffi_clone_pointer()
+
+    @classmethod
+    def read(cls, buf: _UniffiRustBuffer):
+        ptr = buf.read_u64()
+        if ptr == 0:
+            raise InternalError("Raw pointer value was null")
+        return cls.lift(ptr)
+
+    @classmethod
+    def write(cls, value: MdlSessionManagerProtocol, buf: _UniffiRustBuffer):
+        buf.write_u64(cls.lower(value))
+class MdocProtocol(typing.Protocol):
+    def details(self, ):
+        """
+        Simple representation of mdoc namespace and data elements for display in the UI.
+        """
+
+        raise NotImplementedError
+    def doctype(self, ):
+        """
+        The document type of this mdoc, for example `org.iso.18013.5.1.mDL`.
+        """
+
+        raise NotImplementedError
+    def id(self, ):
+        """
+        The local ID of this credential.
+        """
+
+        raise NotImplementedError
+    def issuer_signed_b64(self, ):
+        """
+        Serialize as an ISO 18013-5 §8.3 compliant IssuerSigned structure (base64url, no padding).
+
+        Unlike [`Mdoc::stringify`], which serializes the internal `Document` struct
+        with snake_case CBOR keys (`issuer_auth`, `namespaces`), this method
+        serializes an [`IssuerSigned`] value using the camelCase keys required
+        by ISO 18013-5 §8.3 (`issuerAuth`, `nameSpaces`) and the correct
+        map-of-lists namespace representation (`NonEmptyVec<IssuerSignedItemBytes>`).
+
+        This is the correct format for use in OpenID4VCI mso_mdoc credential issuance
+        and ISO 18013-5 presentation.
+        """
+
+        raise NotImplementedError
+    def json(self, ):
+        """
+        Serialize as JSON
+        """
+
+        raise NotImplementedError
+    def key_alias(self, ):
+        raise NotImplementedError
+    def stringify(self, ):
+        """
+        Serialize to CBOR
+        """
+
+        raise NotImplementedError
+    def verify_issuer_signature(self, trust_anchors: "typing.Optional[typing.List[str]]",use_intermediate_chaining: "bool"):
+        """
+        Verify the issuer signature of this mdoc credential.
+
+        This method extracts the X5Chain from the issuer_auth header, validates it
+        against the provided trust anchors, and verifies the COSE_Sign1 signature.
+
+        # Arguments
+        * `trust_anchors` - Optional list of PEM-encoded trust anchor certificates.
+        If not provided, X5Chain validation is skipped but signature verification
+        is still performed using the certificate in the X5Chain.
+        * `use_intermediate_chaining` - If true, the verifier will attempt to build a trust path
+        using intermediate certificates found in the X5Chain header. If false, only the
+        certificates explicitly provided in `trust_anchors` are trusted.
+
+        # Returns
+        * `Ok(IssuerVerificationResult)` - The verification result with verified status
+        and optional common name from the issuer certificate.
+        * `Err(MdocVerificationError)` - If verification fails due to missing/invalid
+        X5Chain or signature verification failure.
+        """
+
+        raise NotImplementedError
+# Mdoc is a Rust-only trait - it's a wrapper around a Rust implementation.
+class Mdoc():
+    _pointer: ctypes.c_void_p
+    
+    def __init__(self, *args, **kwargs):
+        raise ValueError("This class has no default constructor")
+
+    def __del__(self):
+        # In case of partial initialization of instances.
+        pointer = getattr(self, "_pointer", None)
+        if pointer is not None:
+            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_free_mdoc, pointer)
+
+    def _uniffi_clone_pointer(self):
+        return _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_clone_mdoc, self._pointer)
+
+    # Used by alternative constructors or any methods which return this type.
+    @classmethod
+    def _make_instance_(cls, pointer):
+        # Lightly yucky way to bypass the usual __init__ logic
+        # and just create a new instance with the required pointer.
+        inst = cls.__new__(cls)
+        inst._pointer = pointer
+        return inst
+    @classmethod
+    def create_and_sign(cls, doc_type: "str",namespaces: "dict[str, dict[str, str]]",holder_jwk: "str",iaca_cert_perm: "str",iaca_key_perm: "str"):
+        _UniffiConverterString.check_lower(doc_type)
+        
+        _UniffiConverterMapStringMapStringString.check_lower(namespaces)
+        
+        _UniffiConverterString.check_lower(holder_jwk)
+        
+        _UniffiConverterString.check_lower(iaca_cert_perm)
+        
+        _UniffiConverterString.check_lower(iaca_key_perm)
+        
+        # Call the (fallible) function before creating any half-baked object instances.
+        pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_create_and_sign,
+        _UniffiConverterString.lower(doc_type),
+        _UniffiConverterMapStringMapStringString.lower(namespaces),
+        _UniffiConverterString.lower(holder_jwk),
+        _UniffiConverterString.lower(iaca_cert_perm),
+        _UniffiConverterString.lower(iaca_key_perm))
+        return cls._make_instance_(pointer)
+
+    @classmethod
+    def create_and_sign_mdl(cls, mdl_items: "str",aamva_items: "typing.Optional[str]",holder_jwk: "str",iaca_cert_pem: "str",iaca_key_pem: "str"):
+        _UniffiConverterString.check_lower(mdl_items)
+        
+        _UniffiConverterOptionalString.check_lower(aamva_items)
+        
+        _UniffiConverterString.check_lower(holder_jwk)
+        
+        _UniffiConverterString.check_lower(iaca_cert_pem)
+        
+        _UniffiConverterString.check_lower(iaca_key_pem)
+        
+        # Call the (fallible) function before creating any half-baked object instances.
+        pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_create_and_sign_mdl,
+        _UniffiConverterString.lower(mdl_items),
+        _UniffiConverterOptionalString.lower(aamva_items),
+        _UniffiConverterString.lower(holder_jwk),
+        _UniffiConverterString.lower(iaca_cert_pem),
+        _UniffiConverterString.lower(iaca_key_pem))
+        return cls._make_instance_(pointer)
+
+    @classmethod
+    def from_cbor_encoded_document(cls, cbor_encoded_document: "bytes",key_alias: "KeyAlias"):
+        """
+        Construct a SpruceKit MDoc from a cbor-encoded
+        [spruceid/isomdl `Document`](https://github.com/spruceid/isomdl/blob/main/src/presentation/device.rs#L145-L152)
+        """
+
+        _UniffiConverterBytes.check_lower(cbor_encoded_document)
+        
+        _UniffiConverterTypeKeyAlias.check_lower(key_alias)
+        
+        # Call the (fallible) function before creating any half-baked object instances.
+        pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_from_cbor_encoded_document,
+        _UniffiConverterBytes.lower(cbor_encoded_document),
+        _UniffiConverterTypeKeyAlias.lower(key_alias))
+        return cls._make_instance_(pointer)
+
+    @classmethod
+    def from_string(cls, stringified_document: "str"):
+        """
+        Parse an MDoc from a stringified document with a default key alias.
+        This is a convenience method for parsing mdocs where the key alias is not critical.
+        """
+
+        _UniffiConverterString.check_lower(stringified_document)
+        
+        # Call the (fallible) function before creating any half-baked object instances.
+        pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_from_string,
+        _UniffiConverterString.lower(stringified_document))
+        return cls._make_instance_(pointer)
+
+    @classmethod
+    def from_stringified_document(cls, stringified_document: "str",key_alias: "KeyAlias"):
+        """
+        Compatibility feature: construct an MDoc from a
+        [stringified spruceid/isomdl `Document`](https://github.com/spruceid/isomdl/blob/main/src/presentation/mod.rs#L100)
+        """
+
+        _UniffiConverterString.check_lower(stringified_document)
+        
+        _UniffiConverterTypeKeyAlias.check_lower(key_alias)
+        
+        # Call the (fallible) function before creating any half-baked object instances.
+        pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_from_stringified_document,
+        _UniffiConverterString.lower(stringified_document),
+        _UniffiConverterTypeKeyAlias.lower(key_alias))
+        return cls._make_instance_(pointer)
+
+    @classmethod
+    def new_from_base64url_encoded_issuer_signed(cls, base64url_encoded_issuer_signed: "str",key_alias: "KeyAlias"):
+        """
+        Construct a new MDoc from base64url-encoded IssuerSigned.
+        """
+
+        _UniffiConverterString.check_lower(base64url_encoded_issuer_signed)
+        
+        _UniffiConverterTypeKeyAlias.check_lower(key_alias)
+        
+        # Call the (fallible) function before creating any half-baked object instances.
+        pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_new_from_base64url_encoded_issuer_signed,
+        _UniffiConverterString.lower(base64url_encoded_issuer_signed),
+        _UniffiConverterTypeKeyAlias.lower(key_alias))
+        return cls._make_instance_(pointer)
+
+
+
+    def details(self, ) -> "dict[Namespace, typing.List[Element]]":
+        """
+        Simple representation of mdoc namespace and data elements for display in the UI.
+        """
+
+        return _UniffiConverterMapTypeNamespaceSequenceTypeElement.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_details,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+    def doctype(self, ) -> "str":
+        """
+        The document type of this mdoc, for example `org.iso.18013.5.1.mDL`.
+        """
+
+        return _UniffiConverterString.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_doctype,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+    def id(self, ) -> "Uuid":
+        """
+        The local ID of this credential.
+        """
+
+        return _UniffiConverterTypeUuid.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_id,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+    def issuer_signed_b64(self, ) -> "str":
+        """
+        Serialize as an ISO 18013-5 §8.3 compliant IssuerSigned structure (base64url, no padding).
+
+        Unlike [`Mdoc::stringify`], which serializes the internal `Document` struct
+        with snake_case CBOR keys (`issuer_auth`, `namespaces`), this method
+        serializes an [`IssuerSigned`] value using the camelCase keys required
+        by ISO 18013-5 §8.3 (`issuerAuth`, `nameSpaces`) and the correct
+        map-of-lists namespace representation (`NonEmptyVec<IssuerSignedItemBytes>`).
+
+        This is the correct format for use in OpenID4VCI mso_mdoc credential issuance
+        and ISO 18013-5 presentation.
+        """
+
+        return _UniffiConverterString.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeMdocEncodingError,_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_issuer_signed_b64,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+    def json(self, ) -> "str":
+        """
+        Serialize as JSON
+        """
+
+        return _UniffiConverterString.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeMdocEncodingError,_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_json,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+    def key_alias(self, ) -> "KeyAlias":
+        return _UniffiConverterTypeKeyAlias.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_key_alias,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+    def stringify(self, ) -> "str":
+        """
+        Serialize to CBOR
+        """
+
+        return _UniffiConverterString.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeMdocEncodingError,_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_stringify,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+    def verify_issuer_signature(self, trust_anchors: "typing.Optional[typing.List[str]]",use_intermediate_chaining: "bool") -> "IssuerVerificationResult":
+        """
+        Verify the issuer signature of this mdoc credential.
+
+        This method extracts the X5Chain from the issuer_auth header, validates it
+        against the provided trust anchors, and verifies the COSE_Sign1 signature.
+
+        # Arguments
+        * `trust_anchors` - Optional list of PEM-encoded trust anchor certificates.
+        If not provided, X5Chain validation is skipped but signature verification
+        is still performed using the certificate in the X5Chain.
+        * `use_intermediate_chaining` - If true, the verifier will attempt to build a trust path
+        using intermediate certificates found in the X5Chain header. If false, only the
+        certificates explicitly provided in `trust_anchors` are trusted.
+
+        # Returns
+        * `Ok(IssuerVerificationResult)` - The verification result with verified status
+        and optional common name from the issuer certificate.
+        * `Err(MdocVerificationError)` - If verification fails due to missing/invalid
+        X5Chain or signature verification failure.
+        """
+
+        _UniffiConverterOptionalSequenceString.check_lower(trust_anchors)
+        
+        _UniffiConverterBool.check_lower(use_intermediate_chaining)
+        
+        return _UniffiConverterTypeIssuerVerificationResult.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeMdocVerificationError,_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_verify_issuer_signature,self._uniffi_clone_pointer(),
+        _UniffiConverterOptionalSequenceString.lower(trust_anchors),
+        _UniffiConverterBool.lower(use_intermediate_chaining))
+        )
+
+
+
+
+
+
+class _UniffiConverterTypeMdoc:
+
+    @staticmethod
+    def lift(value: int):
+        return Mdoc._make_instance_(value)
+
+    @staticmethod
+    def check_lower(value: Mdoc):
+        if not isinstance(value, Mdoc):
+            raise TypeError("Expected Mdoc instance, {} found".format(type(value).__name__))
+
+    @staticmethod
+    def lower(value: MdocProtocol):
+        if not isinstance(value, Mdoc):
+            raise TypeError("Expected Mdoc instance, {} found".format(type(value).__name__))
+        return value._uniffi_clone_pointer()
+
+    @classmethod
+    def read(cls, buf: _UniffiRustBuffer):
+        ptr = buf.read_u64()
+        if ptr == 0:
+            raise InternalError("Raw pointer value was null")
+        return cls.lift(ptr)
+
+    @classmethod
+    def write(cls, value: MdocProtocol, buf: _UniffiRustBuffer):
+        buf.write_u64(cls.lower(value))
+class P256KeyPairProtocol(typing.Protocol):
+    def public_jwk(self, ):
+        raise NotImplementedError
+    def sign(self, msg: "bytes"):
+        raise NotImplementedError
+# P256KeyPair is a Rust-only trait - it's a wrapper around a Rust implementation.
+class P256KeyPair():
+    _pointer: ctypes.c_void_p
+    def __init__(self, ):
+        self._pointer = _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_p256keypair_new,)
+
+    def __del__(self):
+        # In case of partial initialization of instances.
+        pointer = getattr(self, "_pointer", None)
+        if pointer is not None:
+            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_free_p256keypair, pointer)
+
+    def _uniffi_clone_pointer(self):
+        return _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_clone_p256keypair, self._pointer)
+
+    # Used by alternative constructors or any methods which return this type.
+    @classmethod
+    def _make_instance_(cls, pointer):
+        # Lightly yucky way to bypass the usual __init__ logic
+        # and just create a new instance with the required pointer.
+        inst = cls.__new__(cls)
+        inst._pointer = pointer
+        return inst
+
+
+    def public_jwk(self, ) -> "str":
+        return _UniffiConverterString.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_method_p256keypair_public_jwk,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+    def sign(self, msg: "bytes") -> "bytes":
+        _UniffiConverterBytes.check_lower(msg)
+        
+        return _UniffiConverterBytes.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_method_p256keypair_sign,self._uniffi_clone_pointer(),
+        _UniffiConverterBytes.lower(msg))
+        )
+
+
+
+
+
+
+class _UniffiConverterTypeP256KeyPair:
+
+    @staticmethod
+    def lift(value: int):
+        return P256KeyPair._make_instance_(value)
+
+    @staticmethod
+    def check_lower(value: P256KeyPair):
+        if not isinstance(value, P256KeyPair):
+            raise TypeError("Expected P256KeyPair instance, {} found".format(type(value).__name__))
+
+    @staticmethod
+    def lower(value: P256KeyPairProtocol):
+        if not isinstance(value, P256KeyPair):
+            raise TypeError("Expected P256KeyPair instance, {} found".format(type(value).__name__))
+        return value._uniffi_clone_pointer()
+
+    @classmethod
+    def read(cls, buf: _UniffiRustBuffer):
+        ptr = buf.read_u64()
+        if ptr == 0:
+            raise InternalError("Raw pointer value was null")
+        return cls.lift(ptr)
+
+    @classmethod
+    def write(cls, value: P256KeyPairProtocol, buf: _UniffiRustBuffer):
+        buf.write_u64(cls.lower(value))
 KeyAlias = str
 Namespace = str
 Uuid = str
@@ -4612,6 +4390,5 @@ __all__ = [
     "MdlPresentationSession",
     "Mdoc",
     "P256KeyPair",
-    "PreparedMdoc",
 ]
 

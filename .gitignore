@@ -23,6 +23,8 @@ env/
 python/isomdl_uniffi/*.so
 python/isomdl_uniffi/*.dylib
 python/isomdl_uniffi/*.dll
+# Nested package artifact from pip editable installs
+python/isomdl_uniffi/isomdl_uniffi/
 
 # Kotlin build artifacts
 .kotlin

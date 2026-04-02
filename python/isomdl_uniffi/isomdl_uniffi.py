@@ -506,6 +506,10 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_isomdl_uniffi_checksum_method_p256keypair_sign() != 44060:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_isomdl_uniffi_checksum_method_preparedmdoc_complete() != 48153:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_isomdl_uniffi_checksum_method_preparedmdoc_signature_payload() != 10293:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_isomdl_uniffi_checksum_constructor_mdlpresentationsession_new() != 1270:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_create_and_sign() != 347:
@@ -521,6 +525,8 @@ def _uniffi_check_api_checksums(lib):
     if lib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_new_from_base64url_encoded_issuer_signed() != 55023:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_isomdl_uniffi_checksum_constructor_p256keypair_new() != 41043:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_isomdl_uniffi_checksum_constructor_preparedmdoc_new() != 34079:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
 
 # A ctypes library to expose the extern-C FFI definitions.
@@ -815,6 +821,36 @@ _UniffiLib.uniffi_isomdl_uniffi_fn_method_p256keypair_sign.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_isomdl_uniffi_fn_method_p256keypair_sign.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_isomdl_uniffi_fn_clone_preparedmdoc.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_isomdl_uniffi_fn_clone_preparedmdoc.restype = ctypes.c_void_p
+_UniffiLib.uniffi_isomdl_uniffi_fn_free_preparedmdoc.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_isomdl_uniffi_fn_free_preparedmdoc.restype = None
+_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_preparedmdoc_new.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_preparedmdoc_new.restype = ctypes.c_void_p
+_UniffiLib.uniffi_isomdl_uniffi_fn_method_preparedmdoc_complete.argtypes = (
+    ctypes.c_void_p,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_isomdl_uniffi_fn_method_preparedmdoc_complete.restype = ctypes.c_void_p
+_UniffiLib.uniffi_isomdl_uniffi_fn_method_preparedmdoc_signature_payload.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_isomdl_uniffi_fn_method_preparedmdoc_signature_payload.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_isomdl_uniffi_fn_func_establish_session.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
@@ -1195,6 +1231,12 @@ _UniffiLib.uniffi_isomdl_uniffi_checksum_method_p256keypair_public_jwk.restype =
 _UniffiLib.uniffi_isomdl_uniffi_checksum_method_p256keypair_sign.argtypes = (
 )
 _UniffiLib.uniffi_isomdl_uniffi_checksum_method_p256keypair_sign.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_uniffi_checksum_method_preparedmdoc_complete.argtypes = (
+)
+_UniffiLib.uniffi_isomdl_uniffi_checksum_method_preparedmdoc_complete.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_uniffi_checksum_method_preparedmdoc_signature_payload.argtypes = (
+)
+_UniffiLib.uniffi_isomdl_uniffi_checksum_method_preparedmdoc_signature_payload.restype = ctypes.c_uint16
 _UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdlpresentationsession_new.argtypes = (
 )
 _UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdlpresentationsession_new.restype = ctypes.c_uint16
@@ -1219,6 +1261,9 @@ _UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_new_from_base64url_enc
 _UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_p256keypair_new.argtypes = (
 )
 _UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_p256keypair_new.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_preparedmdoc_new.argtypes = (
+)
+_UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_preparedmdoc_new.restype = ctypes.c_uint16
 _UniffiLib.ffi_isomdl_uniffi_uniffi_contract_version.argtypes = (
 )
 _UniffiLib.ffi_isomdl_uniffi_uniffi_contract_version.restype = ctypes.c_uint32
@@ -2104,6 +2149,164 @@ class _UniffiConverterTypeP256KeyPair:
 
     @classmethod
     def write(cls, value: P256KeyPairProtocol, buf: _UniffiRustBuffer):
+        buf.write_u64(cls.lower(value))
+
+
+
+class PreparedMdocProtocol(typing.Protocol):
+    """
+    A prepared (unsigned) mDoc, ready for external signing.
+
+    Created by [`PreparedMdoc::new()`]. Call [`signature_payload()`](Self::signature_payload)
+    to obtain the bytes that must be signed, then supply the signature and
+    certificate chain to [`complete()`](Self::complete) to produce the final
+    signed [`Mdoc`].
+    """
+
+    def complete(self, certificate_chain_pem: "str",signature: "bytes"):
+        """
+        Supply the signature and certificate chain PEM to finalize the mDoc.
+
+        `certificate_chain_pem` should contain the signing (leaf) certificate
+        first, followed by any intermediate certificates. `signature` should be
+        the raw signature bytes produced by signing [`signature_payload()`] with
+        the issuer's private key.
+
+        This method consumes the inner prepared data; calling it twice will fail.
+        """
+
+        raise NotImplementedError
+    def signature_payload(self, ):
+        """
+        Returns the bytes that must be signed by the issuer's key.
+        """
+
+        raise NotImplementedError
+
+
+class PreparedMdoc:
+    """
+    A prepared (unsigned) mDoc, ready for external signing.
+
+    Created by [`PreparedMdoc::new()`]. Call [`signature_payload()`](Self::signature_payload)
+    to obtain the bytes that must be signed, then supply the signature and
+    certificate chain to [`complete()`](Self::complete) to produce the final
+    signed [`Mdoc`].
+    """
+
+    _pointer: ctypes.c_void_p
+    def __init__(self, doc_type: "str",namespaces: "dict[str, dict[str, str]]",holder_jwk: "str",signature_algorithm: "str"):
+        """
+        Prepare an mDoc for external signing.
+
+        The returned object holds the partially-constructed mDoc. Use
+        [`signature_payload()`] to get the bytes that must be signed by the
+        issuer key, then call [`complete()`] with the raw signature and
+        PEM-encoded certificate chain to finalize the mDoc.
+
+        `signature_algorithm` must be one of: `"ES256"`, `"ES384"`, `"ES512"`.
+        `namespaces` maps namespace → (element_identifier → JSON-encoded value).
+        """
+
+        _UniffiConverterString.check_lower(doc_type)
+        
+        _UniffiConverterMapStringMapStringString.check_lower(namespaces)
+        
+        _UniffiConverterString.check_lower(holder_jwk)
+        
+        _UniffiConverterString.check_lower(signature_algorithm)
+        
+        self._pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_preparedmdoc_new,
+        _UniffiConverterString.lower(doc_type),
+        _UniffiConverterMapStringMapStringString.lower(namespaces),
+        _UniffiConverterString.lower(holder_jwk),
+        _UniffiConverterString.lower(signature_algorithm))
+
+    def __del__(self):
+        # In case of partial initialization of instances.
+        pointer = getattr(self, "_pointer", None)
+        if pointer is not None:
+            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_free_preparedmdoc, pointer)
+
+    def _uniffi_clone_pointer(self):
+        return _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_clone_preparedmdoc, self._pointer)
+
+    # Used by alternative constructors or any methods which return this type.
+    @classmethod
+    def _make_instance_(cls, pointer):
+        # Lightly yucky way to bypass the usual __init__ logic
+        # and just create a new instance with the required pointer.
+        inst = cls.__new__(cls)
+        inst._pointer = pointer
+        return inst
+
+
+    def complete(self, certificate_chain_pem: "str",signature: "bytes") -> "Mdoc":
+        """
+        Supply the signature and certificate chain PEM to finalize the mDoc.
+
+        `certificate_chain_pem` should contain the signing (leaf) certificate
+        first, followed by any intermediate certificates. `signature` should be
+        the raw signature bytes produced by signing [`signature_payload()`] with
+        the issuer's private key.
+
+        This method consumes the inner prepared data; calling it twice will fail.
+        """
+
+        _UniffiConverterString.check_lower(certificate_chain_pem)
+        
+        _UniffiConverterBytes.check_lower(signature)
+        
+        return _UniffiConverterTypeMdoc.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_uniffi_fn_method_preparedmdoc_complete,self._uniffi_clone_pointer(),
+        _UniffiConverterString.lower(certificate_chain_pem),
+        _UniffiConverterBytes.lower(signature))
+        )
+
+
+
+
+
+    def signature_payload(self, ) -> "bytes":
+        """
+        Returns the bytes that must be signed by the issuer's key.
+        """
+
+        return _UniffiConverterBytes.lift(
+            _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_uniffi_fn_method_preparedmdoc_signature_payload,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+
+class _UniffiConverterTypePreparedMdoc:
+
+    @staticmethod
+    def lift(value: int):
+        return PreparedMdoc._make_instance_(value)
+
+    @staticmethod
+    def check_lower(value: PreparedMdoc):
+        if not isinstance(value, PreparedMdoc):
+            raise TypeError("Expected PreparedMdoc instance, {} found".format(type(value).__name__))
+
+    @staticmethod
+    def lower(value: PreparedMdocProtocol):
+        if not isinstance(value, PreparedMdoc):
+            raise TypeError("Expected PreparedMdoc instance, {} found".format(type(value).__name__))
+        return value._uniffi_clone_pointer()
+
+    @classmethod
+    def read(cls, buf: _UniffiRustBuffer):
+        ptr = buf.read_u64()
+        if ptr == 0:
+            raise InternalError("Raw pointer value was null")
+        return cls.lift(ptr)
+
+    @classmethod
+    def write(cls, value: PreparedMdocProtocol, buf: _UniffiRustBuffer):
         buf.write_u64(cls.lower(value))
 
 
@@ -4409,5 +4612,6 @@ __all__ = [
     "MdlPresentationSession",
     "Mdoc",
     "P256KeyPair",
+    "PreparedMdoc",
 ]
 

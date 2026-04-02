@@ -18,7 +18,7 @@ use std::{
 use anyhow::{Context, Result};
 use base64::prelude::*;
 use ciborium::Value;
-use coset::Label;
+use coset::{Label, iana};
 use isomdl::{
     definitions::{
         CoseKey, DeviceKeyInfo, DigestAlgorithm, EC2Curve, EC2Y, IssuerSigned, Mso, ValidityInfo,
@@ -648,6 +648,257 @@ pub struct IssuerVerificationResult {
     pub common_name: Option<String>,
     /// Error message if verification failed.
     pub error: Option<String>,
+}
+
+/// A prepared (unsigned) mDoc, ready for external signing.
+///
+/// Created by [`PreparedMdoc::new()`]. Call [`signature_payload()`](Self::signature_payload)
+/// to obtain the bytes that must be signed, then supply the signature and
+/// certificate chain to [`complete()`](Self::complete) to produce the final
+/// signed [`Mdoc`].
+#[derive(uniffi::Object)]
+pub struct PreparedMdoc {
+    inner: std::sync::Mutex<Option<isomdl::issuance::mdoc::PreparedMdoc>>,
+}
+
+#[uniffi::export]
+impl PreparedMdoc {
+    /// Prepare an mDoc for external signing.
+    ///
+    /// The returned object holds the partially-constructed mDoc. Use
+    /// [`signature_payload()`] to get the bytes that must be signed by the
+    /// issuer key, then call [`complete()`] with the raw signature and
+    /// PEM-encoded certificate chain to finalize the mDoc.
+    ///
+    /// `signature_algorithm` must be one of: `"ES256"`, `"ES384"`, `"ES512"`.
+    /// `namespaces` maps namespace → (element_identifier → JSON-encoded value).
+    #[uniffi::constructor]
+    pub fn new(
+        doc_type: String,
+        namespaces: HashMap<String, HashMap<String, String>>,
+        holder_jwk: String,
+        signature_algorithm: String,
+    ) -> Result<Arc<Self>, MdocInitError> {
+        let pub_key: PublicKey =
+            PublicKey::from_jwk_str(&holder_jwk).map_err(|_e| MdocInitError::InvalidJwk)?;
+
+        let namespaces = convert_namespaces(namespaces)?;
+        let builder = prepare_builder(pub_key, namespaces, doc_type).map_err(|e| {
+            MdocInitError::GeneralConstructionError(format!("prepare_builder: {e}"))
+        })?;
+
+        let algorithm = parse_signature_algorithm(&signature_algorithm)?;
+        let prepared = builder
+            .prepare(algorithm)
+            .map_err(|e| MdocInitError::GeneralConstructionError(format!("prepare: {e}")))?;
+
+        Ok(Arc::new(Self {
+            inner: std::sync::Mutex::new(Some(prepared)),
+        }))
+    }
+
+    /// Prepare an mDL (`org.iso.18013.5.1.mDL`) document for external signing.
+    ///
+    /// Unlike [`PreparedMdoc::new()`], which uses a generic JSON→CBOR conversion,
+    /// this constructor uses the ISO 18013-5 typed namespace builder
+    /// (`OrgIso1801351`) to ensure correct CBOR field types (e.g. `birth_date`
+    /// encoded as a CBOR `full-date`, not a plain text string).
+    ///
+    /// * `mdl_items` — JSON object string with mDL namespace elements.
+    /// * `aamva_items` — Optional JSON object string with AAMVA namespace elements.
+    /// * `holder_jwk` — P-256 JWK of the holder's device key.
+    /// * `signature_algorithm` — one of `"ES256"`, `"ES384"`, `"ES512"`.
+    #[uniffi::constructor]
+    pub fn new_mdl(
+        mdl_items: String,
+        aamva_items: Option<String>,
+        holder_jwk: String,
+        signature_algorithm: String,
+    ) -> Result<Arc<Self>, MdocInitError> {
+        let pub_key: PublicKey =
+            PublicKey::from_jwk_str(&holder_jwk).map_err(|_e| MdocInitError::InvalidJwk)?;
+
+        let mut namespaces = BTreeMap::new();
+
+        // Parse mDL items using the typed mDL parser (OrgIso1801351::from_json),
+        // same as create_and_sign_mdl.  This ensures CBOR field types are correct
+        // (e.g. birth_date as tdate rather than a plain text string).
+        let json_value: serde_json::Value = serde_json::from_str(&mdl_items).map_err(|e| {
+            MdocInitError::GeneralConstructionError(format!("mdl_items JSON parse: {e}"))
+        })?;
+        let mdl_data = OrgIso1801351::from_json(&json_value)
+            .map_err(|e| {
+                MdocInitError::GeneralConstructionError(format!(
+                    "mDL namespace parse (org.iso.18013.5.1): {e}"
+                ))
+            })?
+            .to_ns_map();
+        namespaces.insert("org.iso.18013.5.1".to_string(), mdl_data);
+
+        // Parse AAMVA items if present
+        if let Some(aamva_json) = aamva_items {
+            let json_value: serde_json::Value = serde_json::from_str(&aamva_json).map_err(|e| {
+                MdocInitError::GeneralConstructionError(format!("aamva JSON parse: {e}"))
+            })?;
+            let aamva_data = OrgIso1801351Aamva::from_json(&json_value)
+                .map_err(|e| {
+                    MdocInitError::GeneralConstructionError(format!("AAMVA namespace parse: {e}"))
+                })?
+                .to_ns_map();
+            namespaces.insert("org.iso.18013.5.1.aamva".to_string(), aamva_data);
+        }
+
+        let doc_type = "org.iso.18013.5.1.mDL".to_string();
+        let builder = prepare_builder(pub_key, namespaces, doc_type).map_err(|e| {
+            MdocInitError::GeneralConstructionError(format!("prepare_builder: {e}"))
+        })?;
+
+        let algorithm = parse_signature_algorithm(&signature_algorithm)?;
+        let prepared = builder
+            .prepare(algorithm)
+            .map_err(|e| MdocInitError::GeneralConstructionError(format!("prepare: {e}")))?;
+
+        Ok(Arc::new(Self {
+            inner: std::sync::Mutex::new(Some(prepared)),
+        }))
+    }
+
+    /// Returns the bytes that must be signed by the issuer's key.
+    pub fn signature_payload(&self) -> Result<Vec<u8>, MdocInitError> {
+        let guard = self
+            .inner
+            .lock()
+            .map_err(|_| MdocInitError::GeneralConstructionError("lock poisoned".into()))?;
+        let prepared = guard.as_ref().ok_or_else(|| {
+            MdocInitError::GeneralConstructionError(
+                "PreparedMdoc already consumed by complete()".into(),
+            )
+        })?;
+        Ok(prepared.signature_payload().to_vec())
+    }
+
+    /// Supply the signature and certificate chain PEM to finalize the mDoc.
+    ///
+    /// `certificate_chain_pem` should contain the signing (leaf) certificate
+    /// first, followed by any intermediate certificates. `signature` should be
+    /// the raw signature bytes produced by signing [`signature_payload()`] with
+    /// the issuer's private key.
+    ///
+    /// This method consumes the inner prepared data; calling it twice will fail.
+    pub fn complete(
+        &self,
+        certificate_chain_pem: String,
+        signature: Vec<u8>,
+    ) -> Result<Arc<Mdoc>, MdocInitError> {
+        let prepared = self
+            .inner
+            .lock()
+            .map_err(|_| MdocInitError::GeneralConstructionError("lock poisoned".into()))?
+            .take()
+            .ok_or_else(|| {
+                MdocInitError::GeneralConstructionError(
+                    "PreparedMdoc already consumed by complete()".into(),
+                )
+            })?;
+
+        let x5chain = parse_x5chain_from_pem(&certificate_chain_pem)?;
+        let issuance_mdoc = prepared.complete(x5chain, signature);
+        let doc = issuance_mdoc_to_document(issuance_mdoc)?;
+
+        Ok(Arc::new(Mdoc::new_from_parts(
+            doc,
+            KeyAlias(Uuid::new_v4().to_string()),
+        )))
+    }
+}
+
+/// Map a string algorithm name to a COSE algorithm identifier.
+fn parse_signature_algorithm(alg: &str) -> Result<iana::Algorithm, MdocInitError> {
+    match alg.to_uppercase().as_str() {
+        "ES256" => Ok(iana::Algorithm::ES256),
+        "ES384" => Ok(iana::Algorithm::ES384),
+        "ES512" => Ok(iana::Algorithm::ES512),
+        _ => Err(MdocInitError::GeneralConstructionError(format!(
+            "unsupported signature algorithm: {alg}"
+        ))),
+    }
+}
+
+/// Parse a PEM-encoded certificate chain into an X5Chain.
+///
+/// The first certificate in the PEM is the signing (leaf) certificate.
+/// Subsequent certificates are intermediates.
+fn parse_x5chain_from_pem(pem_str: &str) -> Result<X5Chain, MdocInitError> {
+    let parts: Vec<&str> = pem_str.split("-----BEGIN CERTIFICATE-----").collect();
+    let mut certs = Vec::new();
+
+    for part in parts.iter().skip(1) {
+        if part.trim().is_empty() {
+            continue;
+        }
+        let full_pem = format!("-----BEGIN CERTIFICATE-----\n{}", part.trim_start());
+        let cert = Certificate::from_pem(&full_pem).map_err(|e| {
+            MdocInitError::GeneralConstructionError(format!("certificate PEM parse: {e}"))
+        })?;
+        certs.push(cert);
+    }
+
+    if certs.is_empty() {
+        return Err(MdocInitError::GeneralConstructionError(
+            "no certificates found in PEM data".into(),
+        ));
+    }
+
+    let mut builder = X5Chain::builder()
+        .with_certificate(certs.remove(0))
+        .map_err(|e| {
+            MdocInitError::GeneralConstructionError(format!("x5chain certificate: {e}"))
+        })?;
+
+    for cert in certs {
+        builder = builder.with_certificate(cert).map_err(|e| {
+            MdocInitError::GeneralConstructionError(format!("x5chain intermediate: {e}"))
+        })?;
+    }
+
+    builder
+        .build()
+        .map_err(|e| MdocInitError::GeneralConstructionError(format!("x5chain build: {e}")))
+}
+
+/// Convert an upstream `isomdl::issuance::mdoc::Mdoc` into our `Document` wrapper.
+fn issuance_mdoc_to_document(
+    mdoc: isomdl::issuance::mdoc::Mdoc,
+) -> Result<Document, MdocInitError> {
+    let namespaces = NonEmptyMap::maybe_new(
+        mdoc.namespaces
+            .into_inner()
+            .into_iter()
+            .map(|(namespace, elements)| {
+                let inner_map = NonEmptyMap::maybe_new(
+                    elements
+                        .into_inner()
+                        .into_iter()
+                        .map(|element| (element.as_ref().element_identifier.clone(), element))
+                        .collect(),
+                )
+                .ok_or(MdocInitError::GeneralConstructionError(
+                    "empty namespace elements".into(),
+                ))?;
+                Ok((namespace, inner_map))
+            })
+            .collect::<Result<_, MdocInitError>>()?,
+    )
+    .ok_or(MdocInitError::GeneralConstructionError(
+        "empty namespaces".into(),
+    ))?;
+
+    Ok(Document {
+        id: Default::default(),
+        issuer_auth: mdoc.issuer_auth,
+        mso: mdoc.mso,
+        namespaces,
+    })
 }
 
 fn prepare_builder(
@@ -1384,5 +1635,175 @@ mod tests {
         assert!(verification.verified);
         // Common name should be the Ephemeral DS created by setup_certificate_chain
         assert_eq!(verification.common_name, Some("Test DS".to_string()));
+    }
+
+    #[test]
+    fn test_prepare_and_complete() {
+        // 1. Generate Issuer/DS Key
+        let ds_key = SigningKey::random(&mut OsRng);
+        let ds_key_pem = ds_key.to_pkcs8_pem(LineEnding::LF).unwrap().to_string();
+
+        // 2. Generate self-signed DS Certificate
+        let subject_name: Name = "CN=Test Issuer".parse().unwrap();
+        let spki = SubjectPublicKeyInfoOwned::from_key(ds_key.verifying_key().clone()).unwrap();
+        let cert = CertificateBuilder::new(
+            Profile::Root,
+            SerialNumber::from(1u64),
+            Validity::from_now(Duration::from_secs(3600)).unwrap(),
+            subject_name,
+            spki,
+            &ds_key,
+        )
+        .unwrap()
+        .build::<p256::ecdsa::DerSignature>()
+        .unwrap();
+        let cert_pem = cert.to_pem(LineEnding::LF).unwrap();
+
+        // 3. Generate Holder Key (JWK)
+        let holder_key = SigningKey::random(&mut OsRng);
+        let point = holder_key.verifying_key().to_encoded_point(false);
+        let x = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(point.x().unwrap());
+        let y = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(point.y().unwrap());
+        let holder_jwk =
+            serde_json::json!({"kty": "EC", "crv": "P-256", "x": x, "y": y}).to_string();
+
+        // 4. Sample Data
+        let mut namespaces = HashMap::new();
+        let mut ns_items = HashMap::new();
+        ns_items.insert(
+            "given_name".to_string(),
+            serde_json::to_string("Alice").unwrap(),
+        );
+        ns_items.insert(
+            "family_name".to_string(),
+            serde_json::to_string("Wonderland").unwrap(),
+        );
+        namespaces.insert("com.example.test".to_string(), ns_items);
+
+        // 5. Prepare
+        let prepared = PreparedMdoc::new(
+            "com.example.test.doc".to_string(),
+            namespaces,
+            holder_jwk,
+            "ES256".to_string(),
+        )
+        .expect("prepare failed");
+
+        // 6. Get signature payload
+        let payload = prepared.signature_payload().expect("payload failed");
+        assert!(!payload.is_empty(), "signature payload should be non-empty");
+
+        // 7. Sign externally with the DS key
+        use p256::ecdsa::{Signature, signature::Signer};
+        let signature: Signature = ds_key.sign(&payload);
+
+        // 8. Complete
+        let mdoc = prepared
+            .complete(cert_pem, signature.to_vec())
+            .expect("complete failed");
+
+        // 9. Verify
+        assert_eq!(mdoc.doctype(), "com.example.test.doc");
+        let details = mdoc.details();
+        let ns = Namespace("com.example.test".to_string());
+        let elements = details.get(&ns).expect("Namespace not found");
+        let given = elements
+            .iter()
+            .find(|e| e.identifier == "given_name")
+            .expect("given_name not found");
+        assert!(given.value.as_ref().unwrap().contains("Alice"));
+
+        // 10. Verify calling complete again fails (consumed)
+        let result = prepared.complete("".to_string(), vec![]);
+        assert!(result.is_err(), "second complete should fail");
+    }
+
+    #[test]
+    fn test_prepare_and_complete_matches_create_and_sign() {
+        // Verify that the prepare/complete path produces a structurally valid
+        // mDoc that can pass issuer signature verification, just like
+        // create_and_sign does.
+        let ds_key = SigningKey::random(&mut OsRng);
+        let spki = SubjectPublicKeyInfoOwned::from_key(ds_key.verifying_key().clone()).unwrap();
+        let cert = CertificateBuilder::new(
+            Profile::Root,
+            SerialNumber::from(1u64),
+            Validity::from_now(Duration::from_secs(3600)).unwrap(),
+            "CN=Test Issuer".parse().unwrap(),
+            spki,
+            &ds_key,
+        )
+        .unwrap()
+        .build::<p256::ecdsa::DerSignature>()
+        .unwrap();
+        let cert_pem = cert.to_pem(LineEnding::LF).unwrap();
+
+        let holder_key = SigningKey::random(&mut OsRng);
+        let point = holder_key.verifying_key().to_encoded_point(false);
+        let x = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(point.x().unwrap());
+        let y = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(point.y().unwrap());
+        let holder_jwk =
+            serde_json::json!({"kty": "EC", "crv": "P-256", "x": x, "y": y}).to_string();
+
+        let mut namespaces = HashMap::new();
+        let mut ns_items = HashMap::new();
+        ns_items.insert(
+            "element_a".to_string(),
+            serde_json::to_string("value_a").unwrap(),
+        );
+        namespaces.insert("com.example.verify".to_string(), ns_items);
+
+        let prepared = PreparedMdoc::new(
+            "com.example.verify.doc".to_string(),
+            namespaces,
+            holder_jwk,
+            "ES256".to_string(),
+        )
+        .expect("prepare failed");
+
+        let payload = prepared.signature_payload().expect("payload failed");
+        use p256::ecdsa::{Signature, signature::Signer};
+        let signature: Signature = ds_key.sign(&payload);
+
+        let mdoc = prepared
+            .complete(cert_pem.clone(), signature.to_vec())
+            .expect("complete failed");
+
+        // Verify the issuer signature passes (no trust anchors, just sig check)
+        let result = mdoc.verify_issuer_signature(None, false);
+        assert!(
+            result.is_ok(),
+            "issuer signature verification failed: {:?}",
+            result
+        );
+        let verification = result.unwrap();
+        assert!(verification.verified, "signature should be valid");
+
+        // The cert was self-signed with CN=Test Issuer, used directly (no
+        // intermediate DS cert generation), so the common name should match.
+        assert_eq!(verification.common_name, Some("Test Issuer".to_string()),);
+    }
+
+    #[test]
+    fn test_prepare_invalid_algorithm() {
+        let holder_key = SigningKey::random(&mut OsRng);
+        let point = holder_key.verifying_key().to_encoded_point(false);
+        let x = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(point.x().unwrap());
+        let y = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(point.y().unwrap());
+        let holder_jwk =
+            serde_json::json!({"kty": "EC", "crv": "P-256", "x": x, "y": y}).to_string();
+
+        let mut namespaces = HashMap::new();
+        let mut ns_items = HashMap::new();
+        ns_items.insert("k".to_string(), serde_json::to_string("v").unwrap());
+        namespaces.insert("ns".to_string(), ns_items);
+
+        let result = PreparedMdoc::new(
+            "doc".to_string(),
+            namespaces,
+            holder_jwk,
+            "INVALID".to_string(),
+        );
+        assert!(result.is_err(), "should reject unknown algorithm");
     }
 }

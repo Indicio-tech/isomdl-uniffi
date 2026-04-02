@@ -2859,7 +2859,7 @@ class MDocItem:
         def __init__(self, *values):
             if len(values) != 1:
                 raise TypeError(f"Expected 1 arguments, found {len(values)}")
-            if not isinstance(values[0], dict[str, MDocItem]):
+            if not isinstance(values[0], dict):
                 raise TypeError(f"unexpected type for tuple element 0 - expected 'dict[str, MDocItem]', got '{type(values[0])}'")
             self._values = values
 
@@ -2877,7 +2877,7 @@ class MDocItem:
         def __init__(self, *values):
             if len(values) != 1:
                 raise TypeError(f"Expected 1 arguments, found {len(values)}")
-            if not isinstance(values[0], typing.List[MDocItem]):
+            if not isinstance(values[0], list):
                 raise TypeError(f"unexpected type for tuple element 0 - expected 'typing.List[MDocItem]', got '{type(values[0])}'")
             self._values = values
 

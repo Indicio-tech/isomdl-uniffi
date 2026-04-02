@@ -683,7 +683,7 @@ impl PreparedMdoc {
         let pub_key: PublicKey =
             PublicKey::from_jwk_str(&holder_jwk).map_err(|_e| MdocInitError::InvalidJwk)?;
 
-        let namespaces = convert_namespaces(namespaces)?;
+        let namespaces = convert_namespaces_json(namespaces)?;
         let builder = prepare_builder(pub_key, namespaces, doc_type).map_err(|e| {
             MdocInitError::GeneralConstructionError(format!("prepare_builder: {e}"))
         })?;

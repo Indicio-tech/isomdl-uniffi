@@ -63,7 +63,7 @@ crate-type = ["cdylib", "staticlib", "rlib"]
 name = "isomdl_uniffi"
 
 [profile.release]
-strip = true
+strip = false
 opt-level = "s"
 lto = true
 codegen-units = 1

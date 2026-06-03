@@ -21,7 +21,6 @@ import java.util.Properties
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.androidLibrary)
     id("dev.gobley.cargo") version "0.3.7"
     id("dev.gobley.uniffi") version "0.3.7"
     kotlin("plugin.atomicfu") version libs.versions.kotlin
@@ -72,52 +71,25 @@ cargo {
         }
 
         jvm{
-            if(GobleyHost.Platform.MacOS.isCurrent){
-                embedRustLibrary = when (rustTarget){
-                    RustWindowsTarget.X64 -> false
-                    RustWindowsTarget.Arm64 -> false
-                    else -> true
-                }
-                if (rustTarget == RustPosixTarget.MinGWX64) {
-                    variants {
-                        dynamicLibraries.set(listOf("isomdl_uniffi.dll"))
-                    }
-                }
-
-                RustPosixTarget.linuxTargets.forEach{
-                    if(rustTarget == it && GobleyHost.Platform.MacOS.isCurrent){
-                        embedRustLibrary = false
-                    }
-                }
-            }
-        }
-
-        android{
-            variants{
-                buildTaskProvider.configure {
-                    additionalEnvironment.put("RUSTFLAGS", "-C link-args=-Wl,-z,max-page-size=16384")
-                }
-            }
+            // Linux-host build for holdr-sdk CLI: emit a per-target classifier jar
+            // (embedRustLibrary=false) instead of embedding the .so in the main jar,
+            // so it matches the `:linux-x86-64` coordinate holdr-sdk consumes.
+            embedRustLibrary = false
         }
     }
 }
 
 uniffi{
-    generateFromLibrary()
+    generateFromLibrary{
+        // Pin bindings generation to the Linux JVM target; default picked iosArm64
+        // which cannot link on a Linux host.
+        build.set(RustPosixTarget.LinuxX64)
+    }
 }
 
 kotlin {
     jvmToolchain(17)
     applyDefaultHierarchyTemplate()
-
-    androidTarget {
-        publishLibraryVariants("release")
-        compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_11)
-        }
-        instrumentedTestVariant.sourceSetTree.set(KotlinSourceSetTree.test)
-        unitTestVariant.sourceSetTree.set(KotlinSourceSetTree.unitTest)
-    }
 
     jvm {
         compilerOptions {
@@ -150,24 +122,5 @@ kotlin {
         }
         jvmTest.dependencies {
         }
-        androidUnitTest.dependencies{
-        }
-    }
-}
-
-android {
-    namespace = "tech.indicio.isomdl_uniffi"
-    compileSdk = 35
-
-    // Use the specific NDK version recommended for this project
-    // This version will be automatically installed in CI environments
-    ndkVersion = "28.2.13676358"
-
-    defaultConfig {
-        minSdk = 24
-    }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
     }
 }

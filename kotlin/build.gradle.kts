@@ -29,7 +29,7 @@ plugins {
 }
 
 group = "tech.indicio"
-version = "0.0.2"
+version = "0.0.3"
 
 val localProperties = Properties().apply {
     val file = rootProject.file("local.properties")

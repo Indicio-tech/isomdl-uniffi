@@ -11,7 +11,7 @@
 
 [package]
 name = "isomdl-uniffi"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 authors = ["Indicio <support@indicio.tech>"]
 description = "UniFFI bindings for ISO 18013-5 Mobile Driver's License (mDL) library"

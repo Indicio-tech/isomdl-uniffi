@@ -33,12 +33,35 @@ struct Oid4vpRequest {
     client_id: String,
     nonce: String,
     response_uri: String,
-    presentation_definition: PresentationDefinition,
+    // Either presentation_definition (DIF PE) or dcql_query (OID4VP 1.0 DCQL)
+    // supplies the requested elements; both are optional so a DCQL-only request
+    // parses without a presentation_definition.
+    #[serde(default)]
+    presentation_definition: Option<PresentationDefinition>,
+    #[serde(default)]
+    dcql_query: Option<DcqlQuery>,
 }
 
 #[derive(serde::Deserialize)]
 struct PresentationDefinition {
     input_descriptors: Vec<InputDescriptor>,
+}
+
+// DCQL query: credentials each carry claims whose `path` is [namespace, element].
+#[derive(serde::Deserialize)]
+struct DcqlQuery {
+    credentials: Vec<DcqlCredentialQuery>,
+}
+
+#[derive(serde::Deserialize)]
+struct DcqlCredentialQuery {
+    #[serde(default)]
+    claims: Vec<DcqlClaimsQuery>,
+}
+
+#[derive(serde::Deserialize)]
+struct DcqlClaimsQuery {
+    path: Vec<serde_json::Value>,
 }
 
 #[derive(serde::Deserialize)]
@@ -156,14 +179,34 @@ impl MDocOid4vpSession {
         let cbor_null = vec![0xF6u8];
         let mut permitted_namespaces: HashMap<String, HashMap<String, Vec<u8>>> = HashMap::new();
 
-        for descriptor in &req.presentation_definition.input_descriptors {
-            for field in &descriptor.constraints.fields {
-                for path in &field.path {
-                    if let Some((ns, element)) = parse_mdoc_path(path) {
+        if let Some(presentation_definition) = &req.presentation_definition {
+            for descriptor in &presentation_definition.input_descriptors {
+                for field in &descriptor.constraints.fields {
+                    for path in &field.path {
+                        if let Some((ns, element)) = parse_mdoc_path(path) {
+                            permitted_namespaces
+                                .entry(ns)
+                                .or_default()
+                                .entry(element)
+                                .or_insert_with(|| cbor_null.clone());
+                        }
+                    }
+                }
+            }
+        }
+
+        // DCQL: each claim path is [namespace, element_identifier] for mso_mdoc.
+        if let Some(dcql_query) = &req.dcql_query {
+            for credential in &dcql_query.credentials {
+                for claim in &credential.claims {
+                    if let (Some(ns), Some(element)) = (
+                        claim.path.first().and_then(|v| v.as_str()),
+                        claim.path.get(1).and_then(|v| v.as_str()),
+                    ) {
                         permitted_namespaces
-                            .entry(ns)
+                            .entry(ns.to_string())
                             .or_default()
-                            .entry(element)
+                            .entry(element.to_string())
                             .or_insert_with(|| cbor_null.clone());
                     }
                 }

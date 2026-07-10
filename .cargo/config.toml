@@ -1,0 +1,5 @@
+[target.x86_64-unknown-linux-gnu]
+linker = "mise/scripts/x86_64-unknown-linux-gnu-cc.sh"
+
+[target.aarch64-unknown-linux-gnu]
+linker = "mise/scripts/aarch64-unknown-linux-gnu-cc.sh"

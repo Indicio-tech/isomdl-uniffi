@@ -111,11 +111,6 @@ jobs:
           install: true
           cache: true
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
-
       - name: Cache Rust dependencies
         uses: actions/cache@v4
         with:

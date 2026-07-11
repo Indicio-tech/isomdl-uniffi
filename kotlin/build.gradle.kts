@@ -46,8 +46,8 @@ publishing {
             name = "github"
             setUrl("https://maven.pkg.github.com/indicio-tech/isomdl-uniffi")
             credentials{
-                username = localProperties.getProperty("githubUsername")
-                password = localProperties.getProperty("githubToken")
+                username = localProperties.getProperty("githubUsername") ?: System.getenv("GITHUB_ACTOR")
+                password = localProperties.getProperty("githubToken") ?: System.getenv("GITHUB_TOKEN")
             }
         }
     }

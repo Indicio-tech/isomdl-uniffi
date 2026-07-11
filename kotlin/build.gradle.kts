@@ -64,13 +64,19 @@ cargo {
                 embedRustLibrary = when (rustTarget){
                     RustWindowsTarget.X64 -> false
                     RustWindowsTarget.Arm64 -> false
+
+                    // Temporarily disable MinGWX64 for right now.
+                    RustPosixTarget.MinGWX64 -> false
+
                     else -> true
                 }
-                if (rustTarget == RustPosixTarget.MinGWX64) {
-                    variants {
-                        dynamicLibraries.set(listOf("isomdl_uniffi.dll"))
-                    }
-                }
+
+                // Temporarily disable MinGWX64 for right now.
+//                if (rustTarget == RustPosixTarget.MinGWX64) {
+//                    variants {
+//                        dynamicLibraries.set(listOf("isomdl_uniffi.dll"))
+//                    }
+//                }
             }
         }
 

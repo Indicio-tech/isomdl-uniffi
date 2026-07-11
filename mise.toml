@@ -1,0 +1,26 @@
+[tools]
+zig = "0.16"
+java = "temurin-18"
+
+[tools.rust]
+version = "1.96"
+targets = [
+    # Linux desktop
+    "x86_64-unknown-linux-gnu", 
+    "aarch64-unknown-linux-gnu",
+    # Windows desktop
+    "x86_64-pc-windows-gnu",
+    # Android
+    "aarch64-linux-android",
+    "armv7-linux-androideabi",
+    "i686-linux-android",
+    "x86_64-linux-android",
+    # iOS
+    "aarch64-apple-ios",
+    "aarch64-apple-ios-sim",
+    "x86_64-apple-ios",
+    # macOS
+    "x86_64-apple-darwin",
+    "aarch64-apple-darwin"
+]
+components = ["rustfmt", "clippy"]

@@ -106,10 +106,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - uses: jdx/mise-action@v4
         with:
-          components: rustfmt, clippy
+          install: true
+          cache: true
 
       - name: Cache Rust dependencies
         uses: actions/cache@v4

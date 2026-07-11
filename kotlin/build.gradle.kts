@@ -59,18 +59,6 @@ cargo {
     packageDirectory = layout.projectDirectory.dir("src/commonMain/rust/")
 
     builds{
-        if (GobleyHost.Platform.MacOS.isCurrent) {
-            val home = System.getProperty("user.home")
-            val crossFile = File("$home/.cargo/bin/cross")
-            linux {
-                variants {
-                    buildTaskProvider.configure {
-                        this@configure.cargo = crossFile
-                    }
-                }
-            }
-        }
-
         jvm{
             if(GobleyHost.Platform.MacOS.isCurrent){
                 embedRustLibrary = when (rustTarget){
@@ -81,12 +69,6 @@ cargo {
                 if (rustTarget == RustPosixTarget.MinGWX64) {
                     variants {
                         dynamicLibraries.set(listOf("isomdl_uniffi.dll"))
-                    }
-                }
-
-                RustPosixTarget.linuxTargets.forEach{
-                    if(rustTarget == it && GobleyHost.Platform.MacOS.isCurrent){
-                        embedRustLibrary = false
                     }
                 }
             }

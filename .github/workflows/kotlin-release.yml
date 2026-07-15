@@ -51,6 +51,9 @@ jobs:
           install: true
           cache: true
 
+      - name: Install mingw-w64
+        run: brew install mingw-w64
+
       - name: Publish to Github
         run: |
           ./gradlew \

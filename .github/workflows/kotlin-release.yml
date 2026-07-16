@@ -51,14 +51,18 @@ jobs:
           install: true
           cache: true
 
+      - name: Install mingw-w64
+        run: brew install mingw-w64
+
       - name: Publish to Github
         run: |
-          ./gradlew publishKotlinMultiplatformPublicationToGithubRepository
-          ./gradlew publishJvmPublicationToGithubRepository
-          ./gradlew publishMacosArm64PublicationToGithubRepository
-          ./gradlew publishMacosX64PublicationToGithubRepository
-          ./gradlew publishIosArm64PublicationToGithubRepository
-          ./gradlew publishIosSimulatorArm64PublicationToGithubRepository
-          ./gradlew publishIosX64PublicationToGithubRepository
+          ./gradlew \
+            publishKotlinMultiplatformPublicationToGithubRepository \
+            publishJvmPublicationToGithubRepository \
+            publishMacosArm64PublicationToGithubRepository \
+            publishMacosX64PublicationToGithubRepository \
+            publishIosArm64PublicationToGithubRepository \
+            publishIosSimulatorArm64PublicationToGithubRepository \
+            publishIosX64PublicationToGithubRepository
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

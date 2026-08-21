@@ -504,6 +504,8 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_isomdl_uniffi_checksum_method_mdoc_key_alias() != 9235:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_isomdl_uniffi_checksum_method_mdoc_status() != 4157:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_isomdl_uniffi_checksum_method_mdoc_stringify() != 16395:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_isomdl_uniffi_checksum_method_mdoc_verify_issuer_signature() != 1127:
@@ -522,9 +524,9 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_isomdl_uniffi_checksum_constructor_mdlpresentationsession_new() != 1270:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_create_and_sign() != 347:
+    if lib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_create_and_sign() != 40803:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_create_and_sign_mdl() != 21814:
+    if lib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_create_and_sign_mdl() != 62480:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_isomdl_uniffi_checksum_constructor_mdoc_from_cbor_encoded_document() != 38241:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
@@ -536,9 +538,9 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_isomdl_uniffi_checksum_constructor_p256keypair_new() != 41043:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_constructor_preparedmdoc_new() != 34079:
+    if lib.uniffi_isomdl_uniffi_checksum_constructor_preparedmdoc_new() != 3758:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_constructor_preparedmdoc_new_mdl() != 4761:
+    if lib.uniffi_isomdl_uniffi_checksum_constructor_preparedmdoc_new_mdl() != 22621:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
 
 # A ctypes library to expose the extern-C FFI definitions.
@@ -766,10 +768,12 @@ _UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_create_and_sign.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
     _UniffiRustBuffer,
+    _UniffiRustBuffer,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_create_and_sign.restype = ctypes.c_void_p
 _UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_create_and_sign_mdl.argtypes = (
+    _UniffiRustBuffer,
     _UniffiRustBuffer,
     _UniffiRustBuffer,
     _UniffiRustBuffer,
@@ -831,6 +835,11 @@ _UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_key_alias.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_key_alias.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_status.argtypes = (
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_status.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_stringify.argtypes = (
     ctypes.c_void_p,
     ctypes.POINTER(_UniffiRustCallStatus),
@@ -883,10 +892,12 @@ _UniffiLib.uniffi_isomdl_uniffi_fn_constructor_preparedmdoc_new.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
     _UniffiRustBuffer,
+    _UniffiRustBuffer,
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_isomdl_uniffi_fn_constructor_preparedmdoc_new.restype = ctypes.c_void_p
 _UniffiLib.uniffi_isomdl_uniffi_fn_constructor_preparedmdoc_new_mdl.argtypes = (
+    _UniffiRustBuffer,
     _UniffiRustBuffer,
     _UniffiRustBuffer,
     _UniffiRustBuffer,
@@ -1298,6 +1309,9 @@ _UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdoc_json.restype = ctypes.c_uin
 _UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdoc_key_alias.argtypes = (
 )
 _UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdoc_key_alias.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdoc_status.argtypes = (
+)
+_UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdoc_status.restype = ctypes.c_uint16
 _UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdoc_stringify.argtypes = (
 )
 _UniffiLib.uniffi_isomdl_uniffi_checksum_method_mdoc_stringify.restype = ctypes.c_uint16
@@ -4261,6 +4275,12 @@ class MdocProtocol(typing.Protocol):
         raise NotImplementedError
     def key_alias(self, ):
         raise NotImplementedError
+    def status(self, ):
+        """
+        The status claim embedded in the MSO, as a JSON string, if any.
+        """
+
+        raise NotImplementedError
     def stringify(self, ):
         """
         Serialize to CBOR
@@ -4315,7 +4335,7 @@ class Mdoc():
         inst._pointer = pointer
         return inst
     @classmethod
-    def create_and_sign(cls, doc_type: "str",namespaces: "dict[str, dict[str, str]]",holder_jwk: "str",iaca_cert_perm: "str",iaca_key_perm: "str"):
+    def create_and_sign(cls, doc_type: "str",namespaces: "dict[str, dict[str, str]]",holder_jwk: "str",iaca_cert_perm: "str",iaca_key_perm: "str",status: "typing.Optional[str]"):
         _UniffiConverterString.check_lower(doc_type)
         
         _UniffiConverterMapStringMapStringString.check_lower(namespaces)
@@ -4326,17 +4346,20 @@ class Mdoc():
         
         _UniffiConverterString.check_lower(iaca_key_perm)
         
+        _UniffiConverterOptionalString.check_lower(status)
+        
         # Call the (fallible) function before creating any half-baked object instances.
         pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_create_and_sign,
         _UniffiConverterString.lower(doc_type),
         _UniffiConverterMapStringMapStringString.lower(namespaces),
         _UniffiConverterString.lower(holder_jwk),
         _UniffiConverterString.lower(iaca_cert_perm),
-        _UniffiConverterString.lower(iaca_key_perm))
+        _UniffiConverterString.lower(iaca_key_perm),
+        _UniffiConverterOptionalString.lower(status))
         return cls._make_instance_(pointer)
 
     @classmethod
-    def create_and_sign_mdl(cls, mdl_items: "str",aamva_items: "typing.Optional[str]",holder_jwk: "str",iaca_cert_pem: "str",iaca_key_pem: "str"):
+    def create_and_sign_mdl(cls, mdl_items: "str",aamva_items: "typing.Optional[str]",holder_jwk: "str",iaca_cert_pem: "str",iaca_key_pem: "str",status: "typing.Optional[str]"):
         _UniffiConverterString.check_lower(mdl_items)
         
         _UniffiConverterOptionalString.check_lower(aamva_items)
@@ -4347,13 +4370,16 @@ class Mdoc():
         
         _UniffiConverterString.check_lower(iaca_key_pem)
         
+        _UniffiConverterOptionalString.check_lower(status)
+        
         # Call the (fallible) function before creating any half-baked object instances.
         pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_mdoc_create_and_sign_mdl,
         _UniffiConverterString.lower(mdl_items),
         _UniffiConverterOptionalString.lower(aamva_items),
         _UniffiConverterString.lower(holder_jwk),
         _UniffiConverterString.lower(iaca_cert_pem),
-        _UniffiConverterString.lower(iaca_key_pem))
+        _UniffiConverterString.lower(iaca_key_pem),
+        _UniffiConverterOptionalString.lower(status))
         return cls._make_instance_(pointer)
 
     @classmethod
@@ -4499,6 +4525,19 @@ class Mdoc():
     def key_alias(self, ) -> "KeyAlias":
         return _UniffiConverterTypeKeyAlias.lift(
             _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_key_alias,self._uniffi_clone_pointer(),)
+        )
+
+
+
+
+
+    def status(self, ) -> "typing.Optional[str]":
+        """
+        The status claim embedded in the MSO, as a JSON string, if any.
+        """
+
+        return _UniffiConverterOptionalString.lift(
+            _uniffi_rust_call(_UniffiLib.uniffi_isomdl_uniffi_fn_method_mdoc_status,self._uniffi_clone_pointer(),)
         )
 
 
@@ -4702,7 +4741,7 @@ class PreparedMdoc():
     """
 
     _pointer: ctypes.c_void_p
-    def __init__(self, doc_type: "str",namespaces: "dict[str, dict[str, str]]",holder_jwk: "str",signature_algorithm: "str"):
+    def __init__(self, doc_type: "str",namespaces: "dict[str, dict[str, str]]",holder_jwk: "str",signature_algorithm: "str",status: "typing.Optional[str]"):
         """
         Prepare an mDoc for external signing.
 
@@ -4723,11 +4762,14 @@ class PreparedMdoc():
         
         _UniffiConverterString.check_lower(signature_algorithm)
         
+        _UniffiConverterOptionalString.check_lower(status)
+        
         self._pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_preparedmdoc_new,
         _UniffiConverterString.lower(doc_type),
         _UniffiConverterMapStringMapStringString.lower(namespaces),
         _UniffiConverterString.lower(holder_jwk),
-        _UniffiConverterString.lower(signature_algorithm))
+        _UniffiConverterString.lower(signature_algorithm),
+        _UniffiConverterOptionalString.lower(status))
 
     def __del__(self):
         # In case of partial initialization of instances.
@@ -4747,7 +4789,7 @@ class PreparedMdoc():
         inst._pointer = pointer
         return inst
     @classmethod
-    def new_mdl(cls, mdl_items: "str",aamva_items: "typing.Optional[str]",holder_jwk: "str",signature_algorithm: "str"):
+    def new_mdl(cls, mdl_items: "str",aamva_items: "typing.Optional[str]",holder_jwk: "str",signature_algorithm: "str",status: "typing.Optional[str]"):
         """
         Prepare an mDL (`org.iso.18013.5.1.mDL`) document for external signing.
 
@@ -4770,12 +4812,15 @@ class PreparedMdoc():
         
         _UniffiConverterString.check_lower(signature_algorithm)
         
+        _UniffiConverterOptionalString.check_lower(status)
+        
         # Call the (fallible) function before creating any half-baked object instances.
         pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_preparedmdoc_new_mdl,
         _UniffiConverterString.lower(mdl_items),
         _UniffiConverterOptionalString.lower(aamva_items),
         _UniffiConverterString.lower(holder_jwk),
-        _UniffiConverterString.lower(signature_algorithm))
+        _UniffiConverterString.lower(signature_algorithm),
+        _UniffiConverterOptionalString.lower(status))
         return cls._make_instance_(pointer)
 
 

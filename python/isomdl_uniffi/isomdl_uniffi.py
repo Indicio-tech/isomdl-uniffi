@@ -1755,15 +1755,22 @@ class MdlReaderVerifiedData:
     issuer_authentication: "AuthenticationStatus"
     device_authentication: "AuthenticationStatus"
     errors: "typing.Optional[str]"
-    def __init__(self, *, doc_type: "str", verified_response: "dict[str, dict[str, MDocItem]]", issuer_authentication: "AuthenticationStatus", device_authentication: "AuthenticationStatus", errors: "typing.Optional[str]"):
+    status: "typing.Optional[str]"
+    """
+    The status claim embedded in the presented mdoc's MSO, as a JSON
+    string, if any (mirrors `Mdoc::status()` for the issuance side).
+    """
+
+    def __init__(self, *, doc_type: "str", verified_response: "dict[str, dict[str, MDocItem]]", issuer_authentication: "AuthenticationStatus", device_authentication: "AuthenticationStatus", errors: "typing.Optional[str]", status: "typing.Optional[str]"):
         self.doc_type = doc_type
         self.verified_response = verified_response
         self.issuer_authentication = issuer_authentication
         self.device_authentication = device_authentication
         self.errors = errors
+        self.status = status
 
     def __str__(self):
-        return "MdlReaderVerifiedData(doc_type={}, verified_response={}, issuer_authentication={}, device_authentication={}, errors={})".format(self.doc_type, self.verified_response, self.issuer_authentication, self.device_authentication, self.errors)
+        return "MdlReaderVerifiedData(doc_type={}, verified_response={}, issuer_authentication={}, device_authentication={}, errors={}, status={})".format(self.doc_type, self.verified_response, self.issuer_authentication, self.device_authentication, self.errors, self.status)
 
     def __eq__(self, other):
         if self.doc_type != other.doc_type:
@@ -1776,6 +1783,8 @@ class MdlReaderVerifiedData:
             return False
         if self.errors != other.errors:
             return False
+        if self.status != other.status:
+            return False
         return True
 
 class _UniffiConverterTypeMdlReaderVerifiedData(_UniffiConverterRustBuffer):
@@ -1787,6 +1796,7 @@ class _UniffiConverterTypeMdlReaderVerifiedData(_UniffiConverterRustBuffer):
             issuer_authentication=_UniffiConverterTypeAuthenticationStatus.read(buf),
             device_authentication=_UniffiConverterTypeAuthenticationStatus.read(buf),
             errors=_UniffiConverterOptionalString.read(buf),
+            status=_UniffiConverterOptionalString.read(buf),
         )
 
     @staticmethod
@@ -1796,6 +1806,7 @@ class _UniffiConverterTypeMdlReaderVerifiedData(_UniffiConverterRustBuffer):
         _UniffiConverterTypeAuthenticationStatus.check_lower(value.issuer_authentication)
         _UniffiConverterTypeAuthenticationStatus.check_lower(value.device_authentication)
         _UniffiConverterOptionalString.check_lower(value.errors)
+        _UniffiConverterOptionalString.check_lower(value.status)
 
     @staticmethod
     def write(value, buf):
@@ -1804,6 +1815,7 @@ class _UniffiConverterTypeMdlReaderVerifiedData(_UniffiConverterRustBuffer):
         _UniffiConverterTypeAuthenticationStatus.write(value.issuer_authentication, buf)
         _UniffiConverterTypeAuthenticationStatus.write(value.device_authentication, buf)
         _UniffiConverterOptionalString.write(value.errors, buf)
+        _UniffiConverterOptionalString.write(value.status, buf)
 
 
 class ParsedOid4vpRequest:

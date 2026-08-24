@@ -23,11 +23,12 @@ use x509_cert::der::DecodePem;
 use isomdl::{
     definitions::{
         device_request,
-        helpers::{NonEmptyMap, non_empty_map},
+        helpers::{NonEmptyMap, Tag24, non_empty_map},
         x509::{
             self,
             trust_anchor::{PemTrustAnchor, TrustAnchorRegistry},
         },
+        Mso,
     },
     presentation::{authentication::AuthenticationStatus as IsoMdlAuthenticationStatus, reader},
 };
@@ -340,6 +341,9 @@ pub struct MDLReaderVerifiedData {
     pub issuer_authentication: AuthenticationStatus,
     pub device_authentication: AuthenticationStatus,
     pub errors: Option<String>,
+    /// The status claim embedded in the presented mdoc's MSO, as a JSON
+    /// string, if any (mirrors `Mdoc::status()` for the issuance side).
+    pub status: Option<String>,
 }
 
 impl MDLReaderVerifiedData {
@@ -697,6 +701,21 @@ pub fn verify_oid4vp_response(
             // Extract doc_type from the parsed document
             let doc_type = doc.doc_type.clone();
 
+            // Decode the MSO from the issuer_auth COSE_Sign1 payload (a
+            // Tag24-wrapped Mso, per ISO 18013-5 §9.1.2.4) to read back any
+            // status claim the issuer embedded, mirroring `Mdoc::status()`
+            // on the issuance side. The wire-format `Document` here has no
+            // pre-decoded `mso` field (unlike the issuance-side struct), so
+            // this is decoded independently from the raw payload bytes.
+            let status: Option<String> = doc
+                .issuer_signed
+                .issuer_auth
+                .payload
+                .as_ref()
+                .and_then(|payload_bytes| Tag24::<Mso>::from_bytes(payload_bytes.clone()).ok())
+                .and_then(|tagged_mso| tagged_mso.into_inner().status)
+                .and_then(|v| serde_json::to_string(&v).ok());
+
             // Convert namespaces to HashMap<String, HashMap<String, MDocItem>>
             let mut verified_response = HashMap::new();
             for (ns, val) in validation_result.response {
@@ -724,6 +743,7 @@ pub fn verify_oid4vp_response(
                 issuer_authentication: validation_result.issuer_authentication.into(),
                 device_authentication: validation_result.device_authentication.into(),
                 errors,
+                status,
             })
         }
         Err(e) => Err(MDLReaderSessionError::Generic {
@@ -942,6 +962,7 @@ mod tests {
             issuer_authentication: AuthenticationStatus::Unchecked,
             device_authentication: AuthenticationStatus::Unchecked,
             errors: None,
+            status: None,
         };
 
         assert_eq!(verified_data.doc_type, "org.iso.18013.5.1.mDL");
@@ -971,6 +992,7 @@ mod tests {
             issuer_authentication: AuthenticationStatus::Valid,
             device_authentication: AuthenticationStatus::Valid,
             errors: None,
+            status: None,
         };
 
         // Verify doc_type

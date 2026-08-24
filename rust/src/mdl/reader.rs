@@ -707,12 +707,21 @@ pub fn verify_oid4vp_response(
             // on the issuance side. The wire-format `Document` here has no
             // pre-decoded `mso` field (unlike the issuance-side struct), so
             // this is decoded independently from the raw payload bytes.
+            //
+            // The payload is a CBOR tag-24 value (a byte string wrapping the
+            // encoded Mso), not the raw Mso encoding itself, so it must be
+            // decoded generically first and then unwrapped via Tag24's
+            // TryFrom<ciborium::Value> — Tag24::from_bytes expects already
+            //-unwrapped bytes and errors on the tagged form.
             let status: Option<String> = doc
                 .issuer_signed
                 .issuer_auth
                 .payload
                 .as_ref()
-                .and_then(|payload_bytes| Tag24::<Mso>::from_bytes(payload_bytes.clone()).ok())
+                .and_then(|payload_bytes| {
+                    ciborium::de::from_reader::<ciborium::Value, _>(payload_bytes.as_slice()).ok()
+                })
+                .and_then(|raw_value| Tag24::<Mso>::try_from(raw_value).ok())
                 .and_then(|tagged_mso| tagged_mso.into_inner().status)
                 .and_then(|v| serde_json::to_string(&v).ok());
 
@@ -756,6 +765,107 @@ pub fn verify_oid4vp_response(
 mod tests {
     use super::*;
     use std::collections::HashMap;
+
+    #[test]
+    fn test_mdoc_status_claim_decodes_from_issuer_signed_payload() {
+        use base64::Engine;
+        use p256::ecdsa::SigningKey;
+        use p256::elliptic_curve::rand_core::OsRng;
+        use p256::pkcs8::{EncodePrivateKey, LineEnding};
+        use std::time::Duration;
+        use x509_cert::builder::{Builder, CertificateBuilder, Profile};
+        use x509_cert::der::EncodePem;
+        use x509_cert::serial_number::SerialNumber;
+        use x509_cert::spki::SubjectPublicKeyInfoOwned;
+        use x509_cert::time::Validity;
+
+        let issuer_key = SigningKey::random(&mut OsRng);
+        let issuer_key_pem = issuer_key.to_pkcs8_pem(LineEnding::LF).unwrap().to_string();
+        let spki =
+            SubjectPublicKeyInfoOwned::from_key(issuer_key.verifying_key().clone()).unwrap();
+        let cert = CertificateBuilder::new(
+            Profile::Root,
+            SerialNumber::from(1u64),
+            Validity::from_now(Duration::from_secs(3600)).unwrap(),
+            "CN=Test Issuer".parse().unwrap(),
+            spki,
+            &issuer_key,
+        )
+        .unwrap()
+        .build::<p256::ecdsa::DerSignature>()
+        .unwrap();
+        let cert_pem = cert.to_pem(LineEnding::LF).unwrap();
+
+        let holder_key = SigningKey::random(&mut OsRng);
+        let point = holder_key.verifying_key().to_encoded_point(false);
+        let x = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(point.x().unwrap());
+        let y = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(point.y().unwrap());
+        let holder_jwk =
+            serde_json::json!({"kty": "EC", "crv": "P-256", "x": x, "y": y}).to_string();
+
+        let mdl_items = serde_json::json!({
+            "family_name": "Doe",
+            "given_name": "John",
+            "birth_date": "1990-01-01",
+            "issue_date": "2023-01-01",
+            "expiry_date": "2028-01-01",
+            "issuing_country": "US",
+            "issuing_authority": "DMV",
+            "document_number": "123456789",
+            "portrait": "SGVsbG8gV29ybGQ=",
+            "driving_privileges": [
+                {
+                    "vehicle_category_code": "B",
+                    "issue_date": "2023-01-01",
+                    "expiry_date": "2028-01-01"
+                }
+            ],
+            "un_distinguishing_sign": "USA"
+        })
+        .to_string();
+
+        let status_json =
+            r#"{"status_list":{"idx":42,"uri":"https://example.com/statuslists/1"}}"#
+                .to_string();
+
+        let mdoc = crate::mdl::mdoc::Mdoc::create_and_sign_mdl(
+            mdl_items,
+            None,
+            holder_jwk,
+            cert_pem,
+            issuer_key_pem,
+            Some(status_json.clone()),
+        )
+        .expect("create_and_sign_mdl failed");
+
+        // Sanity: Mdoc::status() (issuance-side, in-memory) works.
+        assert_eq!(mdoc.status(), Some(status_json.clone()));
+
+        // Now simulate the presentation-verification side: take the actual
+        // wire bytes (issuer_signed_b64, what a wallet would present), decode
+        // them back into IssuerSigned, and run the exact same Tag24<Mso>
+        // decode used in verify_oid4vp_response.
+        let b64 = mdoc.issuer_signed_b64().expect("issuer_signed_b64 failed");
+        let cbor_bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
+            .decode(&b64)
+            .expect("b64 decode failed");
+        let issuer_signed: isomdl::definitions::IssuerSigned =
+            isomdl::cbor::from_slice(&cbor_bytes).expect("IssuerSigned decode failed");
+
+        let payload = issuer_signed
+            .issuer_auth
+            .payload
+            .as_ref()
+            .expect("payload missing");
+        eprintln!("payload len: {}", payload.len());
+        let raw_value: ciborium::Value =
+            ciborium::de::from_reader(payload.as_slice()).expect("raw CBOR decode failed");
+        let tagged: isomdl::definitions::helpers::Tag24<isomdl::definitions::Mso> =
+            raw_value.try_into().expect("Tag24<Mso> decode failed");
+        let mso = tagged.into_inner();
+        eprintln!("decoded mso.status: {:?}", mso.status);
+        assert!(mso.status.is_some(), "status should be present on decoded MSO");
+    }
 
     #[test]
     fn test_establish_session_uuid_extraction() {

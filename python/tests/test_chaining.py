@@ -211,10 +211,10 @@ def test_status_claim_round_trips_through_the_mso():
         issuer_key_pem,
         json.dumps(status_claim),
     )
-    assert json.loads(mdoc.status()) == status_claim
+    assert json.loads(mdoc.status_list()) == status_claim
 
     # Omitting the status claim must leave it unset (backward compatible).
     mdoc_without_status = Mdoc.create_and_sign_mdl(
         mdl_items, None, holder_jwk, issuer_cert_pem, issuer_key_pem, None
     )
-    assert mdoc_without_status.status() is None
+    assert mdoc_without_status.status_list() is None

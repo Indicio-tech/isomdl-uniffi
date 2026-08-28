@@ -342,8 +342,8 @@ pub struct MDLReaderVerifiedData {
     pub device_authentication: AuthenticationStatus,
     pub errors: Option<String>,
     /// The status claim embedded in the presented mdoc's MSO, as a JSON
-    /// string, if any (mirrors `Mdoc::status()` for the issuance side).
-    pub status: Option<String>,
+    /// string, if any (mirrors `Mdoc::status_list()` for the issuance side).
+    pub status_list: Option<String>,
 }
 
 impl MDLReaderVerifiedData {
@@ -703,7 +703,7 @@ pub fn verify_oid4vp_response(
 
             // Decode the MSO from the issuer_auth COSE_Sign1 payload (a
             // Tag24-wrapped Mso, per ISO 18013-5 §9.1.2.4) to read back any
-            // status claim the issuer embedded, mirroring `Mdoc::status()`
+            // status claim the issuer embedded, mirroring `Mdoc::status_list()`
             // on the issuance side. The wire-format `Document` here has no
             // pre-decoded `mso` field (unlike the issuance-side struct), so
             // this is decoded independently from the raw payload bytes.
@@ -713,7 +713,7 @@ pub fn verify_oid4vp_response(
             // decoded generically first and then unwrapped via Tag24's
             // TryFrom<ciborium::Value> — Tag24::from_bytes expects already
             //-unwrapped bytes and errors on the tagged form.
-            let status: Option<String> = doc
+            let status_list: Option<String> = doc
                 .issuer_signed
                 .issuer_auth
                 .payload
@@ -722,7 +722,7 @@ pub fn verify_oid4vp_response(
                     ciborium::de::from_reader::<ciborium::Value, _>(payload_bytes.as_slice()).ok()
                 })
                 .and_then(|raw_value| Tag24::<Mso>::try_from(raw_value).ok())
-                .and_then(|tagged_mso| tagged_mso.into_inner().status)
+                .and_then(|tagged_mso| tagged_mso.into_inner().status_list)
                 .and_then(|v| serde_json::to_string(&v).ok());
 
             // Convert namespaces to HashMap<String, HashMap<String, MDocItem>>
@@ -752,7 +752,7 @@ pub fn verify_oid4vp_response(
                 issuer_authentication: validation_result.issuer_authentication.into(),
                 device_authentication: validation_result.device_authentication.into(),
                 errors,
-                status,
+                status_list,
             })
         }
         Err(e) => Err(MDLReaderSessionError::Generic {
@@ -838,8 +838,8 @@ mod tests {
         )
         .expect("create_and_sign_mdl failed");
 
-        // Sanity: Mdoc::status() (issuance-side, in-memory) works.
-        assert_eq!(mdoc.status(), Some(status_json.clone()));
+        // Sanity: Mdoc::status_list() (issuance-side, in-memory) works.
+        assert_eq!(mdoc.status_list(), Some(status_json.clone()));
 
         // Now simulate the presentation-verification side: take the actual
         // wire bytes (issuer_signed_b64, what a wallet would present), decode
@@ -863,8 +863,11 @@ mod tests {
         let tagged: isomdl::definitions::helpers::Tag24<isomdl::definitions::Mso> =
             raw_value.try_into().expect("Tag24<Mso> decode failed");
         let mso = tagged.into_inner();
-        eprintln!("decoded mso.status: {:?}", mso.status);
-        assert!(mso.status.is_some(), "status should be present on decoded MSO");
+        eprintln!("decoded mso.status_list: {:?}", mso.status_list);
+        assert!(
+            mso.status_list.is_some(),
+            "status_list should be present on decoded MSO"
+        );
     }
 
     #[test]
@@ -1072,7 +1075,7 @@ mod tests {
             issuer_authentication: AuthenticationStatus::Unchecked,
             device_authentication: AuthenticationStatus::Unchecked,
             errors: None,
-            status: None,
+            status_list: None,
         };
 
         assert_eq!(verified_data.doc_type, "org.iso.18013.5.1.mDL");
@@ -1102,7 +1105,7 @@ mod tests {
             issuer_authentication: AuthenticationStatus::Valid,
             device_authentication: AuthenticationStatus::Valid,
             errors: None,
-            status: None,
+            status_list: None,
         };
 
         // Verify doc_type

@@ -129,14 +129,14 @@ impl Mdoc {
         holder_jwk: String,
         iaca_cert_perm: String,
         iaca_key_perm: String,
-        status: Option<String>,
+        status_list: Option<String>,
     ) -> Result<Arc<Self>, MdocInitError> {
         let pub_key: PublicKey =
             PublicKey::from_jwk_str(&holder_jwk).map_err(|_e| MdocInitError::InvalidJwk)?;
 
         let namespaces = convert_namespaces_json(namespaces)?;
-        let status = parse_status_json(status)?;
-        let builder = prepare_builder(pub_key, namespaces, doc_type, status).map_err(|e| {
+        let status_list = parse_status_json(status_list)?;
+        let builder = prepare_builder(pub_key, namespaces, doc_type, status_list).map_err(|e| {
             MdocInitError::GeneralConstructionError(format!("prepare_builder: {e}"))
         })?;
 
@@ -209,7 +209,7 @@ impl Mdoc {
         holder_jwk: String,
         iaca_cert_pem: String,
         iaca_key_pem: String,
-        status: Option<String>,
+        status_list: Option<String>,
     ) -> Result<Arc<Self>, MdocInitError> {
         let pub_key: PublicKey =
             PublicKey::from_jwk_str(&holder_jwk).map_err(|_e| MdocInitError::InvalidJwk)?;
@@ -244,8 +244,8 @@ impl Mdoc {
 
         let doc_type = "org.iso.18013.5.1.mDL".to_string();
 
-        let status = parse_status_json(status)?;
-        let builder = prepare_builder(pub_key, namespaces, doc_type, status).map_err(|e| {
+        let status_list = parse_status_json(status_list)?;
+        let builder = prepare_builder(pub_key, namespaces, doc_type, status_list).map_err(|e| {
             MdocInitError::GeneralConstructionError(format!("prepare_builder: {e}"))
         })?;
 
@@ -322,10 +322,10 @@ impl Mdoc {
     }
 
     /// The status claim embedded in the MSO, as a JSON string, if any.
-    pub fn status(&self) -> Option<String> {
+    pub fn status_list(&self) -> Option<String> {
         self.inner
             .mso
-            .status
+            .status_list
             .as_ref()
             .and_then(|v| serde_json::to_string(v).ok())
     }
@@ -692,14 +692,14 @@ impl PreparedMdoc {
         namespaces: HashMap<String, HashMap<String, String>>,
         holder_jwk: String,
         signature_algorithm: String,
-        status: Option<String>,
+        status_list: Option<String>,
     ) -> Result<Arc<Self>, MdocInitError> {
         let pub_key: PublicKey =
             PublicKey::from_jwk_str(&holder_jwk).map_err(|_e| MdocInitError::InvalidJwk)?;
 
         let namespaces = convert_namespaces_json(namespaces)?;
-        let status = parse_status_json(status)?;
-        let builder = prepare_builder(pub_key, namespaces, doc_type, status).map_err(|e| {
+        let status_list = parse_status_json(status_list)?;
+        let builder = prepare_builder(pub_key, namespaces, doc_type, status_list).map_err(|e| {
             MdocInitError::GeneralConstructionError(format!("prepare_builder: {e}"))
         })?;
 
@@ -730,7 +730,7 @@ impl PreparedMdoc {
         aamva_items: Option<String>,
         holder_jwk: String,
         signature_algorithm: String,
-        status: Option<String>,
+        status_list: Option<String>,
     ) -> Result<Arc<Self>, MdocInitError> {
         let pub_key: PublicKey =
             PublicKey::from_jwk_str(&holder_jwk).map_err(|_e| MdocInitError::InvalidJwk)?;
@@ -766,8 +766,8 @@ impl PreparedMdoc {
         }
 
         let doc_type = "org.iso.18013.5.1.mDL".to_string();
-        let status = parse_status_json(status)?;
-        let builder = prepare_builder(pub_key, namespaces, doc_type, status).map_err(|e| {
+        let status_list = parse_status_json(status_list)?;
+        let builder = prepare_builder(pub_key, namespaces, doc_type, status_list).map_err(|e| {
             MdocInitError::GeneralConstructionError(format!("prepare_builder: {e}"))
         })?;
 
@@ -923,7 +923,7 @@ fn prepare_builder(
     holder_key: PublicKey,
     namespaces: BTreeMap<String, BTreeMap<String, ciborium::Value>>,
     doc_type: String,
-    status: Option<ciborium::Value>,
+    status_list: Option<ciborium::Value>,
 ) -> Result<Builder> {
     let validity_info = ValidityInfo {
         signed: OffsetDateTime::now_utc(),
@@ -956,8 +956,8 @@ fn prepare_builder(
         .digest_algorithm(digest_alg)
         .device_key_info(device_key_info);
 
-    if let Some(status) = status {
-        builder = builder.status(status);
+    if let Some(status_list) = status_list {
+        builder = builder.status_list(status_list);
     }
 
     Ok(builder)
@@ -966,8 +966,8 @@ fn prepare_builder(
 /// Parse a caller-supplied JSON status claim (e.g.
 /// `{"status_list": {"idx": 1, "uri": "https://..."}}`) into the CBOR value
 /// stored on the MSO.
-fn parse_status_json(status: Option<String>) -> Result<Option<Value>, MdocInitError> {
-    status
+fn parse_status_json(status_list: Option<String>) -> Result<Option<Value>, MdocInitError> {
+    status_list
         .map(|s| {
             let json_val: serde_json::Value = serde_json::from_str(&s).map_err(|e| {
                 MdocInitError::GeneralConstructionError(format!("status JSON parse: {e}"))
@@ -1627,16 +1627,16 @@ mod tests {
         )
         .expect("create_and_sign_mdl with status failed");
 
-        let status: serde_json::Value =
-            serde_json::from_str(&mdoc.status().expect("status claim missing")).unwrap();
+        let status_list: serde_json::Value =
+            serde_json::from_str(&mdoc.status_list().expect("status claim missing")).unwrap();
         let expected: serde_json::Value = serde_json::from_str(&status_json).unwrap();
-        assert_eq!(status, expected);
+        assert_eq!(status_list, expected);
 
-        // Omitting `status` must leave it unset (backward compatible).
+        // Omitting `status_list` must leave it unset (backward compatible).
         let mdoc_without_status =
             Mdoc::create_and_sign_mdl(mdl_items, None, holder_jwk, cert_pem, issuer_key_pem, None)
                 .expect("create_and_sign_mdl without status failed");
-        assert_eq!(mdoc_without_status.status(), None);
+        assert_eq!(mdoc_without_status.status_list(), None);
     }
 
     #[test]

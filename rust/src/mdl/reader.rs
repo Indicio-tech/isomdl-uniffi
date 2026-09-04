@@ -22,13 +22,12 @@ use x509_cert::der::DecodePem;
 
 use isomdl::{
     definitions::{
-        device_request,
+        Mso, device_request,
         helpers::{NonEmptyMap, Tag24, non_empty_map},
         x509::{
             self,
             trust_anchor::{PemTrustAnchor, TrustAnchorRegistry},
         },
-        Mso,
     },
     presentation::{authentication::AuthenticationStatus as IsoMdlAuthenticationStatus, reader},
 };
@@ -781,8 +780,7 @@ mod tests {
 
         let issuer_key = SigningKey::random(&mut OsRng);
         let issuer_key_pem = issuer_key.to_pkcs8_pem(LineEnding::LF).unwrap().to_string();
-        let spki =
-            SubjectPublicKeyInfoOwned::from_key(issuer_key.verifying_key().clone()).unwrap();
+        let spki = SubjectPublicKeyInfoOwned::from_key(issuer_key.verifying_key().clone()).unwrap();
         let cert = CertificateBuilder::new(
             Profile::Root,
             SerialNumber::from(1u64),
@@ -825,8 +823,7 @@ mod tests {
         .to_string();
 
         let status_json =
-            r#"{"status_list":{"idx":42,"uri":"https://example.com/statuslists/1"}}"#
-                .to_string();
+            r#"{"status_list":{"idx":42,"uri":"https://example.com/statuslists/1"}}"#.to_string();
 
         let mdoc = crate::mdl::mdoc::Mdoc::create_and_sign_mdl(
             mdl_items,

@@ -199,9 +199,7 @@ def test_status_claim_round_trips_through_the_mso():
         }
     )
 
-    status_claim = {
-        "status_list": {"idx": 42, "uri": "https://example.com/statuslists/1"}
-    }
+    status_claim = {"status_list": {"idx": 42, "uri": "https://example.com/statuslists/1"}}
 
     mdoc = Mdoc.create_and_sign_mdl(
         mdl_items,

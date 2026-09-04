@@ -1140,14 +1140,8 @@ mod tests {
         .to_string();
 
         // 5. Call function
-        let result = Mdoc::create_and_sign_mdl(
-            mdl_items,
-            None,
-            holder_jwk,
-            cert_pem,
-            issuer_key_pem,
-            None,
-        );
+        let result =
+            Mdoc::create_and_sign_mdl(mdl_items, None, holder_jwk, cert_pem, issuer_key_pem, None);
 
         let mdoc = result.unwrap();
 

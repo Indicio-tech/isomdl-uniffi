@@ -129,12 +129,14 @@ impl Mdoc {
         holder_jwk: String,
         iaca_cert_perm: String,
         iaca_key_perm: String,
+        status_list: Option<String>,
     ) -> Result<Arc<Self>, MdocInitError> {
         let pub_key: PublicKey =
             PublicKey::from_jwk_str(&holder_jwk).map_err(|_e| MdocInitError::InvalidJwk)?;
 
         let namespaces = convert_namespaces_json(namespaces)?;
-        let builder = prepare_builder(pub_key, namespaces, doc_type).map_err(|e| {
+        let status_list = parse_status_json(status_list)?;
+        let builder = prepare_builder(pub_key, namespaces, doc_type, status_list).map_err(|e| {
             MdocInitError::GeneralConstructionError(format!("prepare_builder: {e}"))
         })?;
 
@@ -207,6 +209,7 @@ impl Mdoc {
         holder_jwk: String,
         iaca_cert_pem: String,
         iaca_key_pem: String,
+        status_list: Option<String>,
     ) -> Result<Arc<Self>, MdocInitError> {
         let pub_key: PublicKey =
             PublicKey::from_jwk_str(&holder_jwk).map_err(|_e| MdocInitError::InvalidJwk)?;
@@ -241,7 +244,8 @@ impl Mdoc {
 
         let doc_type = "org.iso.18013.5.1.mDL".to_string();
 
-        let builder = prepare_builder(pub_key, namespaces, doc_type).map_err(|e| {
+        let status_list = parse_status_json(status_list)?;
+        let builder = prepare_builder(pub_key, namespaces, doc_type, status_list).map_err(|e| {
             MdocInitError::GeneralConstructionError(format!("prepare_builder: {e}"))
         })?;
 
@@ -315,6 +319,15 @@ impl Mdoc {
     /// The document type of this mdoc, for example `org.iso.18013.5.1.mDL`.
     pub fn doctype(&self) -> String {
         self.inner.mso.doc_type.clone()
+    }
+
+    /// The status claim embedded in the MSO, as a JSON string, if any.
+    pub fn status_list(&self) -> Option<String> {
+        self.inner
+            .mso
+            .status_list
+            .as_ref()
+            .and_then(|v| serde_json::to_string(v).ok())
     }
 
     /// Simple representation of mdoc namespace and data elements for display in the UI.
@@ -679,12 +692,14 @@ impl PreparedMdoc {
         namespaces: HashMap<String, HashMap<String, String>>,
         holder_jwk: String,
         signature_algorithm: String,
+        status_list: Option<String>,
     ) -> Result<Arc<Self>, MdocInitError> {
         let pub_key: PublicKey =
             PublicKey::from_jwk_str(&holder_jwk).map_err(|_e| MdocInitError::InvalidJwk)?;
 
         let namespaces = convert_namespaces_json(namespaces)?;
-        let builder = prepare_builder(pub_key, namespaces, doc_type).map_err(|e| {
+        let status_list = parse_status_json(status_list)?;
+        let builder = prepare_builder(pub_key, namespaces, doc_type, status_list).map_err(|e| {
             MdocInitError::GeneralConstructionError(format!("prepare_builder: {e}"))
         })?;
 
@@ -715,6 +730,7 @@ impl PreparedMdoc {
         aamva_items: Option<String>,
         holder_jwk: String,
         signature_algorithm: String,
+        status_list: Option<String>,
     ) -> Result<Arc<Self>, MdocInitError> {
         let pub_key: PublicKey =
             PublicKey::from_jwk_str(&holder_jwk).map_err(|_e| MdocInitError::InvalidJwk)?;
@@ -750,7 +766,8 @@ impl PreparedMdoc {
         }
 
         let doc_type = "org.iso.18013.5.1.mDL".to_string();
-        let builder = prepare_builder(pub_key, namespaces, doc_type).map_err(|e| {
+        let status_list = parse_status_json(status_list)?;
+        let builder = prepare_builder(pub_key, namespaces, doc_type, status_list).map_err(|e| {
             MdocInitError::GeneralConstructionError(format!("prepare_builder: {e}"))
         })?;
 
@@ -906,6 +923,7 @@ fn prepare_builder(
     holder_key: PublicKey,
     namespaces: BTreeMap<String, BTreeMap<String, ciborium::Value>>,
     doc_type: String,
+    status_list: Option<ciborium::Value>,
 ) -> Result<Builder> {
     let validity_info = ValidityInfo {
         signed: OffsetDateTime::now_utc(),
@@ -931,12 +949,32 @@ fn prepare_builder(
         key_info: None,
     };
 
-    Ok(isomdl::issuance::Mdoc::builder()
+    let mut builder = isomdl::issuance::Mdoc::builder()
         .doc_type(doc_type)
         .namespaces(namespaces)
         .validity_info(validity_info)
         .digest_algorithm(digest_alg)
-        .device_key_info(device_key_info))
+        .device_key_info(device_key_info);
+
+    if let Some(status_list) = status_list {
+        builder = builder.status_list(status_list);
+    }
+
+    Ok(builder)
+}
+
+/// Parse a caller-supplied JSON status claim (e.g.
+/// `{"status_list": {"idx": 1, "uri": "https://..."}}`) into the CBOR value
+/// stored on the MSO.
+fn parse_status_json(status_list: Option<String>) -> Result<Option<Value>, MdocInitError> {
+    status_list
+        .map(|s| {
+            let json_val: serde_json::Value = serde_json::from_str(&s).map_err(|e| {
+                MdocInitError::GeneralConstructionError(format!("status JSON parse: {e}"))
+            })?;
+            Ok(json_to_cbor(json_val))
+        })
+        .transpose()
 }
 
 /// Convert a [`serde_json::Value`] to an equivalent [`ciborium::Value`].
@@ -1103,7 +1141,7 @@ mod tests {
 
         // 5. Call function
         let result =
-            Mdoc::create_and_sign_mdl(mdl_items, None, holder_jwk, cert_pem, issuer_key_pem);
+            Mdoc::create_and_sign_mdl(mdl_items, None, holder_jwk, cert_pem, issuer_key_pem, None);
 
         let mdoc = result.unwrap();
 
@@ -1204,6 +1242,7 @@ mod tests {
             holder_jwk,
             cert_pem.clone(),
             issuer_key_pem,
+            None,
         )
         .expect("Failed to create mdoc");
 
@@ -1309,8 +1348,9 @@ mod tests {
         .to_string();
 
         // 5. Create mdoc with original issuer
-        let mdoc = Mdoc::create_and_sign_mdl(mdl_items, None, holder_jwk, cert_pem, issuer_key_pem)
-            .expect("Failed to create mdoc");
+        let mdoc =
+            Mdoc::create_and_sign_mdl(mdl_items, None, holder_jwk, cert_pem, issuer_key_pem, None)
+                .expect("Failed to create mdoc");
 
         // 6. Try to verify with WRONG trust anchor - should fail validation
         let result = mdoc.verify_issuer_signature(Some(vec![other_cert_pem]), false);
@@ -1389,6 +1429,7 @@ mod tests {
             holder_jwk,
             cert_pem,
             issuer_key_pem,
+            None,
         );
 
         assert!(result.is_ok());
@@ -1446,6 +1487,7 @@ mod tests {
             holder_jwk,
             cert_pem,
             issuer_key_pem,
+            None,
         )
         .expect("create_and_sign failed");
 
@@ -1518,6 +1560,77 @@ mod tests {
             "issuer_signed_b64 output must be parseable by new_from_base64url_encoded_issuer_signed: {:?}",
             parsed.err()
         );
+    }
+
+    #[test]
+    fn test_create_and_sign_mdl_with_status_claim() {
+        let issuer_key = SigningKey::random(&mut OsRng);
+        let issuer_key_pem = issuer_key.to_pkcs8_pem(LineEnding::LF).unwrap().to_string();
+        let spki = SubjectPublicKeyInfoOwned::from_key(issuer_key.verifying_key().clone()).unwrap();
+        let cert = CertificateBuilder::new(
+            Profile::Root,
+            SerialNumber::from(1u64),
+            Validity::from_now(Duration::from_secs(3600)).unwrap(),
+            "CN=Test Issuer".parse().unwrap(),
+            spki,
+            &issuer_key,
+        )
+        .unwrap()
+        .build::<p256::ecdsa::DerSignature>()
+        .unwrap();
+        let cert_pem = cert.to_pem(LineEnding::LF).unwrap();
+
+        let holder_key = SigningKey::random(&mut OsRng);
+        let point = holder_key.verifying_key().to_encoded_point(false);
+        let x = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(point.x().unwrap());
+        let y = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(point.y().unwrap());
+        let holder_jwk =
+            serde_json::json!({"kty": "EC", "crv": "P-256", "x": x, "y": y}).to_string();
+
+        let mdl_items = serde_json::json!({
+            "family_name": "Doe",
+            "given_name": "John",
+            "birth_date": "1990-01-01",
+            "issue_date": "2023-01-01",
+            "expiry_date": "2028-01-01",
+            "issuing_country": "US",
+            "issuing_authority": "DMV",
+            "document_number": "123456789",
+            "portrait": "SGVsbG8gV29ybGQ=",
+            "driving_privileges": [
+                {
+                    "vehicle_category_code": "B",
+                    "issue_date": "2023-01-01",
+                    "expiry_date": "2028-01-01"
+                }
+            ],
+            "un_distinguishing_sign": "USA"
+        })
+        .to_string();
+
+        let status_json =
+            r#"{"status_list":{"idx":42,"uri":"https://example.com/statuslists/1"}}"#.to_string();
+
+        let mdoc = Mdoc::create_and_sign_mdl(
+            mdl_items.clone(),
+            None,
+            holder_jwk.clone(),
+            cert_pem.clone(),
+            issuer_key_pem.clone(),
+            Some(status_json.clone()),
+        )
+        .expect("create_and_sign_mdl with status failed");
+
+        let status_list: serde_json::Value =
+            serde_json::from_str(&mdoc.status_list().expect("status claim missing")).unwrap();
+        let expected: serde_json::Value = serde_json::from_str(&status_json).unwrap();
+        assert_eq!(status_list, expected);
+
+        // Omitting `status_list` must leave it unset (backward compatible).
+        let mdoc_without_status =
+            Mdoc::create_and_sign_mdl(mdl_items, None, holder_jwk, cert_pem, issuer_key_pem, None)
+                .expect("create_and_sign_mdl without status failed");
+        assert_eq!(mdoc_without_status.status_list(), None);
     }
 
     #[test]
@@ -1633,6 +1746,7 @@ mod tests {
             holder_jwk,
             intermediate_cert_pem.clone(),
             intermediate_key_pem,
+            None,
         )
         .expect("Failed to create mdoc");
 
@@ -1712,6 +1826,7 @@ mod tests {
             namespaces,
             holder_jwk,
             "ES256".to_string(),
+            None,
         )
         .expect("prepare failed");
 
@@ -1784,6 +1899,7 @@ mod tests {
             namespaces,
             holder_jwk,
             "ES256".to_string(),
+            None,
         )
         .expect("prepare failed");
 
@@ -1829,6 +1945,7 @@ mod tests {
             namespaces,
             holder_jwk,
             "INVALID".to_string(),
+            None,
         );
         assert!(result.is_err(), "should reject unknown algorithm");
     }

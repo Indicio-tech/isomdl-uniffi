@@ -136,32 +136,36 @@ Example test file structure:
 Description of your test module.
 """
 
+
 def run_tests():
     """
     Run your tests.
-    
+
     Returns:
         bool: True if all tests pass, False otherwise.
     """
     try:
         # Your test code here
         # Access the bindings via the global 'mdl' variable
-        
+
         print("   ✅ Test passed")
         return True
-        
+
     except Exception as e:
         print(f"   ❌ Test failed: {e}")
         return False
+
 
 # Direct execution support for debugging
 if __name__ == "__main__":
     import sys
     import os
+
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "rust", "out", "python"))
-    
+
     try:
         import isomdl_uniffi as mdl
+
         success = run_tests()
         sys.exit(0 if success else 1)
     except ImportError as e:

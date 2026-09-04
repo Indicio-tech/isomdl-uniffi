@@ -28,7 +28,7 @@ uniffi = { version = "0.29.4", features = [ "build" ] }
 
 [dependencies]
 uniffi = { version = "0.29.4", features = [ "cli" ] }
-isomdl = { git = "https://github.com/spruceid/isomdl", rev = "fed574c"}
+isomdl = { git = "https://github.com/Indicio-tech/isomdl", rev = "3f70b00674ad8e3a86f9a5097eca460c858d6208" }
 anyhow = "1.0.98"
 base64 = "0.22.1"
 chrono = { version = "0.4", features = ["serde"] }

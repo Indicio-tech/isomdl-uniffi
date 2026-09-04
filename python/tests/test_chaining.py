@@ -155,7 +155,7 @@ def test_verify_issuer_signature_chaining():
 
     # 5. Create mdoc signed by Intermediate CA
     mdoc = Mdoc.create_and_sign_mdl(
-        mdl_items, None, holder_jwk, intermediate_cert_pem, intermediate_key_pem
+        mdl_items, None, holder_jwk, intermediate_cert_pem, intermediate_key_pem, None
     )
 
     # 6. Verify with Root CA as trust anchor
@@ -171,3 +171,48 @@ def test_verify_issuer_signature_chaining():
     result = mdoc.verify_issuer_signature([root_cert_pem], True)
     assert result.verified
     assert result.common_name == "Test DS"
+
+
+def test_status_claim_round_trips_through_the_mso():
+    issuer_key = generate_key()
+    issuer_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Test Issuer")])
+    issuer_cert = generate_cert(issuer_key, issuer_key, issuer_name, issuer_name, is_ca=True)
+    issuer_cert_pem = cert_to_pem(issuer_cert)
+    issuer_key_pem = key_to_pem(issuer_key)
+
+    holder_key = generate_key()
+    holder_jwk = generate_jwk(holder_key)
+
+    mdl_items = json.dumps(
+        {
+            "family_name": "Doe",
+            "given_name": "Jane",
+            "birth_date": "1992-01-01",
+            "issue_date": "2023-01-01",
+            "expiry_date": "2028-01-01",
+            "issuing_country": "US",
+            "issuing_authority": "DMV",
+            "document_number": "987654321",
+            "portrait": "SGVsbG8gV29ybGQ=",
+            "driving_privileges": [],
+            "un_distinguishing_sign": "USA",
+        }
+    )
+
+    status_claim = {"status_list": {"idx": 42, "uri": "https://example.com/statuslists/1"}}
+
+    mdoc = Mdoc.create_and_sign_mdl(
+        mdl_items,
+        None,
+        holder_jwk,
+        issuer_cert_pem,
+        issuer_key_pem,
+        json.dumps(status_claim),
+    )
+    assert json.loads(mdoc.status_list()) == status_claim
+
+    # Omitting the status claim must leave it unset (backward compatible).
+    mdoc_without_status = Mdoc.create_and_sign_mdl(
+        mdl_items, None, holder_jwk, issuer_cert_pem, issuer_key_pem, None
+    )
+    assert mdoc_without_status.status_list() is None

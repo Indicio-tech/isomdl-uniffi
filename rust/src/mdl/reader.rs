@@ -129,12 +129,14 @@ pub fn establish_session(
         value: format!("unable to construct TrustAnchorRegistry: {e:?}"),
     })?;
 
-    let (manager, request, ble_ident) =
-        reader::SessionManager::establish_session(uri.to_string(), namespaces, registry).map_err(
-            |e| MDLReaderSessionError::Generic {
-                value: format!("unable to establish session: {e:?}"),
-            },
-        )?;
+    let (manager, request, ble_ident) = reader::SessionManager::establish_session(
+        reader::Handover::QR(uri.to_string()),
+        namespaces,
+        registry,
+    )
+    .map_err(|e| MDLReaderSessionError::Generic {
+        value: format!("unable to establish session: {e:?}"),
+    })?;
     let manager2 = manager.clone();
     // Use the new API instead of deprecated first_central_client_uuid()
     let uuid = manager2
@@ -291,7 +293,7 @@ pub fn handle_response(
     response: Vec<u8>,
 ) -> Result<MDLReaderResponseData, MDLReaderResponseError> {
     let mut state = state.0.clone();
-    let validated_response = state.handle_response(&response);
+    let validated_response = futures::executor::block_on(state.handle_response(&response, &()));
     let errors = if !validated_response.errors.is_empty() {
         Some(
             serde_json::to_string(&validated_response.errors).map_err(|e| {
@@ -689,13 +691,17 @@ pub fn verify_oid4vp_response(
                 })?
             };
 
-            let validation_result = isomdl::presentation::reader_utils::validate_response(
-                transcript,
-                registry,
-                x5chain,
-                doc.clone(),
-                namespaces,
-            );
+            let validation_result =
+                futures::executor::block_on(isomdl::presentation::reader_utils::validate_response(
+                    transcript,
+                    registry,
+                    x5chain,
+                    doc.clone(),
+                    namespaces,
+                    vec![doc.doc_type.clone()],
+                    &(),
+                    [0u8; 32],
+                ));
 
             // Extract doc_type from the parsed document
             let doc_type = doc.doc_type.clone();
@@ -721,7 +727,7 @@ pub fn verify_oid4vp_response(
                     ciborium::de::from_reader::<ciborium::Value, _>(payload_bytes.as_slice()).ok()
                 })
                 .and_then(|raw_value| Tag24::<Mso>::try_from(raw_value).ok())
-                .and_then(|tagged_mso| tagged_mso.into_inner().status_list)
+                .and_then(|tagged_mso| tagged_mso.into_inner().status)
                 .and_then(|v| serde_json::to_string(&v).ok());
 
             // Convert namespaces to HashMap<String, HashMap<String, MDocItem>>
@@ -860,10 +866,10 @@ mod tests {
         let tagged: isomdl::definitions::helpers::Tag24<isomdl::definitions::Mso> =
             raw_value.try_into().expect("Tag24<Mso> decode failed");
         let mso = tagged.into_inner();
-        eprintln!("decoded mso.status_list: {:?}", mso.status_list);
+        eprintln!("decoded mso.status: {:?}", mso.status);
         assert!(
-            mso.status_list.is_some(),
-            "status_list should be present on decoded MSO"
+            mso.status.is_some(),
+            "status should be present on decoded MSO"
         );
     }
 

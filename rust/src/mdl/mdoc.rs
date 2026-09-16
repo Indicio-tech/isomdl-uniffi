@@ -325,7 +325,7 @@ impl Mdoc {
     pub fn status_list(&self) -> Option<String> {
         self.inner
             .mso
-            .status_list
+            .status
             .as_ref()
             .and_then(|v| serde_json::to_string(v).ok())
     }
@@ -484,9 +484,14 @@ impl Mdoc {
 
             let registry = TrustAnchorRegistry::from_pem_certificates(pem_anchors)
                 .map_err(|e| MdocVerificationError::TrustAnchorRegistryError(format!("{:?}", e)))?; // Validate X5Chain against trust anchors using mDL validation rules
-            let validation_errors = isomdl::definitions::x509::validation::ValidationRuleset::Mdl
-                .validate(&x5chain, &registry)
-                .errors;
+            let validation_errors = futures::executor::block_on(
+                isomdl::definitions::x509::validation::ValidationRuleset::Mdl.validate(
+                    &x5chain,
+                    &registry,
+                    &(),
+                ),
+            )
+            .errors;
 
             if !validation_errors.is_empty() {
                 return Err(MdocVerificationError::X5ChainValidationFailed(
@@ -957,7 +962,7 @@ fn prepare_builder(
         .device_key_info(device_key_info);
 
     if let Some(status_list) = status_list {
-        builder = builder.status_list(status_list);
+        builder = builder.status(status_list);
     }
 
     Ok(builder)

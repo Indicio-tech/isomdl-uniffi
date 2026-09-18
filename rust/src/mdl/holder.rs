@@ -114,21 +114,26 @@ impl MdlPresentationSession {
                 .map_err(|e| RequestError::Generic {
                     value: format!("Could not deserialize request: {e:?}"),
                 })?;
-            futures::executor::block_on(
-                self.engaged
-                    .lock()
-                    .map_err(|_| RequestError::Generic {
-                        value: "Could not lock mutex".to_string(),
-                    })?
-                    .clone()
-                    .process_session_establishment(
-                        session_establishment,
-                        TrustAnchorRegistry::default(),
-                        &(),
-                    ),
-            )
+            let engaged = self
+                .engaged
+                .lock()
+                .map_err(|_| RequestError::Generic {
+                    value: "Could not lock mutex".to_string(),
+                })?
+                .clone();
+            // Guard is dropped above before blocking; the future below only touches
+            // the cloned `engaged` value, never `self`.
+            //
+            // `&()` is isomdl's documented no-op RevocationFetcher ("use `&()` to
+            // skip revocation checks"); it does not affect X.509 chain/trust-anchor
+            // validation, which is a separate parameter.
+            pollster::block_on(engaged.process_session_establishment(
+                session_establishment,
+                TrustAnchorRegistry::default(),
+                &(),
+            ))
             .map_err(|e| RequestError::Generic {
-                value: format!("Could not process process session establishment: {e:?}"),
+                value: format!("Could not process session establishment: {e:?}"),
             })?
         };
 

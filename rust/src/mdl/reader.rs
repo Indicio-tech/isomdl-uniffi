@@ -293,7 +293,9 @@ pub fn handle_response(
     response: Vec<u8>,
 ) -> Result<MDLReaderResponseData, MDLReaderResponseError> {
     let mut state = state.0.clone();
-    let validated_response = futures::executor::block_on(state.handle_response(&response, &()));
+    // `&()` is isomdl's documented no-op RevocationFetcher ("use `&()` to skip
+    // revocation checks"); it does not affect X.509 chain/trust-anchor validation.
+    let validated_response = pollster::block_on(state.handle_response(&response, &()));
     let errors = if !validated_response.errors.is_empty() {
         Some(
             serde_json::to_string(&validated_response.errors).map_err(|e| {
@@ -691,8 +693,17 @@ pub fn verify_oid4vp_response(
                 })?
             };
 
-            let validation_result =
-                futures::executor::block_on(isomdl::presentation::reader_utils::validate_response(
+            // `&()` is isomdl's documented no-op RevocationFetcher (skip revocation
+            // checks); it does not affect X.509 chain/trust-anchor validation.
+            //
+            // `[0u8; 32]` is `e_reader_key_private`, used only to derive the shared
+            // secret for verifying a COSE_Mac0 DeviceAuth. This OID4VP transcript
+            // always sets `EReaderKeyBytes` to `None` (no ECDH reader/device key
+            // exchange happens in the unencrypted OID4VP flow), which per ISO
+            // 18013-5 means the device signs with COSE_Sign1, not COSE_Mac0 — so
+            // this value is provably unused on this path.
+            let mut validation_result =
+                pollster::block_on(isomdl::presentation::reader_utils::validate_response(
                     transcript,
                     registry,
                     x5chain,
@@ -718,17 +729,53 @@ pub fn verify_oid4vp_response(
             // decoded generically first and then unwrapped via Tag24's
             // TryFrom<ciborium::Value> — Tag24::from_bytes expects already
             //-unwrapped bytes and errors on the tagged form.
+            //
+            // Unlike `.ok()`-chaining every step, a decode/parse failure here is
+            // recorded into `validation_result.errors` rather than silently
+            // collapsing to `status_list: None` — a malformed status claim on an
+            // otherwise-valid credential should be visible to the verifier, not
+            // indistinguishable from "no status claim present".
+            let mut status_decode_error: Option<String> = None;
             let status_list: Option<String> = doc
                 .issuer_signed
                 .issuer_auth
                 .payload
                 .as_ref()
                 .and_then(|payload_bytes| {
-                    ciborium::de::from_reader::<ciborium::Value, _>(payload_bytes.as_slice()).ok()
+                    match ciborium::de::from_reader::<ciborium::Value, _>(payload_bytes.as_slice())
+                    {
+                        Ok(v) => Some(v),
+                        Err(e) => {
+                            status_decode_error =
+                                Some(format!("failed to decode issuer_auth payload as CBOR: {e}"));
+                            None
+                        }
+                    }
                 })
-                .and_then(|raw_value| Tag24::<Mso>::try_from(raw_value).ok())
+                .and_then(|raw_value| match Tag24::<Mso>::try_from(raw_value) {
+                    Ok(tagged) => Some(tagged),
+                    Err(e) => {
+                        status_decode_error = Some(format!(
+                            "issuer_auth payload is not a Tag24-wrapped Mso: {e}"
+                        ));
+                        None
+                    }
+                })
                 .and_then(|tagged_mso| tagged_mso.into_inner().status)
-                .and_then(|v| serde_json::to_string(&v).ok());
+                .and_then(|v| match serde_json::to_string(&v) {
+                    Ok(s) => Some(s),
+                    Err(e) => {
+                        status_decode_error =
+                            Some(format!("failed to serialize status claim as JSON: {e}"));
+                        None
+                    }
+                });
+            if let Some(err) = status_decode_error {
+                validation_result.errors.insert(
+                    "status_claim_decode_errors".to_string(),
+                    serde_json::json!([err]),
+                );
+            }
 
             // Convert namespaces to HashMap<String, HashMap<String, MDocItem>>
             let mut verified_response = HashMap::new();
@@ -860,13 +907,11 @@ mod tests {
             .payload
             .as_ref()
             .expect("payload missing");
-        eprintln!("payload len: {}", payload.len());
         let raw_value: ciborium::Value =
             ciborium::de::from_reader(payload.as_slice()).expect("raw CBOR decode failed");
         let tagged: isomdl::definitions::helpers::Tag24<isomdl::definitions::Mso> =
             raw_value.try_into().expect("Tag24<Mso> decode failed");
         let mso = tagged.into_inner();
-        eprintln!("decoded mso.status: {:?}", mso.status);
         assert!(
             mso.status.is_some(),
             "status should be present on decoded MSO"

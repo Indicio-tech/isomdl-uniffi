@@ -484,7 +484,10 @@ impl Mdoc {
 
             let registry = TrustAnchorRegistry::from_pem_certificates(pem_anchors)
                 .map_err(|e| MdocVerificationError::TrustAnchorRegistryError(format!("{:?}", e)))?; // Validate X5Chain against trust anchors using mDL validation rules
-            let validation_errors = futures::executor::block_on(
+            // `&()` is isomdl's documented no-op RevocationFetcher ("use `&()` to
+            // skip revocation checks"); it does not affect the X.509 chain/trust-anchor
+            // validation performed here.
+            let validation_errors = pollster::block_on(
                 isomdl::definitions::x509::validation::ValidationRuleset::Mdl.validate(
                     &x5chain,
                     &registry,
@@ -1636,6 +1639,89 @@ mod tests {
             Mdoc::create_and_sign_mdl(mdl_items, None, holder_jwk, cert_pem, issuer_key_pem, None)
                 .expect("create_and_sign_mdl without status failed");
         assert_eq!(mdoc_without_status.status_list(), None);
+    }
+
+    #[test]
+    fn test_status_json_parse_error_is_reported() {
+        // Invalid JSON syntax must surface as a clean error, not panic or be
+        // silently dropped.
+        let err = parse_status_json(Some("{not valid json".to_string()))
+            .expect_err("invalid JSON should be rejected");
+        assert!(
+            matches!(err, MdocInitError::GeneralConstructionError(_)),
+            "unexpected error variant: {err:?}"
+        );
+    }
+
+    #[test]
+    fn test_status_json_non_object_is_accepted_opaquely() {
+        // Mirrors isomdl's own `malformed_status_value_is_not_rejected`: the
+        // library treats the status claim as opaque CBOR and doesn't validate
+        // its shape, so syntactically-valid JSON that isn't the expected
+        // `{"status_list": {...}}` shape is still accepted rather than
+        // rejected.
+        let value = parse_status_json(Some("true".to_string()))
+            .expect("syntactically valid JSON should parse")
+            .expect("Some status_list should produce Some CBOR value");
+        assert_eq!(value, Value::Bool(true));
+    }
+
+    #[test]
+    fn test_prepare_and_complete_with_status_claim() {
+        let ds_key = SigningKey::random(&mut OsRng);
+        let spki = SubjectPublicKeyInfoOwned::from_key(ds_key.verifying_key().clone()).unwrap();
+        let cert = CertificateBuilder::new(
+            Profile::Root,
+            SerialNumber::from(1u64),
+            Validity::from_now(Duration::from_secs(3600)).unwrap(),
+            "CN=Test Issuer".parse().unwrap(),
+            spki,
+            &ds_key,
+        )
+        .unwrap()
+        .build::<p256::ecdsa::DerSignature>()
+        .unwrap();
+        let cert_pem = cert.to_pem(LineEnding::LF).unwrap();
+
+        let holder_key = SigningKey::random(&mut OsRng);
+        let point = holder_key.verifying_key().to_encoded_point(false);
+        let x = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(point.x().unwrap());
+        let y = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(point.y().unwrap());
+        let holder_jwk =
+            serde_json::json!({"kty": "EC", "crv": "P-256", "x": x, "y": y}).to_string();
+
+        let mut namespaces = HashMap::new();
+        let mut ns_items = HashMap::new();
+        ns_items.insert(
+            "given_name".to_string(),
+            serde_json::to_string("Alice").unwrap(),
+        );
+        namespaces.insert("com.example.test".to_string(), ns_items);
+
+        let status_json =
+            r#"{"status_list":{"idx":7,"uri":"https://example.com/statuslists/1"}}"#.to_string();
+
+        let prepared = PreparedMdoc::new(
+            "com.example.test.doc".to_string(),
+            namespaces,
+            holder_jwk,
+            "ES256".to_string(),
+            Some(status_json.clone()),
+        )
+        .expect("prepare with status failed");
+
+        let payload = prepared.signature_payload().expect("payload failed");
+        use p256::ecdsa::{Signature, signature::Signer};
+        let signature: Signature = ds_key.sign(&payload);
+
+        let mdoc = prepared
+            .complete(cert_pem, signature.to_vec())
+            .expect("complete failed");
+
+        let status_list: serde_json::Value =
+            serde_json::from_str(&mdoc.status_list().expect("status claim missing")).unwrap();
+        let expected: serde_json::Value = serde_json::from_str(&status_json).unwrap();
+        assert_eq!(status_list, expected);
     }
 
     #[test]

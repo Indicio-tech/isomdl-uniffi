@@ -89,8 +89,11 @@ describe('Generate Device Response for Python Verification', () => {
             "elementValue": "Doe"
         };
         const itemBytes = cbor.encodeCanonical(item);
-        // Calculate digest
-        const itemDigest = crypto.createHash('sha256').update(itemBytes).digest();
+        // Per ISO 18013-5 9.1.2.5, the value digest is computed over the
+        // Tag24-wrapped IssuerSignedItemBytes (tag 24 + bstr), not the raw
+        // item encoding.
+        const itemTaggedBytes = cbor.encodeCanonical(new cbor.Tagged(24, itemBytes));
+        const itemDigest = crypto.createHash('sha256').update(itemTaggedBytes).digest();
 
         const now = new Date("2024-01-01T00:00:00Z");
         const validUntil = new Date("2050-01-01T00:00:00Z");

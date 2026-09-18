@@ -28,7 +28,7 @@ uniffi = { version = "0.29.4", features = [ "build" ] }
 
 [dependencies]
 uniffi = { version = "0.29.4", features = [ "cli" ] }
-isomdl = { git = "https://github.com/spruceid/isomdl", rev = "fed574c"}
+isomdl = { git = "https://github.com/Indicio-tech/isomdl", rev = "204440bd03028d522319a72885fd000bc92c0034" }
 anyhow = "1.0.98"
 base64 = "0.22.1"
 chrono = { version = "0.4", features = ["serde"] }
@@ -36,6 +36,7 @@ ciborium = "0.2.2"
 coset = "0.3"
 p256 = { version = "0.13.2", features = ["jwk", "pkcs8"] }
 pem = "3.0.4"
+pollster = "1.0"
 rand = "0.9.1"
 serde = "1.0.219"
 serde_bytes = "0.11"

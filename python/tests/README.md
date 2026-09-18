@@ -130,38 +130,50 @@ To add new tests:
 
 Example test file structure:
 
+<!--
+This code block is formatted by `ruff format` (it lints/formats Python
+fenced blocks in Markdown, not just .py files) and enforced by CI's
+"Python PR Checks" job (`ruff format --check python/tests/`). If you edit
+the example below, run `ruff format python/tests/README.md` afterwards
+rather than hand-formatting it, or CI will fail on the diff.
+-->
+
 ```python
 #!/usr/bin/env python3
 """
 Description of your test module.
 """
 
+
 def run_tests():
     """
     Run your tests.
-    
+
     Returns:
         bool: True if all tests pass, False otherwise.
     """
     try:
         # Your test code here
         # Access the bindings via the global 'mdl' variable
-        
+
         print("   ✅ Test passed")
         return True
-        
+
     except Exception as e:
         print(f"   ❌ Test failed: {e}")
         return False
+
 
 # Direct execution support for debugging
 if __name__ == "__main__":
     import sys
     import os
+
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "rust", "out", "python"))
-    
+
     try:
         import isomdl_uniffi as mdl
+
         success = run_tests()
         sys.exit(0 if success else 1)
     except ImportError as e:

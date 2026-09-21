@@ -105,7 +105,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.platform.target }}
-          args: --release --out dist --interpreter python3.9 python3.10 python3.11 python3.12
+          args: --release --out dist
           sccache: 'true'
           manylinux: ${{ matrix.platform.os == 'linux' && format('auto', matrix.platform.manylinux) || 'auto' }}
           working-directory: python
@@ -115,7 +115,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.platform.target }}
-          args: --release --out dist --interpreter python3.9 python3.10 python3.11 python3.12
+          args: --release --out dist
           sccache: 'true'
           working-directory: python
 

@@ -118,7 +118,8 @@ class CommonGreetingTest {
             sampleAamvaData,
             holderKey.publicJwk(),
             utrechtCert,
-            utrechtKey
+            utrechtKey,
+            null
         )
 
         println("Mdoc: ${mdoc.stringify()}")

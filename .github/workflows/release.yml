@@ -103,6 +103,8 @@ jobs:
       - name: Build wheels (Linux/Windows)
         if: matrix.platform.os == 'linux' || matrix.platform.os == 'windows'
         uses: PyO3/maturin-action@v1
+        env:
+          CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER: gcc
         with:
           target: ${{ matrix.platform.target }}
           args: --release --out dist

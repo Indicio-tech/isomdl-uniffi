@@ -12,7 +12,7 @@ This package provides Python bindings for the Rust-based isomdl-uniffi library,
 implementing the ISO 18013-5 standard for mobile Driver Licenses.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 import importlib.util
 import os
@@ -74,4 +74,3 @@ if not _imported:
         f"Please run './python/precommit/build-bindings.sh' first. "
         f"Original error: {_import_error}"
     )
-

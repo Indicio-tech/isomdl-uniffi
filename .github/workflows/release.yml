@@ -27,6 +27,13 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Version: $VERSION"
 
+      - name: Get Python package version
+        id: get-python-version
+        run: |
+          VERSION=$(awk -F'"' '/^version = / { print $2; exit }' python/pyproject.toml)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Python package version: $VERSION"
+
       - name: Create Release
         id: create-release
         uses: softprops/action-gh-release@v2
@@ -52,7 +59,7 @@ jobs:
             #### Python Bindings
             Download the appropriate wheel file for your platform and install:
             ```bash
-            pip install https://github.com/Indicio-tech/isomdl-uniffi/releases/download/v${{ steps.get-version.outputs.version }}/isomdl_uniffi-${{ steps.get-version.outputs.version }}-<platform>.whl
+            pip install https://github.com/Indicio-tech/isomdl-uniffi/releases/download/v${{ steps.get-version.outputs.version }}/isomdl_uniffi-${{ steps.get-python-version.outputs.version }}-<platform>.whl
             ```
 
             Or browse available wheels below and install the one matching your platform:
@@ -63,7 +70,7 @@ jobs:
             #### Rust Crate
             ```toml
             [dependencies]
-            isomdl-uniffi = "${{ steps.get-version.outputs.version }}"
+            isomdl-uniffi = { git = "https://github.com/Indicio-tech/isomdl-uniffi", tag = "v${{ steps.get-version.outputs.version }}" }
             ```
           draft: false
           prerelease: false

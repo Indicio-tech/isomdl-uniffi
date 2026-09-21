@@ -319,6 +319,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install Zig linker
+        uses: jdx/mise-action@v4
+        with:
+          install: true
+          install_args: zig
+          cache: true
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
@@ -331,9 +338,7 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
-          api-level: 35
-          build-tools: 35.0.0
-          ndk: 28.2.13676358
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0 ndk;28.2.13676358'
 
       - name: Cache Gradle dependencies
         uses: actions/cache@v4

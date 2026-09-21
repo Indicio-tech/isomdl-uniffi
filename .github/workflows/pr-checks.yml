@@ -16,6 +16,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install Zig linker
+        uses: jdx/mise-action@v4
+        with:
+          install: true
+          install_args: zig
+          cache: true
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 

@@ -1354,7 +1354,7 @@ dependencies = [
 [[package]]
 name = "isomdl"
 version = "0.2.0"
-source = "git+https://github.com/Indicio-tech/isomdl?rev=204440bd03028d522319a72885fd000bc92c0034#204440bd03028d522319a72885fd000bc92c0034"
+source = "git+https://github.com/TheTreek/isomdl?rev=2b5e9bcdd68fac88245dafd1559b30514722134b#2b5e9bcdd68fac88245dafd1559b30514722134b"
 dependencies = [
  "aes",
  "aes-gcm",
@@ -1400,7 +1400,7 @@ dependencies = [
 [[package]]
 name = "isomdl-macros"
 version = "0.1.0"
-source = "git+https://github.com/Indicio-tech/isomdl?rev=204440bd03028d522319a72885fd000bc92c0034#204440bd03028d522319a72885fd000bc92c0034"
+source = "git+https://github.com/TheTreek/isomdl?rev=2b5e9bcdd68fac88245dafd1559b30514722134b#2b5e9bcdd68fac88245dafd1559b30514722134b"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3026,7 +3026,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0136791f7c95b1f6dd99f9cc786b91bb81c3800b639b3478e561ddb7be95e5f1"
 dependencies = [
  "fastrand",
- "getrandom 0.4.1",
+ "getrandom 0.3.4",
  "once_cell",
  "rustix",
  "windows-sys",

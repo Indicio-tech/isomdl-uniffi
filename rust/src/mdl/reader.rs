@@ -245,6 +245,13 @@ pub struct MDLReaderResponseData {
     pub issuer_authentication: AuthenticationStatus,
     /// Outcome of device authentication.
     pub device_authentication: AuthenticationStatus,
+    /// The status claim embedded in the presented mdoc's MSO, as a JSON string, if any
+    /// (the same value `MDLReaderVerifiedData.status_list` carries for OID4VP).
+    ///
+    /// Only set when `issuer_authentication` is `Valid`: before that the MSO is not
+    /// authenticated. `None` therefore means "no status claim, or the issuer was not
+    /// authenticated". A status claim that could not be read is reported in `errors`.
+    pub status_list: Option<String>,
     /// Errors that occurred during response processing.
     pub errors: Option<String>,
 }
@@ -307,6 +314,15 @@ pub fn handle_response(
     } else {
         None
     };
+    // `status` is already `None` unless issuer authentication was `Valid`.
+    let status_list = validated_response
+        .status
+        .as_ref()
+        .map(serde_json::to_string)
+        .transpose()
+        .map_err(|e| MDLReaderResponseError::Generic {
+            value: format!("Could not serialize status claim: {e:?}"),
+        })?;
     let verified_response: Result<_, _> = validated_response
         .response
         .into_iter()
@@ -332,6 +348,7 @@ pub fn handle_response(
         verified_response,
         issuer_authentication: AuthenticationStatus::from(validated_response.issuer_authentication),
         device_authentication: AuthenticationStatus::from(validated_response.device_authentication),
+        status_list,
         errors,
     })
 }

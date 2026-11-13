@@ -73,7 +73,9 @@ jobs:
     needs: lint-checks
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # full history for accurate blame / new-code detection
 
       - uses: jdx/mise-action@v4
         with:
@@ -99,6 +101,11 @@ jobs:
         run: |
           cd rust
           cargo test
+
+      - uses: SonarSource/sonarqube-scan-action@v8
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
   build-bindings:
     name: Build Python Bindings

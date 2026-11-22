@@ -136,9 +136,14 @@ impl Mdoc {
 
         let namespaces = convert_namespaces_json(namespaces)?;
         let status_list = parse_status_json(status_list)?;
-        let builder = prepare_builder(pub_key, namespaces, doc_type, status_list).map_err(|e| {
-            MdocInitError::GeneralConstructionError(format!("prepare_builder: {e}"))
-        })?;
+        let builder = prepare_builder(
+            pub_key,
+            namespaces,
+            doc_type,
+            status_list,
+            default_validity_info(),
+        )
+        .map_err(|e| MdocInitError::GeneralConstructionError(format!("prepare_builder: {e}")))?;
 
         let (certificate, iaca_certs, signer) =
             setup_certificate_chain(iaca_cert_perm, iaca_key_perm, None).map_err(|e| {
@@ -245,9 +250,14 @@ impl Mdoc {
         let doc_type = "org.iso.18013.5.1.mDL".to_string();
 
         let status_list = parse_status_json(status_list)?;
-        let builder = prepare_builder(pub_key, namespaces, doc_type, status_list).map_err(|e| {
-            MdocInitError::GeneralConstructionError(format!("prepare_builder: {e}"))
-        })?;
+        let builder = prepare_builder(
+            pub_key,
+            namespaces,
+            doc_type,
+            status_list,
+            default_validity_info(),
+        )
+        .map_err(|e| MdocInitError::GeneralConstructionError(format!("prepare_builder: {e}")))?;
 
         let (certificate, iaca_certs, signer) =
             setup_certificate_chain(iaca_cert_pem, iaca_key_pem, None).map_err(|e| {
@@ -707,9 +717,14 @@ impl PreparedMdoc {
 
         let namespaces = convert_namespaces_json(namespaces)?;
         let status_list = parse_status_json(status_list)?;
-        let builder = prepare_builder(pub_key, namespaces, doc_type, status_list).map_err(|e| {
-            MdocInitError::GeneralConstructionError(format!("prepare_builder: {e}"))
-        })?;
+        let builder = prepare_builder(
+            pub_key,
+            namespaces,
+            doc_type,
+            status_list,
+            default_validity_info(),
+        )
+        .map_err(|e| MdocInitError::GeneralConstructionError(format!("prepare_builder: {e}")))?;
 
         let algorithm = parse_signature_algorithm(&signature_algorithm)?;
         let prepared = builder
@@ -775,11 +790,66 @@ impl PreparedMdoc {
 
         let doc_type = "org.iso.18013.5.1.mDL".to_string();
         let status_list = parse_status_json(status_list)?;
-        let builder = prepare_builder(pub_key, namespaces, doc_type, status_list).map_err(|e| {
-            MdocInitError::GeneralConstructionError(format!("prepare_builder: {e}"))
-        })?;
+        let builder = prepare_builder(
+            pub_key,
+            namespaces,
+            doc_type,
+            status_list,
+            default_validity_info(),
+        )
+        .map_err(|e| MdocInitError::GeneralConstructionError(format!("prepare_builder: {e}")))?;
 
         let algorithm = parse_signature_algorithm(&signature_algorithm)?;
+        let prepared = builder
+            .prepare(algorithm)
+            .map_err(|e| MdocInitError::GeneralConstructionError(format!("prepare: {e}")))?;
+
+        Ok(Arc::new(Self {
+            inner: std::sync::Mutex::new(Some(prepared)),
+        }))
+    }
+
+    /// Prepare an mDoc for external signing from CBOR-encoded element values.
+    ///
+    /// [`PreparedMdoc::new()`] converts JSON values, which cannot express byte strings or
+    /// tagged values. This constructor takes each element value as CBOR bytes instead, so
+    /// `full-date` (tag 1004), `tdate` (tag 0), byte strings and nested maps reach the mdoc
+    /// as encoded. Any doctype and any number of namespaces are accepted; the caller
+    /// encodes and validates the values.
+    ///
+    /// * `namespaces` — namespace → (element identifier → one CBOR data item).
+    /// * `holder_jwk` — P-256 JWK of the holder's device key.
+    /// * `signature_algorithm` — one of `"ES256"`, `"ES384"`, `"ES512"`.
+    /// * `status_list` — optional JSON status claim stored as the MSO `status`, e.g.
+    ///   `{"status_list": {"idx": 1, "uri": "https://example.com/statuslists/1"}}`.
+    /// * `valid_from`, `valid_until`, `expected_update` — RFC 3339 date-times for the MSO
+    ///   `validityInfo`. The mdoc is signed now. `valid_from` defaults to the signing time
+    ///   and must not be earlier than it; `valid_until` must be later than `valid_from`.
+    ///   All times are truncated to whole seconds.
+    #[uniffi::constructor]
+    #[allow(clippy::too_many_arguments)]
+    pub fn new_from_cbor(
+        doc_type: String,
+        namespaces: HashMap<String, HashMap<String, Vec<u8>>>,
+        holder_jwk: String,
+        signature_algorithm: String,
+        status_list: Option<String>,
+        valid_from: Option<String>,
+        valid_until: String,
+        expected_update: Option<String>,
+    ) -> Result<Arc<Self>, MdocInitError> {
+        let pub_key: PublicKey =
+            PublicKey::from_jwk_str(&holder_jwk).map_err(|_e| MdocInitError::InvalidJwk)?;
+
+        let namespaces = decode_cbor_namespaces(namespaces)?;
+        let status_list = parse_status_json(status_list)?;
+        let validity_info = validity_info(valid_from, valid_until, expected_update)?;
+        let algorithm = parse_signature_algorithm(&signature_algorithm)?;
+
+        let builder = prepare_builder(pub_key, namespaces, doc_type, status_list, validity_info)
+            .map_err(|e| {
+                MdocInitError::GeneralConstructionError(format!("prepare_builder: {e}"))
+            })?;
         let prepared = builder
             .prepare(algorithm)
             .map_err(|e| MdocInitError::GeneralConstructionError(format!("prepare: {e}")))?;
@@ -932,15 +1002,8 @@ fn prepare_builder(
     namespaces: BTreeMap<String, BTreeMap<String, ciborium::Value>>,
     doc_type: String,
     status_list: Option<ciborium::Value>,
+    validity_info: ValidityInfo,
 ) -> Result<Builder> {
-    let validity_info = ValidityInfo {
-        signed: OffsetDateTime::now_utc(),
-        valid_from: OffsetDateTime::now_utc(),
-        // mDL valid for thirty days.
-        valid_until: OffsetDateTime::now_utc() + Duration::from_secs(60 * 60 * 24 * 30),
-        expected_update: None,
-    };
-
     let digest_alg = DigestAlgorithm::SHA256;
 
     let ec = holder_key.to_encoded_point(false);
@@ -969,6 +1032,92 @@ fn prepare_builder(
     }
 
     Ok(builder)
+}
+
+/// MSO validity used by the constructors that take no validity: thirty days from signing.
+const DEFAULT_VALIDITY: Duration = Duration::from_secs(60 * 60 * 24 * 30);
+
+/// `time` truncated to whole seconds, the precision of a `tdate` in the MSO.
+fn whole_seconds(time: OffsetDateTime) -> OffsetDateTime {
+    time.replace_nanosecond(0).unwrap_or(time)
+}
+
+/// Validity for the constructors that take none: signed and valid from now, valid for
+/// [`DEFAULT_VALIDITY`], with no expected update.
+fn default_validity_info() -> ValidityInfo {
+    let signed = whole_seconds(OffsetDateTime::now_utc());
+    ValidityInfo {
+        signed,
+        valid_from: signed,
+        valid_until: signed + DEFAULT_VALIDITY,
+        expected_update: None,
+    }
+}
+
+/// Build the MSO validity from caller-supplied RFC 3339 date-times, for an mdoc signed now.
+///
+/// See [`validity_info_at`] for the rules.
+fn validity_info(
+    valid_from: Option<String>,
+    valid_until: String,
+    expected_update: Option<String>,
+) -> Result<ValidityInfo, MdocInitError> {
+    validity_info_at(
+        OffsetDateTime::now_utc(),
+        valid_from.as_deref(),
+        &valid_until,
+        expected_update.as_deref(),
+    )
+}
+
+/// Build the MSO validity for an mdoc signed at `signed`.
+///
+/// Every time is truncated to whole seconds, as the MSO encodes it, before it is checked.
+/// `valid_from` defaults to `signed` and must not be earlier than it, and `valid_until`
+/// must be later than `valid_from`. `expected_update` is not checked against the others.
+fn validity_info_at(
+    signed: OffsetDateTime,
+    valid_from: Option<&str>,
+    valid_until: &str,
+    expected_update: Option<&str>,
+) -> Result<ValidityInfo, MdocInitError> {
+    let signed = whole_seconds(signed);
+    let valid_from = valid_from
+        .map(|v| parse_rfc3339("valid_from", v))
+        .transpose()?
+        .unwrap_or(signed);
+    let valid_until = parse_rfc3339("valid_until", valid_until)?;
+    let expected_update = expected_update
+        .map(|v| parse_rfc3339("expected_update", v))
+        .transpose()?;
+
+    if valid_from < signed {
+        return Err(validity_error(
+            "valid_from is earlier than the signing time",
+        ));
+    }
+    if valid_until <= valid_from {
+        return Err(validity_error("valid_until is not later than valid_from"));
+    }
+
+    Ok(ValidityInfo {
+        signed,
+        valid_from,
+        valid_until,
+        expected_update,
+    })
+}
+
+/// Parse an RFC 3339 date-time into UTC, truncated to whole seconds.
+fn parse_rfc3339(field: &str, value: &str) -> Result<OffsetDateTime, MdocInitError> {
+    let parsed = chrono::DateTime::parse_from_rfc3339(value)
+        .map_err(|e| validity_error(&format!("{field} is not an RFC 3339 date-time: {e}")))?;
+    OffsetDateTime::from_unix_timestamp(parsed.timestamp())
+        .map_err(|e| validity_error(&format!("{field} is out of range: {e}")))
+}
+
+fn validity_error(message: &str) -> MdocInitError {
+    MdocInitError::GeneralConstructionError(format!("validity: {message}"))
 }
 
 /// Parse a caller-supplied JSON status claim (e.g.
@@ -1063,6 +1212,47 @@ pub fn convert_namespaces(
     }
 
     Ok(outer)
+}
+
+/// Decode the CBOR-encoded element values given to [`PreparedMdoc::new_from_cbor`].
+///
+/// Stricter than [`convert_namespaces`]: there must be at least one namespace, every
+/// namespace must have at least one element, and every value must be exactly one CBOR data
+/// item with no trailing bytes. Errors name the namespace and element, never the value.
+fn decode_cbor_namespaces(
+    input: HashMap<String, HashMap<String, Vec<u8>>>,
+) -> Result<BTreeMap<String, BTreeMap<String, Value>>, MdocInitError> {
+    if input.is_empty() {
+        return Err(MdocInitError::GeneralConstructionError(
+            "no namespaces given".into(),
+        ));
+    }
+
+    let mut namespaces = BTreeMap::new();
+    for (namespace, elements) in input {
+        if elements.is_empty() {
+            return Err(MdocInitError::GeneralConstructionError(format!(
+                "namespace '{namespace}' has no elements"
+            )));
+        }
+        let mut decoded = BTreeMap::new();
+        for (element, bytes) in elements {
+            let invalid = || {
+                MdocInitError::GeneralConstructionError(format!(
+                    "element '{element}' in namespace '{namespace}' is not a single CBOR data item"
+                ))
+            };
+            let mut cursor = Cursor::new(bytes.as_slice());
+            let value: Value = ciborium::from_reader(&mut cursor).map_err(|_| invalid())?;
+            if cursor.position() != bytes.len() as u64 {
+                return Err(invalid());
+            }
+            decoded.insert(element, value);
+        }
+        namespaces.insert(namespace, decoded);
+    }
+
+    Ok(namespaces)
 }
 
 #[cfg(test)]
@@ -2039,5 +2229,343 @@ mod tests {
             None,
         );
         assert!(result.is_err(), "should reject unknown algorithm");
+    }
+
+    /// A self-signed P-256 document signer: its key and certificate PEM.
+    fn cbor_test_signer() -> (SigningKey, String) {
+        let ds_key = SigningKey::random(&mut OsRng);
+        let spki = SubjectPublicKeyInfoOwned::from_key(*ds_key.verifying_key()).unwrap();
+        let cert = CertificateBuilder::new(
+            Profile::Root,
+            SerialNumber::from(1u64),
+            Validity::from_now(Duration::from_secs(3600)).unwrap(),
+            "CN=Test Issuer".parse().unwrap(),
+            spki,
+            &ds_key,
+        )
+        .unwrap()
+        .build::<p256::ecdsa::DerSignature>()
+        .unwrap();
+        (ds_key, cert.to_pem(LineEnding::LF).unwrap())
+    }
+
+    fn cbor_test_holder_jwk() -> String {
+        let holder_key = SigningKey::random(&mut OsRng);
+        let point = holder_key.verifying_key().to_encoded_point(false);
+        let x = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(point.x().unwrap());
+        let y = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(point.y().unwrap());
+        serde_json::json!({"kty": "EC", "crv": "P-256", "x": x, "y": y}).to_string()
+    }
+
+    fn to_cbor(value: &Value) -> Vec<u8> {
+        let mut bytes = Vec::new();
+        ciborium::into_writer(value, &mut bytes).unwrap();
+        bytes
+    }
+
+    fn rfc3339(time: OffsetDateTime) -> String {
+        chrono::DateTime::from_timestamp(time.unix_timestamp(), 0)
+            .unwrap()
+            .to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
+    }
+
+    /// Element values covering the CBOR types `new_from_cbor` must keep, across three
+    /// namespaces: text, a nested map holding a tagged date (the ISO/IEC 23220-1
+    /// `birth_date`), a byte string, `full-date` and `tdate` tags, a boolean and an integer.
+    fn cbor_test_namespaces() -> BTreeMap<String, BTreeMap<String, Value>> {
+        let text = |s: &str| Value::Text(s.to_string());
+        let full_date = |s: &str| Value::Tag(1004, Box::new(text(s)));
+        BTreeMap::from([
+            (
+                "org.iso.23220.1".to_string(),
+                BTreeMap::from([
+                    ("family_name".to_string(), text("Smith")),
+                    (
+                        "birth_date".to_string(),
+                        Value::Map(vec![
+                            (text("birth_date"), full_date("1990-04-01")),
+                            (text("approximate_mask"), text("00000011")),
+                        ]),
+                    ),
+                    (
+                        "portrait".to_string(),
+                        Value::Bytes(vec![0xFF, 0xD8, 0xFF, 0xE0]),
+                    ),
+                    ("issue_date".to_string(), full_date("2026-01-01")),
+                    (
+                        "portrait_capture_date".to_string(),
+                        Value::Tag(0, Box::new(text("2025-12-01T10:00:00Z"))),
+                    ),
+                    ("age_over_18".to_string(), Value::Bool(true)),
+                    ("age_in_years".to_string(), Value::Integer(35.into())),
+                ]),
+            ),
+            (
+                "org.iso.23220.photoid.1".to_string(),
+                BTreeMap::from([("person_id".to_string(), text("1234567890"))]),
+            ),
+            (
+                "ca.on.photoid.1".to_string(),
+                BTreeMap::from([(
+                    "health_card".to_string(),
+                    Value::Map(vec![(text("number"), text("1234-567-890"))]),
+                )]),
+            ),
+        ])
+    }
+
+    fn encode_namespaces(
+        namespaces: &BTreeMap<String, BTreeMap<String, Value>>,
+    ) -> HashMap<String, HashMap<String, Vec<u8>>> {
+        namespaces
+            .iter()
+            .map(|(namespace, elements)| {
+                let encoded = elements
+                    .iter()
+                    .map(|(element, value)| (element.clone(), to_cbor(value)))
+                    .collect();
+                (namespace.clone(), encoded)
+            })
+            .collect()
+    }
+
+    /// The element values of `mdoc`, namespace by namespace.
+    fn mdoc_element_values(mdoc: &Mdoc) -> BTreeMap<String, BTreeMap<String, Value>> {
+        mdoc.inner
+            .namespaces
+            .iter()
+            .map(|(namespace, elements)| {
+                let values = elements
+                    .iter()
+                    .map(|(element, item)| (element.clone(), item.as_ref().element_value.clone()))
+                    .collect();
+                (namespace.clone(), values)
+            })
+            .collect()
+    }
+
+    /// Prepare with `new_from_cbor`, sign with a test document signer, and complete.
+    fn issue_from_cbor(
+        namespaces: HashMap<String, HashMap<String, Vec<u8>>>,
+        status_list: Option<String>,
+        valid_from: Option<String>,
+        valid_until: String,
+        expected_update: Option<String>,
+    ) -> Arc<Mdoc> {
+        let (ds_key, cert_pem) = cbor_test_signer();
+        let prepared = PreparedMdoc::new_from_cbor(
+            "org.iso.23220.photoid.1".to_string(),
+            namespaces,
+            cbor_test_holder_jwk(),
+            "ES256".to_string(),
+            status_list,
+            valid_from,
+            valid_until,
+            expected_update,
+        )
+        .expect("new_from_cbor failed");
+
+        use p256::ecdsa::{Signature, signature::Signer};
+        let signature: Signature = ds_key.sign(&prepared.signature_payload().unwrap());
+        // COSE ES256 takes the raw 64-byte r || s, which is also what an ACA-Py wallet
+        // returns for a P-256 key.
+        let signature = signature.to_vec();
+        assert_eq!(signature.len(), 64);
+
+        let mdoc = prepared
+            .complete(cert_pem, signature)
+            .expect("complete failed");
+        assert!(
+            prepared.complete(String::new(), vec![]).is_err(),
+            "second complete should fail"
+        );
+        mdoc
+    }
+
+    #[test]
+    fn test_new_from_cbor_keeps_cbor_types_across_namespaces() {
+        let expected = cbor_test_namespaces();
+        let in_30_days = rfc3339(OffsetDateTime::now_utc() + DEFAULT_VALIDITY);
+        let mdoc = issue_from_cbor(encode_namespaces(&expected), None, None, in_30_days, None);
+
+        assert_eq!(mdoc.doctype(), "org.iso.23220.photoid.1");
+        assert_eq!(mdoc_element_values(&mdoc), expected);
+
+        // The values also survive the IssuerSigned encoding sent to wallets.
+        let reparsed = Mdoc::new_from_base64url_encoded_issuer_signed(
+            mdoc.issuer_signed_b64().unwrap(),
+            KeyAlias("reparsed".to_string()),
+        )
+        .unwrap();
+        assert_eq!(mdoc_element_values(&reparsed), expected);
+
+        let result = mdoc.verify_issuer_signature(None, false).unwrap();
+        assert!(result.verified, "issuer signature: {:?}", result.error);
+    }
+
+    #[test]
+    fn test_new_from_cbor_sets_validity_and_status() {
+        let now = whole_seconds(OffsetDateTime::now_utc());
+        let valid_from = now + Duration::from_secs(60 * 60);
+        let valid_until = now + Duration::from_secs(90 * 24 * 60 * 60);
+        let expected_update = now + Duration::from_secs(7 * 24 * 60 * 60);
+        let status_json = r#"{"status_list":{"idx":3,"uri":"https://example.com/statuslists/2"}}"#;
+
+        let mdoc = issue_from_cbor(
+            encode_namespaces(&cbor_test_namespaces()),
+            Some(status_json.to_string()),
+            Some(rfc3339(valid_from)),
+            rfc3339(valid_until),
+            Some(rfc3339(expected_update)),
+        );
+
+        // Read the MSO back from the encoded IssuerSigned, as a wallet would.
+        let reparsed = Mdoc::new_from_base64url_encoded_issuer_signed(
+            mdoc.issuer_signed_b64().unwrap(),
+            KeyAlias("reparsed".to_string()),
+        )
+        .unwrap();
+        let validity = &reparsed.inner.mso.validity_info;
+        assert!(validity.signed >= now && validity.signed <= valid_from);
+        assert_eq!(validity.valid_from, valid_from);
+        assert_eq!(validity.valid_until, valid_until);
+        assert_eq!(validity.expected_update, Some(expected_update));
+
+        let status: serde_json::Value =
+            serde_json::from_str(&reparsed.status_list().expect("status claim missing")).unwrap();
+        let expected: serde_json::Value = serde_json::from_str(status_json).unwrap();
+        assert_eq!(status, expected);
+
+        let result = mdoc.verify_issuer_signature(None, false).unwrap();
+        assert!(result.verified, "issuer signature: {:?}", result.error);
+    }
+
+    #[test]
+    fn test_validity_rules() {
+        // 2026-01-01T00:00:00Z
+        let signed = OffsetDateTime::from_unix_timestamp(1_767_225_600).unwrap();
+
+        let validity = validity_info_at(signed, None, "2026-01-31T00:00:00Z", None).unwrap();
+        assert_eq!(validity.valid_from, signed);
+        assert_eq!(validity.expected_update, None);
+
+        // Offsets and fractional seconds are normalised to whole seconds in UTC.
+        let validity = validity_info_at(
+            signed + Duration::from_millis(400),
+            Some("2026-01-01T05:00:00.750+05:00"),
+            "2026-01-31T00:00:00Z",
+            None,
+        )
+        .unwrap();
+        assert_eq!(validity.signed, signed);
+        assert_eq!(validity.valid_from, signed);
+
+        let rejected = [
+            (
+                Some("2025-12-31T23:59:59Z"),
+                "2026-01-31T00:00:00Z",
+                None,
+                "valid_from is earlier than the signing time",
+            ),
+            (
+                None,
+                "2026-01-01T00:00:00Z",
+                None,
+                "valid_until is not later than valid_from",
+            ),
+            (
+                Some("2026-02-01T00:00:00Z"),
+                "2026-01-31T00:00:00Z",
+                None,
+                "valid_until is not later than valid_from",
+            ),
+            (None, "31/01/2026", None, "valid_until is not an RFC 3339"),
+            (
+                Some("2026-01-01"),
+                "2026-01-31T00:00:00Z",
+                None,
+                "valid_from is not an RFC 3339",
+            ),
+            (
+                None,
+                "2026-01-31T00:00:00Z",
+                Some("soon"),
+                "expected_update is not an RFC 3339",
+            ),
+        ];
+        for (valid_from, valid_until, expected_update, reason) in rejected {
+            let err = validity_info_at(signed, valid_from, valid_until, expected_update)
+                .expect_err(reason);
+            assert!(
+                err.to_string().contains(reason),
+                "{err} should say {reason:?}"
+            );
+        }
+
+        // The constructor applies the same rules.
+        let result = PreparedMdoc::new_from_cbor(
+            "doc".to_string(),
+            encode_namespaces(&cbor_test_namespaces()),
+            cbor_test_holder_jwk(),
+            "ES256".to_string(),
+            None,
+            None,
+            "2000-01-01T00:00:00Z".to_string(),
+            None,
+        );
+        assert!(
+            result.is_err(),
+            "valid_until in the past should be rejected"
+        );
+    }
+
+    #[test]
+    fn test_new_from_cbor_rejects_bad_namespaces() {
+        let in_30_days = rfc3339(OffsetDateTime::now_utc() + DEFAULT_VALIDITY);
+        let prepare = |namespaces: HashMap<String, HashMap<String, Vec<u8>>>| {
+            PreparedMdoc::new_from_cbor(
+                "doc".to_string(),
+                namespaces,
+                cbor_test_holder_jwk(),
+                "ES256".to_string(),
+                None,
+                None,
+                in_30_days.clone(),
+                None,
+            )
+            .map(|_| ())
+            .unwrap_err()
+            .to_string()
+        };
+
+        assert!(prepare(HashMap::new()).contains("no namespaces given"));
+        assert!(
+            prepare(HashMap::from([("ns".to_string(), HashMap::new())]))
+                .contains("namespace 'ns' has no elements")
+        );
+
+        let truncated = vec![0x62, b'Q']; // a two-byte text string with one byte present
+        let trailing = [to_cbor(&Value::Text("ok".to_string())), vec![0x00]].concat();
+        for bytes in [truncated, trailing, vec![]] {
+            let element = HashMap::from([("el".to_string(), bytes)]);
+            let message = prepare(HashMap::from([("ns".to_string(), element)]));
+            assert!(
+                message.contains("element 'el' in namespace 'ns'"),
+                "{message}"
+            );
+            assert!(
+                !message.contains('Q'),
+                "error must not echo the value: {message}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_default_validity_is_thirty_days_from_signing() {
+        let validity = default_validity_info();
+        assert_eq!(validity.valid_from, validity.signed);
+        assert_eq!(validity.valid_until, validity.signed + DEFAULT_VALIDITY);
+        assert_eq!(validity.expected_update, None);
+        assert_eq!(validity.signed, whole_seconds(validity.signed));
     }
 }

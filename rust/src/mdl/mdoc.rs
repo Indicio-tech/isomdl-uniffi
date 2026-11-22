@@ -1032,12 +1032,135 @@ fn convert_namespaces_json(
                     "Invalid JSON for element '{key}': {json_str:?}"
                 ))
             })?;
-            inner_btree.insert(key, json_to_cbor(json_val));
+            let value = match typed_element_to_cbor(&key, &json_val)? {
+                Some(typed) => typed,
+                None => json_to_cbor(json_val),
+            };
+            inner_btree.insert(key, value);
         }
         outer.insert(namespace, inner_btree);
     }
 
     Ok(outer)
+}
+
+/// Key that marks a typed element envelope in a JSON element value.
+const TYPED_ELEMENT_KEY: &str = "$isomdl";
+
+/// CBOR tag for an RFC 8943 full-date text string (ISO 18013-5 `full-date`).
+const TAG_FULL_DATE: u64 = 1004;
+
+/// CBOR tag for an RFC 3339 date-time text string (ISO 18013-5 `tdate`).
+const TAG_TDATE: u64 = 0;
+
+/// Convert a typed element envelope into the ISO 18013-5 CBOR type it names.
+///
+/// A caller that needs a CBOR type JSON cannot express sends the element value
+/// as `{"$isomdl": "<type>", "value": "<text>"}`:
+///
+/// | type        | value                                   | CBOR written      |
+/// |-------------|-----------------------------------------|-------------------|
+/// | `bstr`      | base64 or base64url, padded or not      | byte string       |
+/// | `full-date` | `YYYY-MM-DD`                            | tag 1004, text    |
+/// | `tdate`     | `YYYY-MM-DDTHH:MM:SSZ` (UTC, no fraction) | tag 0, text     |
+///
+/// Returns `Ok(None)` when the value is not an envelope, so it is converted by
+/// [`json_to_cbor`] as before. An object carrying the `$isomdl` key that is not
+/// a valid envelope is an error. Error messages name the element and the type,
+/// never the value.
+fn typed_element_to_cbor(
+    element: &str,
+    json: &serde_json::Value,
+) -> Result<Option<Value>, MdocInitError> {
+    let obj = match json {
+        serde_json::Value::Object(obj) if obj.contains_key(TYPED_ELEMENT_KEY) => obj,
+        _ => return Ok(None),
+    };
+
+    let invalid = |reason: &str| {
+        MdocInitError::GeneralConstructionError(format!("typed element '{element}': {reason}"))
+    };
+
+    if obj.len() != 2 || !obj.contains_key("value") {
+        return Err(invalid(
+            "envelope must hold exactly the keys \"$isomdl\" and \"value\"",
+        ));
+    }
+    let value_type = obj[TYPED_ELEMENT_KEY]
+        .as_str()
+        .ok_or_else(|| invalid("\"$isomdl\" must be a string"))?;
+    let text = obj["value"]
+        .as_str()
+        .ok_or_else(|| invalid("\"value\" must be a string"))?;
+
+    match value_type {
+        "bstr" => decode_base64_any(text)
+            .map(|bytes| Some(Value::Bytes(bytes)))
+            .ok_or_else(|| invalid("bstr value is not valid base64 or base64url")),
+        "full-date" => {
+            if is_full_date(text) {
+                Ok(Some(Value::Tag(
+                    TAG_FULL_DATE,
+                    Box::new(Value::Text(text.to_owned())),
+                )))
+            } else {
+                Err(invalid("full-date value is not a valid YYYY-MM-DD date"))
+            }
+        }
+        "tdate" => {
+            if is_tdate(text) {
+                Ok(Some(Value::Tag(
+                    TAG_TDATE,
+                    Box::new(Value::Text(text.to_owned())),
+                )))
+            } else {
+                Err(invalid(
+                    "tdate value is not a valid YYYY-MM-DDTHH:MM:SSZ date-time",
+                ))
+            }
+        }
+        _ => Err(invalid(
+            "unknown type; expected \"bstr\", \"full-date\" or \"tdate\"",
+        )),
+    }
+}
+
+/// Decode standard or URL-safe base64, with or without padding.
+fn decode_base64_any(text: &str) -> Option<Vec<u8>> {
+    BASE64_STANDARD
+        .decode(text)
+        .or_else(|_| BASE64_STANDARD_NO_PAD.decode(text))
+        .or_else(|_| BASE64_URL_SAFE.decode(text))
+        .or_else(|_| BASE64_URL_SAFE_NO_PAD.decode(text))
+        .ok()
+}
+
+/// True for a calendar-valid `YYYY-MM-DD` (RFC 3339 full-date).
+fn is_full_date(text: &str) -> bool {
+    let b = text.as_bytes();
+    b.len() == 10
+        && b[4] == b'-'
+        && b[7] == b'-'
+        && b.iter()
+            .enumerate()
+            .all(|(i, c)| i == 4 || i == 7 || c.is_ascii_digit())
+        && chrono::NaiveDate::parse_from_str(text, "%Y-%m-%d").is_ok()
+}
+
+/// True for `YYYY-MM-DDTHH:MM:SSZ`: RFC 3339 date-time in UTC without
+/// fractional seconds, the form ISO 18013-5 uses for `tdate`.
+fn is_tdate(text: &str) -> bool {
+    let b = text.as_bytes();
+    b.len() == 20
+        && text.get(..10).is_some_and(is_full_date)
+        && b[10] == b'T'
+        && b[13] == b':'
+        && b[16] == b':'
+        && b[19] == b'Z'
+        && [11, 12, 14, 15, 17, 18]
+            .iter()
+            .all(|&i| b[i].is_ascii_digit())
+        && chrono::DateTime::parse_from_rfc3339(text).is_ok()
 }
 
 /// Convert a namespace map of raw CBOR-encoded bytes into the
@@ -2039,5 +2162,275 @@ mod tests {
             None,
         );
         assert!(result.is_err(), "should reject unknown algorithm");
+    }
+
+    // ---- Typed element envelopes (bstr, full-date, tdate) ----
+
+    /// Issuer key PEM, self-signed IACA PEM and holder JWK for typed-element tests.
+    fn typed_test_keys() -> (String, String, String) {
+        let issuer_key = SigningKey::random(&mut OsRng);
+        let issuer_key_pem = issuer_key.to_pkcs8_pem(LineEnding::LF).unwrap().to_string();
+        let subject_name: Name = "CN=Test Issuer".parse().unwrap();
+        let validity = Validity::from_now(Duration::from_secs(3600)).unwrap();
+        let spki = SubjectPublicKeyInfoOwned::from_key(*issuer_key.verifying_key()).unwrap();
+        let cert = CertificateBuilder::new(
+            Profile::Root,
+            SerialNumber::from(1u64),
+            validity,
+            subject_name,
+            spki,
+            &issuer_key,
+        )
+        .unwrap()
+        .build::<p256::ecdsa::DerSignature>()
+        .unwrap();
+        let cert_pem = cert.to_pem(LineEnding::LF).unwrap();
+
+        let holder_key = SigningKey::random(&mut OsRng);
+        let point = holder_key.verifying_key().to_encoded_point(false);
+        let holder_jwk = serde_json::json!({
+            "kty": "EC",
+            "crv": "P-256",
+            "x": BASE64_URL_SAFE_NO_PAD.encode(point.x().unwrap()),
+            "y": BASE64_URL_SAFE_NO_PAD.encode(point.y().unwrap()),
+        })
+        .to_string();
+        (issuer_key_pem, cert_pem, holder_jwk)
+    }
+
+    fn envelope(value_type: &str, value: &str) -> String {
+        serde_json::json!({"$isomdl": value_type, "value": value}).to_string()
+    }
+
+    /// Element values of one namespace, by identifier.
+    fn element_values(mdoc: &Mdoc, namespace: &str) -> BTreeMap<String, Value> {
+        mdoc.document()
+            .namespaces
+            .clone()
+            .into_inner()
+            .into_iter()
+            .find(|(ns, _)| ns == namespace)
+            .expect("namespace present")
+            .1
+            .into_inner()
+            .into_values()
+            .map(|tagged| {
+                let item = tagged.into_inner();
+                (item.element_identifier, item.element_value)
+            })
+            .collect()
+    }
+
+    const TYPED_DOCTYPE: &str = "org.example.typed.1";
+    const PORTRAIT_BYTES: [u8; 6] = [0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10];
+
+    fn typed_namespaces() -> HashMap<String, HashMap<String, String>> {
+        let mut ns = HashMap::new();
+        ns.insert(
+            "portrait".to_string(),
+            envelope("bstr", &BASE64_STANDARD.encode(PORTRAIT_BYTES)),
+        );
+        ns.insert(
+            "issue_date".to_string(),
+            envelope("full-date", "2026-10-02"),
+        );
+        ns.insert(
+            "signed_at".to_string(),
+            envelope("tdate", "2026-10-02T21:15:00Z"),
+        );
+        ns.insert(
+            "given_name".to_string(),
+            serde_json::to_string("Sample").unwrap(),
+        );
+        ns.insert(
+            "plain_map".to_string(),
+            serde_json::json!({"value": "x", "kind": "y"}).to_string(),
+        );
+        let mut namespaces = HashMap::new();
+        namespaces.insert(TYPED_DOCTYPE.to_string(), ns);
+        namespaces
+    }
+
+    fn assert_typed_values(values: &BTreeMap<String, Value>) {
+        assert_eq!(values["portrait"], Value::Bytes(PORTRAIT_BYTES.to_vec()));
+        assert_eq!(
+            values["issue_date"],
+            Value::Tag(1004, Box::new(Value::Text("2026-10-02".into())))
+        );
+        assert_eq!(
+            values["signed_at"],
+            Value::Tag(0, Box::new(Value::Text("2026-10-02T21:15:00Z".into())))
+        );
+        assert_eq!(values["given_name"], Value::Text("Sample".into()));
+        assert!(
+            matches!(values["plain_map"], Value::Map(_)),
+            "an object without $isomdl stays a map"
+        );
+    }
+
+    #[test]
+    fn typed_elements_write_iso_cbor_types() {
+        let (issuer_key_pem, cert_pem, holder_jwk) = typed_test_keys();
+        let mdoc = Mdoc::create_and_sign(
+            TYPED_DOCTYPE.to_string(),
+            typed_namespaces(),
+            holder_jwk,
+            cert_pem,
+            issuer_key_pem,
+            None,
+        )
+        .expect("typed mdoc is created");
+        assert_typed_values(&element_values(&mdoc, TYPED_DOCTYPE));
+
+        let verification = mdoc.verify_issuer_signature(None, false).unwrap();
+        assert!(verification.verified, "issuer signature verifies");
+    }
+
+    #[test]
+    fn typed_elements_survive_issuer_signed_round_trip() {
+        let (issuer_key_pem, cert_pem, holder_jwk) = typed_test_keys();
+        let mdoc = Mdoc::create_and_sign(
+            TYPED_DOCTYPE.to_string(),
+            typed_namespaces(),
+            holder_jwk,
+            cert_pem,
+            issuer_key_pem,
+            None,
+        )
+        .unwrap();
+        let b64 = mdoc.issuer_signed_b64().unwrap();
+        let parsed =
+            Mdoc::new_from_base64url_encoded_issuer_signed(b64, KeyAlias("k".into())).unwrap();
+        assert_typed_values(&element_values(&parsed, TYPED_DOCTYPE));
+        let verification = parsed.verify_issuer_signature(None, false).unwrap();
+        assert!(
+            verification.verified,
+            "issuer signature verifies after parse"
+        );
+    }
+
+    #[test]
+    fn typed_elements_on_prepare_and_complete_path() {
+        let converted = convert_namespaces_json(typed_namespaces()).unwrap();
+        assert_typed_values(&converted[TYPED_DOCTYPE]);
+    }
+
+    #[test]
+    fn bstr_accepts_every_base64_alphabet_and_padding() {
+        let bytes: Vec<u8> = (0u8..=255).collect();
+        for text in [
+            BASE64_STANDARD.encode(&bytes),
+            BASE64_STANDARD_NO_PAD.encode(&bytes),
+            BASE64_URL_SAFE.encode(&bytes),
+            BASE64_URL_SAFE_NO_PAD.encode(&bytes),
+        ] {
+            let json: serde_json::Value = serde_json::from_str(&envelope("bstr", &text)).unwrap();
+            assert_eq!(
+                typed_element_to_cbor("portrait", &json).unwrap(),
+                Some(Value::Bytes(bytes.clone()))
+            );
+        }
+    }
+
+    #[test]
+    fn typed_element_bad_inputs_are_refused_without_the_value() {
+        let cases: Vec<(&str, serde_json::Value)> = vec![
+            (
+                "bstr",
+                serde_json::json!({"$isomdl": "bstr", "value": "SECRET*not base64"}),
+            ),
+            (
+                "bstr",
+                serde_json::json!({"$isomdl": "bstr", "value": "SECRET+/mixed-_"}),
+            ),
+            (
+                "full-date",
+                serde_json::json!({"$isomdl": "full-date", "value": "2026-02-30"}),
+            ),
+            (
+                "full-date",
+                serde_json::json!({"$isomdl": "full-date", "value": "2026-2-03"}),
+            ),
+            (
+                "full-date",
+                serde_json::json!({"$isomdl": "full-date", "value": "2026-10-02T00:00:00Z"}),
+            ),
+            (
+                "tdate",
+                serde_json::json!({"$isomdl": "tdate", "value": "2026-10-02T21:15:00.5Z"}),
+            ),
+            (
+                "tdate",
+                serde_json::json!({"$isomdl": "tdate", "value": "2026-10-02T21:15:00+10:00"}),
+            ),
+            (
+                "tdate",
+                serde_json::json!({"$isomdl": "tdate", "value": "2026-10-02T25:15:00Z"}),
+            ),
+            (
+                "tdate",
+                serde_json::json!({"$isomdl": "tdate", "value": "2026-10-02t21:15:00Z"}),
+            ),
+            (
+                "tdate",
+                serde_json::json!({"$isomdl": "tdate", "value": "2026-10-0éT21:15:00Z"}),
+            ),
+            (
+                "type",
+                serde_json::json!({"$isomdl": "uuid", "value": "SECRET"}),
+            ),
+            ("type", serde_json::json!({"$isomdl": 1, "value": "SECRET"})),
+            ("value", serde_json::json!({"$isomdl": "bstr", "value": 12})),
+            (
+                "keys",
+                serde_json::json!({"$isomdl": "bstr", "value": "AAAA", "extra": "SECRET"}),
+            ),
+            ("keys", serde_json::json!({"$isomdl": "bstr"})),
+        ];
+        for (label, json) in cases {
+            let err = typed_element_to_cbor("portrait", &json)
+                .expect_err(&format!("{label} case must be refused: {json}"));
+            let msg = err.to_string();
+            assert!(msg.contains("'portrait'"), "names the element: {msg}");
+            assert!(!msg.contains("SECRET"), "never prints the value: {msg}");
+            assert!(!msg.contains("2026-"), "never prints the value: {msg}");
+        }
+    }
+
+    #[test]
+    fn untyped_values_are_unchanged() {
+        for json in [
+            serde_json::json!("plain text"),
+            serde_json::json!(true),
+            serde_json::json!(42),
+            serde_json::json!(["NY", "CA"]),
+            serde_json::json!({"value": "x"}),
+            serde_json::json!({"isomdl": "bstr", "value": "AAAA"}),
+        ] {
+            assert_eq!(typed_element_to_cbor("e", &json).unwrap(), None);
+        }
+    }
+
+    #[test]
+    fn create_and_sign_refuses_a_bad_typed_element() {
+        let (issuer_key_pem, cert_pem, holder_jwk) = typed_test_keys();
+        let mut ns = HashMap::new();
+        ns.insert("portrait".to_string(), envelope("bstr", "SECRET*"));
+        let mut namespaces = HashMap::new();
+        namespaces.insert(TYPED_DOCTYPE.to_string(), ns);
+        let err = Mdoc::create_and_sign(
+            TYPED_DOCTYPE.to_string(),
+            namespaces,
+            holder_jwk,
+            cert_pem,
+            issuer_key_pem,
+            None,
+        )
+        .expect_err("bad base64 is refused");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("'portrait'") && !msg.contains("SECRET"),
+            "{msg}"
+        );
     }
 }

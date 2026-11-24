@@ -10,7 +10,7 @@
 // https://github.com/spruceid/sprucekit-mobile
 
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::{BTreeMap, HashMap, HashSet},
     io::Cursor,
     sync::Arc,
     time::Duration,
@@ -813,29 +813,34 @@ impl PreparedMdoc {
     ///
     /// [`PreparedMdoc::new()`] converts JSON values, which cannot express byte strings or
     /// tagged values. This constructor takes each element value as CBOR bytes instead, so
-    /// `full-date` (tag 1004), `tdate` (tag 0), byte strings and nested maps reach the mdoc
-    /// as encoded. Any doctype and any number of namespaces are accepted; the caller
-    /// encodes and validates the values.
+    /// `full-date` (tag 1004), `tdate` (tag 0), byte strings and nested maps keep their CBOR
+    /// types. Values are decoded and re-encoded, so the mdoc holds the same CBOR value but
+    /// not necessarily the same bytes: an indefinite-length string, for example, becomes a
+    /// definite-length one. Any doctype and any number of namespaces are accepted; the
+    /// caller encodes and validates the values.
     ///
-    /// * `namespaces` — namespace → (element identifier → one CBOR data item).
+    /// * `namespaces` — namespace → (element identifier → one CBOR data item). Maps may not
+    ///   repeat a key, at any depth.
     /// * `holder_jwk` — P-256 JWK of the holder's device key.
     /// * `signature_algorithm` — one of `"ES256"`, `"ES384"`, `"ES512"`.
+    /// * `valid_until`, `valid_from`, `expected_update` — RFC 3339 date-times for the MSO
+    ///   `validityInfo`, which records the time of this call as the signing time.
+    ///   `valid_from` defaults to the signing time. A `valid_from` up to 60 seconds before
+    ///   the signing time, such as a "now" taken by the caller just before this call, is
+    ///   raised to the signing time; anything earlier is rejected. `valid_until` must be
+    ///   later than `valid_from`. All times are truncated to whole seconds.
     /// * `status_list` — optional JSON status claim stored as the MSO `status`, e.g.
     ///   `{"status_list": {"idx": 1, "uri": "https://example.com/statuslists/1"}}`.
-    /// * `valid_from`, `valid_until`, `expected_update` — RFC 3339 date-times for the MSO
-    ///   `validityInfo`. The mdoc is signed now. `valid_from` defaults to the signing time
-    ///   and must not be earlier than it; `valid_until` must be later than `valid_from`.
-    ///   All times are truncated to whole seconds.
-    #[uniffi::constructor]
+    #[uniffi::constructor(default(status_list = None, valid_from = None, expected_update = None))]
     #[allow(clippy::too_many_arguments)]
     pub fn new_from_cbor(
         doc_type: String,
         namespaces: HashMap<String, HashMap<String, Vec<u8>>>,
         holder_jwk: String,
         signature_algorithm: String,
+        valid_until: String,
         status_list: Option<String>,
         valid_from: Option<String>,
-        valid_until: String,
         expected_update: Option<String>,
     ) -> Result<Arc<Self>, MdocInitError> {
         let pub_key: PublicKey =
@@ -1070,11 +1075,17 @@ fn validity_info(
     )
 }
 
+/// How far before the signing time a caller's `valid_from` may be and still be accepted.
+/// It absorbs the gap between the caller reading the clock and the signing time being set.
+const VALID_FROM_TOLERANCE: Duration = Duration::from_secs(60);
+
 /// Build the MSO validity for an mdoc signed at `signed`.
 ///
 /// Every time is truncated to whole seconds, as the MSO encodes it, before it is checked.
-/// `valid_from` defaults to `signed` and must not be earlier than it, and `valid_until`
-/// must be later than `valid_from`. `expected_update` is not checked against the others.
+/// `valid_from` defaults to `signed`. A `valid_from` up to [`VALID_FROM_TOLERANCE`] before
+/// `signed` is raised to `signed`, as the MSO requires; anything earlier is rejected.
+/// `valid_until` must be later than `valid_from`. `expected_update` is not checked against
+/// the others.
 fn validity_info_at(
     signed: OffsetDateTime,
     valid_from: Option<&str>,
@@ -1091,11 +1102,13 @@ fn validity_info_at(
         .map(|v| parse_rfc3339("expected_update", v))
         .transpose()?;
 
-    if valid_from < signed {
-        return Err(validity_error(
-            "valid_from is earlier than the signing time",
-        ));
+    if valid_from < signed - VALID_FROM_TOLERANCE {
+        return Err(validity_error(&format!(
+            "valid_from is more than {} seconds before the signing time",
+            VALID_FROM_TOLERANCE.as_secs()
+        )));
     }
+    let valid_from = valid_from.max(signed);
     if valid_until <= valid_from {
         return Err(validity_error("valid_until is not later than valid_from"));
     }
@@ -1217,8 +1230,9 @@ pub fn convert_namespaces(
 /// Decode the CBOR-encoded element values given to [`PreparedMdoc::new_from_cbor`].
 ///
 /// Stricter than [`convert_namespaces`]: there must be at least one namespace, every
-/// namespace must have at least one element, and every value must be exactly one CBOR data
-/// item with no trailing bytes. Errors name the namespace and element, never the value.
+/// namespace must have at least one element, every value must be exactly one CBOR data
+/// item with no trailing bytes, and no map in a value may repeat a key. Errors name the
+/// namespace and element, never the value.
 fn decode_cbor_namespaces(
     input: HashMap<String, HashMap<String, Vec<u8>>>,
 ) -> Result<BTreeMap<String, BTreeMap<String, Value>>, MdocInitError> {
@@ -1247,12 +1261,41 @@ fn decode_cbor_namespaces(
             if cursor.position() != bytes.len() as u64 {
                 return Err(invalid());
             }
+            if has_duplicate_map_key(&value) {
+                return Err(MdocInitError::GeneralConstructionError(format!(
+                    "element '{element}' in namespace '{namespace}' has a map with a duplicate key"
+                )));
+            }
             decoded.insert(element, value);
         }
         namespaces.insert(namespace, decoded);
     }
 
     Ok(namespaces)
+}
+
+/// Whether `value` holds, at any depth, a map that repeats a key. RFC 8949 does not allow
+/// duplicate keys, and decoders disagree on which entry wins, so a verifier could read a
+/// different value from the one the issuer meant to sign.
+///
+/// Keys are compared by their encoding. Encoding a value that was just decoded cannot
+/// fail, but if it does the map is treated as invalid.
+fn has_duplicate_map_key(value: &Value) -> bool {
+    match value {
+        Value::Map(entries) => {
+            let mut keys = HashSet::new();
+            entries.iter().any(|(key, item)| {
+                let mut encoded = Vec::new();
+                ciborium::into_writer(key, &mut encoded).is_err()
+                    || !keys.insert(encoded)
+                    || has_duplicate_map_key(key)
+                    || has_duplicate_map_key(item)
+            })
+        }
+        Value::Array(items) => items.iter().any(has_duplicate_map_key),
+        Value::Tag(_, inner) => has_duplicate_map_key(inner),
+        _ => false,
+    }
 }
 
 #[cfg(test)]
@@ -2347,9 +2390,9 @@ mod tests {
     /// Prepare with `new_from_cbor`, sign with a test document signer, and complete.
     fn issue_from_cbor(
         namespaces: HashMap<String, HashMap<String, Vec<u8>>>,
+        valid_until: String,
         status_list: Option<String>,
         valid_from: Option<String>,
-        valid_until: String,
         expected_update: Option<String>,
     ) -> Arc<Mdoc> {
         let (ds_key, cert_pem) = cbor_test_signer();
@@ -2358,9 +2401,9 @@ mod tests {
             namespaces,
             cbor_test_holder_jwk(),
             "ES256".to_string(),
+            valid_until,
             status_list,
             valid_from,
-            valid_until,
             expected_update,
         )
         .expect("new_from_cbor failed");
@@ -2386,7 +2429,7 @@ mod tests {
     fn test_new_from_cbor_keeps_cbor_types_across_namespaces() {
         let expected = cbor_test_namespaces();
         let in_30_days = rfc3339(OffsetDateTime::now_utc() + DEFAULT_VALIDITY);
-        let mdoc = issue_from_cbor(encode_namespaces(&expected), None, None, in_30_days, None);
+        let mdoc = issue_from_cbor(encode_namespaces(&expected), in_30_days, None, None, None);
 
         assert_eq!(mdoc.doctype(), "org.iso.23220.photoid.1");
         assert_eq!(mdoc_element_values(&mdoc), expected);
@@ -2413,9 +2456,9 @@ mod tests {
 
         let mdoc = issue_from_cbor(
             encode_namespaces(&cbor_test_namespaces()),
+            rfc3339(valid_until),
             Some(status_json.to_string()),
             Some(rfc3339(valid_from)),
-            rfc3339(valid_until),
             Some(rfc3339(expected_update)),
         );
 
@@ -2460,12 +2503,20 @@ mod tests {
         assert_eq!(validity.signed, signed);
         assert_eq!(validity.valid_from, signed);
 
+        // A valid_from up to 60 seconds before signing, such as the caller's "now" just
+        // before a second boundary, is raised to the signing time.
+        for valid_from in ["2025-12-31T23:59:00Z", "2025-12-31T23:59:59.999Z"] {
+            let validity =
+                validity_info_at(signed, Some(valid_from), "2026-01-31T00:00:00Z", None).unwrap();
+            assert_eq!(validity.valid_from, signed, "{valid_from}");
+        }
+
         let rejected = [
             (
-                Some("2025-12-31T23:59:59Z"),
+                Some("2025-12-31T23:58:59Z"),
                 "2026-01-31T00:00:00Z",
                 None,
-                "valid_from is earlier than the signing time",
+                "valid_from is more than 60 seconds before the signing time",
             ),
             (
                 None,
@@ -2508,9 +2559,9 @@ mod tests {
             encode_namespaces(&cbor_test_namespaces()),
             cbor_test_holder_jwk(),
             "ES256".to_string(),
-            None,
-            None,
             "2000-01-01T00:00:00Z".to_string(),
+            None,
+            None,
             None,
         );
         assert!(
@@ -2528,9 +2579,9 @@ mod tests {
                 namespaces,
                 cbor_test_holder_jwk(),
                 "ES256".to_string(),
-                None,
-                None,
                 in_30_days.clone(),
+                None,
+                None,
                 None,
             )
             .map(|_| ())
@@ -2544,13 +2595,38 @@ mod tests {
                 .contains("namespace 'ns' has no elements")
         );
 
+        let not_one_item = "is not a single CBOR data item";
         let truncated = vec![0x62, b'Q']; // a two-byte text string with one byte present
         let trailing = [to_cbor(&Value::Text("ok".to_string())), vec![0x00]].concat();
-        for bytes in [truncated, trailing, vec![]] {
+        let duplicate_key = |key: Value| {
+            let map = Value::Map(vec![
+                (key.clone(), Value::Text("Q1".to_string())),
+                (key, Value::Text("Q2".to_string())),
+            ]);
+            // Nested in a tag and an array, to check the search goes all the way down.
+            to_cbor(&Value::Tag(
+                65536,
+                Box::new(Value::Array(vec![Value::Bool(true), map])),
+            ))
+        };
+        let cases = [
+            (truncated, not_one_item),
+            (trailing, not_one_item),
+            (vec![], not_one_item),
+            (
+                duplicate_key(Value::Text("Q".to_string())),
+                "has a map with a duplicate key",
+            ),
+            (
+                duplicate_key(Value::Integer(7.into())),
+                "has a map with a duplicate key",
+            ),
+        ];
+        for (bytes, reason) in cases {
             let element = HashMap::from([("el".to_string(), bytes)]);
             let message = prepare(HashMap::from([("ns".to_string(), element)]));
             assert!(
-                message.contains("element 'el' in namespace 'ns'"),
+                message.contains(&format!("element 'el' in namespace 'ns' {reason}")),
                 "{message}"
             );
             assert!(

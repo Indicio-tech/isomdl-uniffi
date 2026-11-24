@@ -540,7 +540,7 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_isomdl_uniffi_checksum_constructor_preparedmdoc_new() != 61681:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    if lib.uniffi_isomdl_uniffi_checksum_constructor_preparedmdoc_new_from_cbor() != 32095:
+    if lib.uniffi_isomdl_uniffi_checksum_constructor_preparedmdoc_new_from_cbor() != 63792:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_isomdl_uniffi_checksum_constructor_preparedmdoc_new_mdl() != 13963:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
@@ -4818,25 +4818,30 @@ class PreparedMdoc():
         inst._pointer = pointer
         return inst
     @classmethod
-    def new_from_cbor(cls, doc_type: "str",namespaces: "dict[str, dict[str, bytes]]",holder_jwk: "str",signature_algorithm: "str",status_list: "typing.Optional[str]",valid_from: "typing.Optional[str]",valid_until: "str",expected_update: "typing.Optional[str]"):
+    def new_from_cbor(cls, doc_type: "str",namespaces: "dict[str, dict[str, bytes]]",holder_jwk: "str",signature_algorithm: "str",valid_until: "str",status_list: "typing.Union[object, typing.Optional[str]]" = _DEFAULT,valid_from: "typing.Union[object, typing.Optional[str]]" = _DEFAULT,expected_update: "typing.Union[object, typing.Optional[str]]" = _DEFAULT):
         """
         Prepare an mDoc for external signing from CBOR-encoded element values.
 
         [`PreparedMdoc::new()`] converts JSON values, which cannot express byte strings or
         tagged values. This constructor takes each element value as CBOR bytes instead, so
-        `full-date` (tag 1004), `tdate` (tag 0), byte strings and nested maps reach the mdoc
-        as encoded. Any doctype and any number of namespaces are accepted; the caller
-        encodes and validates the values.
+        `full-date` (tag 1004), `tdate` (tag 0), byte strings and nested maps keep their CBOR
+        types. Values are decoded and re-encoded, so the mdoc holds the same CBOR value but
+        not necessarily the same bytes: an indefinite-length string, for example, becomes a
+        definite-length one. Any doctype and any number of namespaces are accepted; the
+        caller encodes and validates the values.
 
-        * `namespaces` — namespace → (element identifier → one CBOR data item).
+        * `namespaces` — namespace → (element identifier → one CBOR data item). Maps may not
+        repeat a key, at any depth.
         * `holder_jwk` — P-256 JWK of the holder's device key.
         * `signature_algorithm` — one of `"ES256"`, `"ES384"`, `"ES512"`.
+        * `valid_until`, `valid_from`, `expected_update` — RFC 3339 date-times for the MSO
+        `validityInfo`, which records the time of this call as the signing time.
+        `valid_from` defaults to the signing time. A `valid_from` up to 60 seconds before
+        the signing time, such as a "now" taken by the caller just before this call, is
+        raised to the signing time; anything earlier is rejected. `valid_until` must be
+        later than `valid_from`. All times are truncated to whole seconds.
         * `status_list` — optional JSON status claim stored as the MSO `status`, e.g.
         `{"status_list": {"idx": 1, "uri": "https://example.com/statuslists/1"}}`.
-        * `valid_from`, `valid_until`, `expected_update` — RFC 3339 date-times for the MSO
-        `validityInfo`. The mdoc is signed now. `valid_from` defaults to the signing time
-        and must not be earlier than it; `valid_until` must be later than `valid_from`.
-        All times are truncated to whole seconds.
         """
 
         _UniffiConverterString.check_lower(doc_type)
@@ -4847,12 +4852,18 @@ class PreparedMdoc():
         
         _UniffiConverterString.check_lower(signature_algorithm)
         
-        _UniffiConverterOptionalString.check_lower(status_list)
-        
-        _UniffiConverterOptionalString.check_lower(valid_from)
-        
         _UniffiConverterString.check_lower(valid_until)
         
+        if status_list is _DEFAULT:
+            status_list = None
+        _UniffiConverterOptionalString.check_lower(status_list)
+        
+        if valid_from is _DEFAULT:
+            valid_from = None
+        _UniffiConverterOptionalString.check_lower(valid_from)
+        
+        if expected_update is _DEFAULT:
+            expected_update = None
         _UniffiConverterOptionalString.check_lower(expected_update)
         
         # Call the (fallible) function before creating any half-baked object instances.
@@ -4861,9 +4872,9 @@ class PreparedMdoc():
         _UniffiConverterMapStringMapStringBytes.lower(namespaces),
         _UniffiConverterString.lower(holder_jwk),
         _UniffiConverterString.lower(signature_algorithm),
+        _UniffiConverterString.lower(valid_until),
         _UniffiConverterOptionalString.lower(status_list),
         _UniffiConverterOptionalString.lower(valid_from),
-        _UniffiConverterString.lower(valid_until),
         _UniffiConverterOptionalString.lower(expected_update))
         return cls._make_instance_(pointer)
 

@@ -9,7 +9,7 @@
 Tests for PreparedMdoc.new_from_cbor through the Python bindings.
 
 new_from_cbor takes each element value as CBOR bytes, so tagged dates, byte strings and
-nested maps reach the mdoc as encoded. The mdoc is signed outside the library, the way an
+nested maps keep their CBOR types. The mdoc is signed outside the library, the way an
 issuer with an HSM or a wallet-held key would sign it.
 """
 
@@ -94,6 +94,22 @@ def issuer_signed_bytes(mdoc) -> bytes:
     return base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4))
 
 
+def tstr(text: str) -> bytes:
+    """``text`` as a CBOR text string; it must be shorter than 24 bytes."""
+    data = text.encode()
+    assert len(data) < 24
+    return bytes([0x60 + len(data)]) + data
+
+
+def encoded_element(identifier: str, value: bytes) -> bytes:
+    """The end of an encoded IssuerSignedItem: its elementIdentifier, then its elementValue.
+
+    Finding these bytes in IssuerSigned shows the value is carried for that element. The
+    test values use preferred CBOR encoding, which re-encoding leaves unchanged.
+    """
+    return tstr("elementIdentifier") + tstr(identifier) + tstr("elementValue") + value
+
+
 class TestNewFromCbor:
     """Issue an mdoc from CBOR element values and an external signature."""
 
@@ -106,10 +122,8 @@ class TestNewFromCbor:
             NAMESPACES,
             holder_jwk,
             "ES256",
-            json.dumps(STATUS),
-            None,
             rfc3339(valid_until),
-            None,
+            status_list=json.dumps(STATUS),
         )
         signature = raw_es256_signature(key, prepared.signature_payload())
         mdoc = prepared.complete(cert_pem, signature)
@@ -122,11 +136,11 @@ class TestNewFromCbor:
         for namespace, elements in NAMESPACES.items():
             assert {e.identifier for e in details[namespace]} == set(elements)
 
-        # Every element value is carried in IssuerSigned exactly as it was encoded.
+        # Every element value is carried in IssuerSigned, with its CBOR type, for its element.
         raw = issuer_signed_bytes(mdoc)
         for elements in NAMESPACES.values():
-            for value in elements.values():
-                assert value in raw
+            for identifier, value in elements.items():
+                assert encoded_element(identifier, value) in raw, identifier
 
         result = mdoc.verify_issuer_signature(None, False)
         assert result.verified, result.error
@@ -135,14 +149,7 @@ class TestNewFromCbor:
         key, cert_pem = document_signer
         valid_until = datetime.now(timezone.utc) + timedelta(days=30)
         prepared = mdl_module.PreparedMdoc.new_from_cbor(
-            PHOTO_ID_DOCTYPE,
-            NAMESPACES,
-            holder_jwk,
-            "ES256",
-            None,
-            None,
-            rfc3339(valid_until),
-            None,
+            PHOTO_ID_DOCTYPE, NAMESPACES, holder_jwk, "ES256", rfc3339(valid_until)
         )
         mdoc = prepared.complete(cert_pem, raw_es256_signature(key, prepared.signature_payload()))
 
@@ -151,7 +158,7 @@ class TestNewFromCbor:
         )
         assert reparsed.doctype() == PHOTO_ID_DOCTYPE
         assert set(reparsed.details()) == set(NAMESPACES)
-        assert BIRTH_DATE in issuer_signed_bytes(reparsed)
+        assert encoded_element("birth_date", BIRTH_DATE) in issuer_signed_bytes(reparsed)
         assert reparsed.status_list() is None
 
 
@@ -161,7 +168,7 @@ class TestNewFromCborErrors:
     def prepare(self, mdl_module, holder_jwk, namespaces=NAMESPACES, valid_until=None):
         valid_until = valid_until or rfc3339(datetime.now(timezone.utc) + timedelta(days=30))
         return mdl_module.PreparedMdoc.new_from_cbor(
-            PHOTO_ID_DOCTYPE, namespaces, holder_jwk, "ES256", None, None, valid_until, None
+            PHOTO_ID_DOCTYPE, namespaces, holder_jwk, "ES256", valid_until
         )
 
     def test_rejects_invalid_cbor(self, mdl_module, holder_jwk):

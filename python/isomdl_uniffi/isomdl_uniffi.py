@@ -540,6 +540,8 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_isomdl_uniffi_checksum_constructor_preparedmdoc_new() != 61681:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_isomdl_uniffi_checksum_constructor_preparedmdoc_new_from_cbor() != 63792:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_isomdl_uniffi_checksum_constructor_preparedmdoc_new_mdl() != 13963:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
 
@@ -896,6 +898,18 @@ _UniffiLib.uniffi_isomdl_uniffi_fn_constructor_preparedmdoc_new.argtypes = (
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_isomdl_uniffi_fn_constructor_preparedmdoc_new.restype = ctypes.c_void_p
+_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_preparedmdoc_new_from_cbor.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_preparedmdoc_new_from_cbor.restype = ctypes.c_void_p
 _UniffiLib.uniffi_isomdl_uniffi_fn_constructor_preparedmdoc_new_mdl.argtypes = (
     _UniffiRustBuffer,
     _UniffiRustBuffer,
@@ -1363,6 +1377,9 @@ _UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_p256keypair_new.restype = c
 _UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_preparedmdoc_new.argtypes = (
 )
 _UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_preparedmdoc_new.restype = ctypes.c_uint16
+_UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_preparedmdoc_new_from_cbor.argtypes = (
+)
+_UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_preparedmdoc_new_from_cbor.restype = ctypes.c_uint16
 _UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_preparedmdoc_new_mdl.argtypes = (
 )
 _UniffiLib.uniffi_isomdl_uniffi_checksum_constructor_preparedmdoc_new_mdl.restype = ctypes.c_uint16
@@ -4800,6 +4817,67 @@ class PreparedMdoc():
         inst = cls.__new__(cls)
         inst._pointer = pointer
         return inst
+    @classmethod
+    def new_from_cbor(cls, doc_type: "str",namespaces: "dict[str, dict[str, bytes]]",holder_jwk: "str",signature_algorithm: "str",valid_until: "str",status_list: "typing.Union[object, typing.Optional[str]]" = _DEFAULT,valid_from: "typing.Union[object, typing.Optional[str]]" = _DEFAULT,expected_update: "typing.Union[object, typing.Optional[str]]" = _DEFAULT):
+        """
+        Prepare an mDoc for external signing from CBOR-encoded element values.
+
+        [`PreparedMdoc::new()`] converts JSON values, which cannot express byte strings or
+        tagged values. This constructor takes each element value as CBOR bytes instead, so
+        `full-date` (tag 1004), `tdate` (tag 0), byte strings and nested maps keep their CBOR
+        types. Values are decoded and re-encoded, so the mdoc holds the same CBOR value but
+        not necessarily the same bytes: an indefinite-length string, for example, becomes a
+        definite-length one. Any doctype and any number of namespaces are accepted; the
+        caller encodes and validates the values.
+
+        * `namespaces` — namespace → (element identifier → one CBOR data item). Maps may not
+        repeat a key, at any depth.
+        * `holder_jwk` — P-256 JWK of the holder's device key.
+        * `signature_algorithm` — one of `"ES256"`, `"ES384"`, `"ES512"`.
+        * `valid_until`, `valid_from`, `expected_update` — RFC 3339 date-times for the MSO
+        `validityInfo`, which records the time of this call as the signing time.
+        `valid_from` defaults to the signing time. A `valid_from` up to 60 seconds before
+        the signing time, such as a "now" taken by the caller just before this call, is
+        raised to the signing time; anything earlier is rejected. `valid_until` must be
+        later than `valid_from`. All times are truncated to whole seconds.
+        * `status_list` — optional JSON status claim stored as the MSO `status`, e.g.
+        `{"status_list": {"idx": 1, "uri": "https://example.com/statuslists/1"}}`.
+        """
+
+        _UniffiConverterString.check_lower(doc_type)
+        
+        _UniffiConverterMapStringMapStringBytes.check_lower(namespaces)
+        
+        _UniffiConverterString.check_lower(holder_jwk)
+        
+        _UniffiConverterString.check_lower(signature_algorithm)
+        
+        _UniffiConverterString.check_lower(valid_until)
+        
+        if status_list is _DEFAULT:
+            status_list = None
+        _UniffiConverterOptionalString.check_lower(status_list)
+        
+        if valid_from is _DEFAULT:
+            valid_from = None
+        _UniffiConverterOptionalString.check_lower(valid_from)
+        
+        if expected_update is _DEFAULT:
+            expected_update = None
+        _UniffiConverterOptionalString.check_lower(expected_update)
+        
+        # Call the (fallible) function before creating any half-baked object instances.
+        pointer = _uniffi_rust_call_with_error(_UniffiConverterTypeMdocInitError,_UniffiLib.uniffi_isomdl_uniffi_fn_constructor_preparedmdoc_new_from_cbor,
+        _UniffiConverterString.lower(doc_type),
+        _UniffiConverterMapStringMapStringBytes.lower(namespaces),
+        _UniffiConverterString.lower(holder_jwk),
+        _UniffiConverterString.lower(signature_algorithm),
+        _UniffiConverterString.lower(valid_until),
+        _UniffiConverterOptionalString.lower(status_list),
+        _UniffiConverterOptionalString.lower(valid_from),
+        _UniffiConverterOptionalString.lower(expected_update))
+        return cls._make_instance_(pointer)
+
     @classmethod
     def new_mdl(cls, mdl_items: "str",aamva_items: "typing.Optional[str]",holder_jwk: "str",signature_algorithm: "str",status_list: "typing.Optional[str]"):
         """
